@@ -105,8 +105,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.smoke_starts, self.smoke_error = 0, False
             self.available_update = self.update_plan = None
             self.setWindowTitle("QuillSail")
-            self.setMinimumSize(460, 500)
-            self.resize(540, 560)
+            self.setMinimumSize(460, 600)
+            self.resize(540, 620)
             icon_path = Path(__file__).parent / "static/brand/quillsail.svg"
             self.setWindowIcon(QIcon(str(icon_path)))
             content = QWidget()
@@ -119,7 +119,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             if not self.logo_ready:
                 log.error("The packaged QuillSail vector logo could not be rendered.")
             brand.addWidget(image)
-            title = QLabel("<h1>QuillSail</h1><p>Your publication, on your computer.</p>")
+            title = QLabel("<h1 style='margin:0 0 4px'>QuillSail</h1><p style='margin:0'>Your publication, on your computer.</p>")
+            title.setWordWrap(True)
             brand.addWidget(title, 1)
             layout.addLayout(brand)
             self.status = QLabel("Starting your publication…")

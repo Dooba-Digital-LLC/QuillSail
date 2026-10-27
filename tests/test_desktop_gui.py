@@ -52,7 +52,7 @@ def test_update_controls_keep_publication_running_until_an_approved_install(tmp_
         import sys
         from pathlib import Path
         from PySide6.QtCore import QTimer
-        from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
+        from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QMessageBox
         from copydesk import __version__, desktop_ui, updater
 
         scenario, root = sys.argv[1], Path(sys.argv[2])
@@ -103,6 +103,11 @@ def test_update_controls_keep_publication_running_until_an_approved_install(tmp_
                     return
                 window = windows[0]
                 if state[0] == 0 and not window.busy and window.runtime.server:
+                    window.resize(460, 500)
+                    app.processEvents()
+                    for label in window.findChildren(QLabel):
+                        if label.wordWrap():
+                            assert label.height() >= label.heightForWidth(label.width()), label.text()
                     state[0] = 1
                     window.update_button.click()
                 elif state[0] == 1 and not window.busy:

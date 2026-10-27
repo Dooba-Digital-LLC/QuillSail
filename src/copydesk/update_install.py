@@ -269,6 +269,13 @@ def cleanup_completed_transactions(installation: Path, current: Path):
             continue
 
 
+def record_success(plan, install):
+    transaction = Path(plan["transaction"])
+    (transaction / "result.json").write_text(json.dumps({"status": "installed", "version": plan["version"]}), encoding="utf-8")
+    (transaction / "update.archive").unlink(missing_ok=True)
+    cleanup_completed_transactions(install, transaction)
+
+
 def apply_plan(path: Path):
     transaction = path.parent.resolve()
     plan = json.loads(path.read_text(encoding="utf-8"))
@@ -278,9 +285,7 @@ def apply_plan(path: Path):
     (transaction / "helper-ready").write_text("ready", encoding="utf-8")
     wait_for_exit(plan["parent_pid"])
     install = atomic_install(plan)
-    (transaction / "result.json").write_text(json.dumps({"status": "installed", "version": plan["version"]}), encoding="utf-8")
-    (transaction / "update.archive").unlink(missing_ok=True)
-    cleanup_completed_transactions(install, transaction)
+    record_success(plan, install)
     if plan.get("restart"):
         command = [str(executable(install, plan["target"])), "--data-dir", plan["data_dir"]]
         subprocess.Popen(command, cwd=install.parent, env=clean_environment(), start_new_session=True)

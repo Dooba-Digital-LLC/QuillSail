@@ -33,6 +33,7 @@ def initialize(keys_path: Path, root_path: Path):
         handle.write(raw + "\n")
     root_path.parent.mkdir(parents=True, exist_ok=True)
     root.to_file(str(root_path))
+    os.chmod(root_path, 0o644)
     return root
 
 

@@ -79,7 +79,13 @@ def update(check_only, app, channel, yes):
     files are preserved. Git, pip and Docker installations keep their existing
     installation workflow; --check also works from those installations.
     """
-    from copydesk.update_install import InstallError, application_lock, atomic_install, read_install
+    from copydesk.update_install import (
+        InstallError,
+        application_lock,
+        atomic_install,
+        read_install,
+        record_success,
+    )
     from copydesk.updater import (
         UpdateClient,
         UpdateError,
@@ -110,7 +116,9 @@ def update(check_only, app, channel, yes):
             # A Python CLI outside the installed app can replace it synchronously.
             with application_lock(install_lock_path(installation)):
                 plan = client.prepare(result, installation, restart=False)
-            atomic_install(json.loads(plan.read_text(encoding="utf-8")))
+            details = json.loads(plan.read_text(encoding="utf-8"))
+            installed = atomic_install(details)
+            record_success(details, installed)
             click.echo(f"Installed QuillSail {result.version}. Open the desktop application to continue.")
         else:
             plan = client.prepare(result, installation, restart=False)

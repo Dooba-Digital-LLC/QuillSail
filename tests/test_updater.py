@@ -321,3 +321,22 @@ def test_channel_preference_is_retained_and_invalid_values_are_ignored(tmp_path,
     assert (tmp_path / "preferences.json").stat().st_mode & 0o077 == 0
     (tmp_path / "preferences.json").write_text('{"channel":"untrusted"}')
     assert saved_channel() == "beta"
+
+
+def test_success_retains_one_previous_app_and_preserves_failed_or_unrelated_transactions(tmp_path):
+    installation = tmp_path / "QuillSail"
+    installation.mkdir()
+    transactions = []
+    for name, owner, status in [("old", installation, "installed"), ("failed", installation, "failed"),
+                                ("unrelated", tmp_path / "OtherApp", "installed"), ("current", installation, "installed")]:
+        transaction = tmp_path / (".quillsail-update-" + name)
+        transaction.mkdir()
+        (transaction / "plan.json").write_text(json.dumps({"transaction": str(transaction), "installation": str(owner)}))
+        (transaction / "result.json").write_text(json.dumps({"status": status}))
+        transactions.append(transaction)
+    old, failed, unrelated, current = transactions
+    (current / "update.archive").write_bytes(b"disposable completed archive")
+    update_install.record_success({"transaction": str(current), "version": "2.0.0"}, installation)
+    assert not old.exists()
+    assert failed.exists() and unrelated.exists() and current.exists()
+    assert not (current / "update.archive").exists()
