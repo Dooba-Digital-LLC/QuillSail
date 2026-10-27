@@ -50,6 +50,28 @@ def licenses(target):
                     shutil.copy2(source, destination)
 
 
+def render_icon(source, destination):
+    """Rasterize the vector master at the app icon's full native resolution."""
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtSvg import QSvgRenderer
+
+    renderer = QSvgRenderer(str(source))
+    if not renderer.isValid():
+        raise ValueError("The QuillSail vector icon could not be loaded.")
+    renderer.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+    canvas = QImage(1024, 1024, QImage.Format.Format_ARGB32)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    try:
+        renderer.render(painter, QRectF(112, 112, 800, 800))
+    finally:
+        painter.end()
+    if not canvas.save(str(destination)):
+        raise RuntimeError("The QuillSail app icon could not be saved.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path("dist/desktop"))
@@ -75,14 +97,13 @@ def main():
     notices = work / "licenses"
     licenses(notices)
     shutil.copy2(root / "LICENSE", notices / "QuillSail-LICENSE")
-    logo = Path(copydesk.__file__).parent / "static/brand/quillsail.png"
+    logo = Path(copydesk.__file__).parent / "static/brand/quillsail.svg"
     icon = work / ("QuillSail.icns" if sys.platform == "darwin" else "QuillSail.ico")
     if sys.platform in {"darwin", "win32"}:
-        with Image.open(logo) as image:
-            image.thumbnail((800, 800))
-            square = Image.new("RGBA", (1024, 1024))
-            square.alpha_composite(image.convert("RGBA"), ((1024-image.width)//2, (1024-image.height)//2))
-            square.save(icon)
+        raster = work / "QuillSail-icon.png"
+        render_icon(logo, raster)
+        with Image.open(raster) as image:
+            image.save(icon)
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
                "--name", "QuillSail", "--distpath", str(output), "--workpath", str(work / "pyinstaller"),
                "--specpath", str(work), "--collect-all", "copydesk", "--hidden-import", "sqlalchemy.dialects.sqlite",

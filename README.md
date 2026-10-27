@@ -36,12 +36,12 @@ The desktop launcher starts a local publication and opens the dashboard in your 
 
 | Your computer | Download |
 | --- | --- |
-| Mac — Apple Silicon (M-series) | [macOS arm64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-macos-arm64.zip) |
-| Mac — Intel | [macOS x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-macos-x86_64.zip) |
-| Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-windows-x86_64.zip) |
-| Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-linux-x86_64.tar.gz) |
+| Mac — Apple Silicon (M-series) | [macOS arm64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.1/QuillSail-1.7.1-macos-arm64.zip) |
+| Mac — Intel | [macOS x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.1/QuillSail-1.7.1-macos-x86_64.zip) |
+| Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.1/QuillSail-1.7.1-windows-x86_64.zip) |
+| Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.1/QuillSail-1.7.1-linux-x86_64.tar.gz) |
 
-Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds; Developer ID notarization and Windows code signing are not configured. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.7.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
+Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds; Developer ID notarization and Windows code signing are not configured. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.7.1) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
 
 ## Deploy with Docker Compose
 

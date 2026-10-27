@@ -18,8 +18,9 @@ log = logging.getLogger("copydesk.desktop")
 
 def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     try:
-        from PySide6.QtCore import QEvent, QObject, QSize, QThread, QTimer, QUrl, Signal, Slot
-        from PySide6.QtGui import QAction, QDesktopServices, QIcon, QPixmap
+        from PySide6.QtCore import QEvent, QObject, QSize, Qt, QThread, QTimer, QUrl, Signal, Slot
+        from PySide6.QtGui import QAction, QDesktopServices, QIcon
+        from PySide6.QtSvgWidgets import QSvgWidget
         from PySide6.QtWidgets import (
             QApplication,
             QHBoxLayout,
@@ -70,16 +71,19 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.setWindowTitle("QuillSail")
             self.setMinimumSize(460, 400)
             self.resize(540, 460)
-            icon_path = Path(__file__).parent / "static/brand/quillsail.png"
+            icon_path = Path(__file__).parent / "static/brand/quillsail.svg"
             self.setWindowIcon(QIcon(str(icon_path)))
             content = QWidget()
             layout = QVBoxLayout(content)
             layout.setContentsMargins(32, 28, 32, 28)
             layout.setSpacing(18)
             brand = QHBoxLayout()
-            image = QLabel()
-            image.setPixmap(QPixmap(str(icon_path)).scaledToHeight(64))
+            image = QSvgWidget(str(icon_path))
+            image.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+            image.setAccessibleName("QuillSail logo")
             image.setFixedSize(QSize(78, 68))
+            if smoke and not image.renderer().isValid():
+                raise RuntimeError("The packaged QuillSail vector logo could not be loaded.")
             brand.addWidget(image)
             title = QLabel("<h1>QuillSail</h1><p>Your publication, on your computer.</p>")
             brand.addWidget(title, 1)

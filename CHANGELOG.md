@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1 — Beta
+
+- Render the desktop launcher logo and window icon from the vector master, preserving their aspect ratio and sharp edges on Retina and other high-DPI displays.
+- Generate desktop application icons from the vector artwork at full resolution.
+
 ## 1.7.0 — Beta
 
 - Add an optional desktop launcher with automatic local server startup, browser setup, a background worker, start/stop controls, logs and a persistent publication folder. The CLI and server installations remain available.
