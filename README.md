@@ -28,6 +28,21 @@ The project originated in work for **The Tech Stack**, a publication operated by
 - Themes with template inheritance and Python extensions with events, filters, settings, commands, and background jobs.
 - SQLite by default; optional PostgreSQL and MySQL drivers. SMTP delivery with a persistent job queue.
 
+## Open the desktop app
+
+The desktop launcher starts a local publication and opens the dashboard in your browser. A short first-run form creates your administrator; later launches reopen your saved publication. Packaged builds include Python and need no terminal or Docker. The native window offers **Open dashboard**, **Start / Stop**, **View logs**, and **Open data folder**.
+
+### Desktop beta downloads
+
+| Your computer | Download |
+| --- | --- |
+| Mac — Apple Silicon (M-series) | [macOS arm64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-macos-arm64.zip) |
+| Mac — Intel | [macOS x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-macos-x86_64.zip) |
+| Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-windows-x86_64.zip) |
+| Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.7.0/QuillSail-1.7.0-linux-x86_64.tar.gz) |
+
+Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds; Developer ID notarization and Windows code signing are not configured. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.7.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
+
 ## Deploy with Docker Compose
 
 From a checkout of this repository, with Docker and its Compose plugin installed:
@@ -70,6 +85,7 @@ Demo accounts use `demo-password-123`; use the demo only in a local test install
 ## Documentation
 
 - [Server installation](docs/installation.md)
+- [Desktop launcher](docs/desktop.md)
 - [GitHub setup and releases](docs/github.md)
 - [Configuration](docs/configuration.md)
 - [Email and delivery](docs/email.md)

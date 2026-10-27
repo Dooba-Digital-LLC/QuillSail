@@ -1,0 +1,125 @@
+"""Build a native desktop bundle. Run on the OS/architecture being packaged.
+
+Install the wheel with [desktop-build] in a clean virtual environment first.
+Only package resources and dependency licenses enter the app; no instance data.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib.metadata
+import json
+import os
+import platform
+import plistlib
+import shutil
+import subprocess
+import sys
+import tarfile
+from pathlib import Path
+
+from PIL import Image
+
+import copydesk
+
+
+def target_name(system=None, machine=None):
+    system = system or platform.system()
+    machine = (machine or platform.machine()).lower()
+    architecture = {"amd64": "x86_64", "x86_64": "x86_64", "aarch64": "arm64", "arm64": "arm64"}.get(machine)
+    supported = {("Darwin", "arm64"): "macos-arm64", ("Darwin", "x86_64"): "macos-x86_64",
+                 ("Windows", "x86_64"): "windows-x86_64", ("Linux", "x86_64"): "linux-x86_64"}
+    try:
+        return supported[system, architecture]
+    except KeyError:
+        raise ValueError(f"Unsupported desktop build platform: {system}/{machine}") from None
+
+
+def licenses(target):
+    target.mkdir(parents=True, exist_ok=True)
+    for distribution in importlib.metadata.distributions():
+        for file in distribution.files or []:
+            if any(part.lower() in {"licenses", "license", "copying", "notice"} or part.lower().startswith(("license.", "copying.", "notice.")) for part in file.parts):
+                source = Path(distribution.locate_file(file))
+                if source.is_file():
+                    relative = Path(*(part for part in file.parts if part not in {"..", ".", "/", "\\"}))
+                    destination = target / distribution.metadata["Name"] / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=Path("dist/desktop"))
+    parser.add_argument("--target", choices=["macos-arm64", "macos-x86_64", "windows-x86_64", "linux-x86_64"], help="Reject a runner with the wrong native architecture.")
+    arguments = parser.parse_args()
+    target = target_name()
+    if arguments.target and arguments.target != target:
+        parser.error(f"Requested {arguments.target}, but this runner builds {target}.")
+    root = Path(__file__).resolve().parents[1]
+    output = arguments.output_dir.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    work = root / "build/desktop"
+    work.mkdir(parents=True, exist_ok=True)
+    notices = work / "licenses"
+    licenses(notices)
+    shutil.copy2(root / "LICENSE", notices / "QuillSail-LICENSE")
+    logo = Path(copydesk.__file__).parent / "static/brand/quillsail.png"
+    icon = work / ("QuillSail.icns" if sys.platform == "darwin" else "QuillSail.ico")
+    if sys.platform in {"darwin", "win32"}:
+        with Image.open(logo) as image:
+            image.thumbnail((800, 800))
+            square = Image.new("RGBA", (1024, 1024))
+            square.alpha_composite(image.convert("RGBA"), ((1024-image.width)//2, (1024-image.height)//2))
+            square.save(icon)
+    command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
+               "--name", "QuillSail", "--distpath", str(output), "--workpath", str(work / "pyinstaller"),
+               "--specpath", str(work), "--collect-all", "copydesk", "--hidden-import", "sqlalchemy.dialects.sqlite",
+               "--add-data", str(notices) + os.pathsep + "licenses",
+               "--exclude-module", "pytest", "--exclude-module", "tkinter", "--exclude-module", "IPython"]
+    if sys.platform in {"darwin", "win32"}:
+        command += ["--icon", str(icon)]
+    if sys.platform == "darwin":
+        command += ["--osx-bundle-identifier", "org.quillsail.desktop"]
+    command += [str(root / "scripts/desktop_entry.py")]
+    subprocess.run(command, check=True)
+    # Installer provenance is build-machine specific, never needed at runtime.
+    for path in output.rglob("direct_url.json"):
+        path.unlink()
+    name = f"QuillSail-{copydesk.__version__}-{target}"
+    if sys.platform == "darwin":
+        app = output / "QuillSail.app"
+        plist = app / "Contents/Info.plist"
+        with plist.open("rb") as handle:
+            metadata = plistlib.load(handle)
+        metadata.update(CFBundleShortVersionString=copydesk.__version__, CFBundleVersion=copydesk.__version__)
+        with plist.open("wb") as handle:
+            plistlib.dump(metadata, handle)
+        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
+        executable = app / "Contents/MacOS/QuillSail"
+    elif sys.platform == "win32":
+        executable = output / "QuillSail/QuillSail.exe"
+    else:
+        executable = output / "QuillSail/QuillSail"
+    # This uses a disposable database and file mail. It sends no email.
+    subprocess.run([str(executable), "--smoke-test"], check=True, timeout=120)
+    subprocess.run([str(executable), "--smoke-test-gui"], check=True, timeout=120)
+    if sys.platform == "darwin":
+        artifact = output / (name + ".zip")
+        subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(artifact)], check=True)
+    elif sys.platform == "win32":
+        artifact = Path(shutil.make_archive(str(output / name), "zip", root_dir=output, base_dir="QuillSail"))
+    else:
+        artifact = output / (name + ".tar.gz")
+        with tarfile.open(artifact, "w:gz") as archive:
+            archive.add(output / "QuillSail", arcname="QuillSail")
+    report = {"version": copydesk.__version__, "target": target, "archive": artifact.name,
+              "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "setup_restart_check": True,
+              "gui_lifecycle_check": True, "commit": os.environ.get("GITHUB_SHA", "local")}
+    (output / (name + ".json")).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Desktop bundle ready: {output / name}")
+
+
+if __name__ == "__main__":
+    main()

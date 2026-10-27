@@ -1,0 +1,95 @@
+name: Desktop bundles
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish all four tested downloads as a desktop beta release
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/*desktop*'
+      - 'pyproject.toml'
+      - '.github/workflows/desktop.yml'
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  desktop:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos-arm64
+            os: macos-14
+            python_arch: arm64
+          - target: macos-x86_64
+            os: macos-15-intel
+            python_arch: x64
+          - target: windows-x86_64
+            os: windows-2022
+            python_arch: x64
+          - target: linux-x86_64
+            os: ubuntu-22.04
+            python_arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python_arch }}
+      - name: Install Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 libxcb-xfixes0
+      - run: python -m pip install build
+      - run: python -m build --wheel
+      - name: Install only the wheel and desktop build dependencies
+        shell: bash
+        run: python -m pip install "$(echo dist/*.whl)[desktop-build]"
+      - name: Build and test native desktop
+        if: runner.os != 'Linux'
+        run: python scripts/build_desktop.py --target ${{ matrix.target }}
+      - name: Build and test Linux desktop with a virtual display
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum python scripts/build_desktop.py --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-${{ matrix.target }}
+          path: |
+            dist/desktop/*.zip
+            dist/desktop/*.tar.gz
+            dist/desktop/*.json
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    name: Publish four desktop downloads
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    needs: desktop
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: desktop-*
+          path: desktop-downloads/
+          merge-multiple: true
+      - name: Validate all four artifacts and publish the desktop beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DESKTOP_COMMIT: ${{ github.sha }}
+        run: python scripts/publish_desktop.py desktop-downloads

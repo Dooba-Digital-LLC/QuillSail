@@ -30,6 +30,7 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -61,10 +62,15 @@ mysql = ["PyMySQL>=1.1"]
 server = ["gunicorn>=22"]
 dev = ["pytest>=8", "ruff>=0.5", "responses>=0.25", "build>=1.2", "twine>=6", "PyYAML>=6"]
 integration = ["aiosmtpd>=1.4.6", "trustme>=1.2"]
+desktop = ["PySide6-Essentials>=6.8,<7"]
+desktop-build = ["PySide6-Essentials>=6.8,<7", "pyinstaller>=6.11,<7"]
 
 [project.scripts]
 quillsail = "copydesk.cli:main"
 copydesk = "copydesk.cli:main"
+
+[project.gui-scripts]
+quillsail-desktop = "copydesk.desktop_ui:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "copydesk.__version__" }

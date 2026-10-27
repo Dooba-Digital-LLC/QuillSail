@@ -165,6 +165,18 @@ def init(directory, site_name, mode, base_url, database_url, admin_email, admin_
 
 
 @main.command()
+@click.option("--data-dir", type=click.Path(file_okay=False, path_type=Path), help="Use a separate desktop publication folder.")
+def desktop(data_dir):
+    """Open the desktop launcher and start a local publication in your browser."""
+    from copydesk.desktop_ui import run
+
+    try:
+        run(data_dir=data_dir)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@main.command()
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", default=5000, show_default=True, type=int)
 @click.option("--no-worker", is_flag=True, help="Don't run the background worker in this process.")

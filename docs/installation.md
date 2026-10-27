@@ -2,6 +2,8 @@
 
 QuillSail runs as a Python web application with a persistent database and a background worker. Use Docker Compose for a new installation, or install the Python package behind your own reverse proxy. GitHub hosts the source, CI, release files and optional container images; run the application on a server you control.
 
+For local editing without a terminal or Docker, use the [desktop launcher](desktop.md). Its packaged app includes the runtime, opens the browser setup automatically, and stores the publication outside the app bundle.
+
 ## Docker Compose
 
 Install Docker Engine/Desktop with the Compose plugin, then clone or extract this repository. From its root:

@@ -15,8 +15,9 @@
 
     <form class="form" method="post" novalidate>
       {{ forms.csrf() }}
-      {{ forms.input("code", "Setup code", form.get("code"), errors=errors, required=True, autocomplete="off",
+      {% if not desktop_setup %}{{ forms.input("code", "Setup code", form.get("code"), errors=errors, required=True, autocomplete="off",
                      help="So nobody else can claim your site first. It's in the server log, and in data/setup-code.txt next to your copydesk.toml.") }}
+      {% else %}<p class="help">QuillSail opened this setup securely from your desktop. Your publication and account will be saved on this computer.</p>{% endif %}
       {{ forms.input("site_name", "Publication name", form.get("site_name"), errors=errors, required=True,
                      placeholder="Example Newsletter") }}
       {{ forms.select('site_mode', 'Publication type', [('newsletter', 'Newsletter'), ('blog', 'Blog'), ('hybrid', 'Blog + newsletter')], form.get('site_mode', 'newsletter'), errors=errors, help='You can change this later in Settings → General.') }}

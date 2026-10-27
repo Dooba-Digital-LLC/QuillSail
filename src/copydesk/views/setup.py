@@ -14,7 +14,7 @@ import logging
 import os
 import secrets
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from sqlalchemy import select
 
 from copydesk import audit, publication, seed, settings
@@ -59,11 +59,13 @@ def index():
     if _has_users():
         state().setup_needed = False
         return redirect(url_for("public.home"))
-    code = setup_code()
+    desktop = current_app.extensions.get("copydesk_desktop")
+    desktop_setup = desktop is not None and desktop.setup_authorized()
+    code = None if desktop_setup else setup_code()
     form = request.form
     errors: dict[str, str] = {}
     if request.method == "POST":
-        if not hmac.compare_digest((form.get("code") or "").strip().upper(), code):
+        if not desktop_setup and not hmac.compare_digest((form.get("code") or "").strip().upper(), code):
             errors["code"] = "That code doesn't match. Find it in the server log or in data/setup-code.txt."
         site_name = (form.get("site_name") or "").strip()
         mode = form.get("site_mode", "newsletter")
@@ -95,7 +97,7 @@ def index():
             db.session.commit()
             flash(f"Welcome to {site_name}! Here's your dashboard. The checklist below walks you through the rest.", "success")
             return redirect(url_for("dash.overview"))
-    return render_template("setup/index.html", form=form, errors=errors), (422 if errors else 200)
+    return render_template("setup/index.html", form=form, errors=errors, desktop_setup=desktop_setup), (422 if errors else 200)
 
 
 def create_admin(*, email: str, name: str, password: str) -> User:

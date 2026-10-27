@@ -39,6 +39,12 @@ After the first image publication, check that the package is linked to the repos
 
 See GitHub's [container publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images). Users deploy the image or source using [installation](installation.md), then manage backups/upgrades with [maintenance](maintenance.md).
 
+## Desktop downloads
+
+Run **Desktop bundles** on `main` and enable its **publish** checkbox to publish the desktop beta. Leave that option off for build-only verification. The workflow uses separate Apple Silicon, Intel Mac, Windows x64 and Linux x64 runners, verifies both browser setup/restart and GUI startup/stop/restart, and collects all four archives before publishing. It includes SHA-256 checksums and build reports tied to the exact source commit.
+
+The publisher creates a draft first and publishes it only after every upload is verified. It can resume the same draft after an upload failure and refuses to replace an already published version. Bump `copydesk.__version__` before changing published downloads. The built-in workflow token does not trigger the separate Release workflow, so publishing desktop downloads this way does not publish a container. See GitHub's [workflow trigger behavior](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+
 ## Local release checks
 
 ```sh

@@ -149,6 +149,7 @@ def load_config(
     overrides: dict[str, dict[str, Any]] | None = None,
     *,
     require_file: bool = False,
+    use_environment: bool = True,
 ) -> Config:
     """Read the configuration file, apply environment variables, then ``overrides``."""
     file_path = find_config_file(path)
@@ -167,7 +168,7 @@ def load_config(
             raise ConfigError(f"{file_path} is not valid TOML: {exc}") from exc
 
     for env_name, (section, key) in ENV_OVERRIDES.items():
-        if env_name in os.environ:
+        if use_environment and env_name in os.environ:
             data.setdefault(section, {})[key] = os.environ[env_name]
 
     for section, values in (overrides or {}).items():

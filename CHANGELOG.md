@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0 — Beta
+
+- Add an optional desktop launcher with automatic local server startup, browser setup, a background worker, start/stop controls, logs and a persistent publication folder. The CLI and server installations remain available.
+- Authorize first-run browser setup using a short-lived, single-use local launch ticket. Preserve CSRF and normal account sign-in; isolate desktop configuration from server environment variables and block cross-origin/network access.
+- Back up desktop data before schema upgrades. Add separate native builds for Apple Silicon Macs, Intel Macs, Windows x64 and Linux x64, with browser and GUI lifecycle checks. An explicit maintainer workflow can publish all four verified downloads together with checksums; ordinary builds do not publish a release.
+
 ## 1.6.0 — Beta
 
 - Customize the homepage hero independently of the publication name: title text, a logo, or both, plus an optional subtitle and overline. Upload dedicated light/dark hero logos or reuse the publication logo, and adjust the logo width.
