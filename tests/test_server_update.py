@@ -309,6 +309,20 @@ def test_insufficient_disk_space_does_not_stop_services(deployment, monkeypatch)
     assert "stop" not in provider.calls
 
 
+def test_privileged_version_probe_rejects_writable_python_code(deployment):
+    from copydesk.server_update import PythonDeployment
+
+    controller, provider, _release = deployment
+    path = provider.current.resolve() / "synthetic.pth"
+    path.write_text("synthetic unsafe Python startup file")
+    path.chmod(0o666)
+    commands = []
+    adapter = PythonDeployment(controller.profile, lambda arguments: commands.append(arguments))
+    with pytest.raises(UpdateError, match="protected"):
+        adapter.version()
+    assert not commands
+
+
 def test_compose_candidate_build_contains_only_the_wheel_and_pins_recovery_images(deployment, tmp_path):
     from copydesk.compose_update import ComposeDeployment
 

@@ -123,7 +123,7 @@ class ServerProfile:
         if self.kind == "python":
             for key in ("web_service", "worker_service"):
                 value = self.values.get(key, "")
-                if (key == "web_service" and not value) or (value and not re.fullmatch(r"[A-Za-z0-9@_.-]+", value)):
+                if not value or not re.fullmatch(r"[A-Za-z0-9@_.-]+", value):
                     raise UpdateError("Specify valid systemd service names in the server profile.")
             if not isinstance(self.values.get("service_user"), str):
                 raise UpdateError("Specify the systemd service user in the profile.")
@@ -229,12 +229,28 @@ class PythonDeployment:
         return self.run(["systemctl", *arguments])
 
     def version(self):
+        self.check_release()
         return self.run([self.current / "venv/bin/python", "-c", "import importlib.metadata; print(importlib.metadata.version('copydesk'))"]).strip()
 
-    def preflight(self):
+    def check_release(self):
         root = self.profile.at("install_root")
         if not self.current.is_symlink() or not self.current.resolve().is_relative_to(root / "releases"):
             raise UpdateError("Register a versioned server installation with current pointing into its releases folder.")
+        # Merely asking a Python environment for its package version executes
+        # .pth/site code. Never run a service-writable environment as root.
+        trusted_directory(self.current.resolve())
+        for base, directories, files in os.walk(self.current.resolve(), followlinks=False):
+            trusted_directory(Path(base))
+            for name in directories + files:
+                path = Path(base) / name
+                info = path.stat()
+                if info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
+                    raise UpdateError("Existing application releases must be operator-owned and protected from service-user changes before privileged updates.")
+                if path.is_symlink():
+                    trusted_directory(path.resolve() if path.is_dir() else path.resolve().parent)
+
+    def preflight(self):
+        self.check_release()
         for key in ("web_service", "worker_service"):
             unit = self.profile.values.get(key)
             if not unit:
@@ -271,6 +287,11 @@ class PythonDeployment:
         temporary = root / (".current-" + uuid.uuid4().hex)
         temporary.symlink_to(path, target_is_directory=True)
         os.replace(temporary, self.current)
+        descriptor = os.open(root, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
     def stop(self):
         units = [self.profile.values[key] for key in ("worker_service", "web_service") if self.profile.values.get(key)]
@@ -422,6 +443,10 @@ class ServerUpdater:
         folder.mkdir(mode=0o700)
         copy_instance(self.profile.at("instance_root"), folder / "instance")
         database.snapshot(folder)
+        for path in folder.rglob("*"):
+            if path.is_file():
+                with path.open("rb") as handle:
+                    os.fsync(handle.fileno())
         files = {str(path.relative_to(folder)): sha256(path) for path in folder.rglob("*") if path.is_file()}
         private_json(folder / "manifest.json", {"files": files})
 

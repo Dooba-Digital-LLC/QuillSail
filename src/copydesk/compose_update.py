@@ -7,7 +7,6 @@ import re
 import shutil
 import uuid
 
-from copydesk.desktop import write_private
 from copydesk.updater import UpdateError
 
 
@@ -69,8 +68,10 @@ class ComposeDeployment:
         return {"old_images": self._images(), "new_image": tag}
 
     def activate(self, state, *, previous=False):
+        from copydesk.server_update import private_json
+
         images = state["old_images"] if previous else dict.fromkeys(("web", "worker", "init"), state["new_image"])
-        write_private(self.override, json.dumps({"services": {name: {"image": image} for name, image in images.items()}}))
+        private_json(self.override, {"services": {name: {"image": image} for name, image in images.items()}})
 
     def stop(self):
         self.command("stop", "worker", "web")
