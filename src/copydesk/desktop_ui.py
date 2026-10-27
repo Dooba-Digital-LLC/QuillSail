@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import logging
 import os
 import sys
 import tempfile
+import threading
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -18,9 +20,8 @@ log = logging.getLogger("copydesk.desktop")
 
 def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     try:
-        from PySide6.QtCore import QEvent, QObject, QSize, Qt, QThread, QTimer, QUrl, Signal, Slot
+        from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, QUrl, Signal, Slot
         from PySide6.QtGui import QAction, QDesktopServices, QIcon
-        from PySide6.QtSvgWidgets import QSvgWidget
         from PySide6.QtWidgets import (
             QApplication,
             QHBoxLayout,
@@ -49,8 +50,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         finished = Signal(object)
         failed = Signal(str)
 
-        def __init__(self, operation):
-            super().__init__()
+        def __init__(self, operation, parent):
+            super().__init__(parent)
             self.operation = operation
 
         @Slot()
@@ -60,6 +61,25 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             except Exception as exc:  # noqa: BLE001 - report errors inside the GUI
                 log.exception("Desktop operation failed")
                 self.failed.emit(str(exc))
+
+    class Logo(QLabel):
+        def __init__(self, path):
+            super().__init__()
+            self.icon = QIcon(str(path))
+            self.setFixedSize(QSize(78, 68))
+            self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.setAccessibleName("QuillSail logo")
+            self.refresh()
+
+        def refresh(self):
+            # Request physical pixels for the current screen from the SVG engine.
+            self.setPixmap(self.icon.pixmap(QSize(78, 64), self.devicePixelRatioF()))
+
+        def event(self, event):
+            result = super().event(event)
+            if event.type() in {QEvent.Type.Show, QEvent.Type.DevicePixelRatioChange} and hasattr(self, "icon"):
+                self.refresh()
+            return result
 
     class Window(QMainWindow):
         def __init__(self):
@@ -78,12 +98,10 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             layout.setContentsMargins(32, 28, 32, 28)
             layout.setSpacing(18)
             brand = QHBoxLayout()
-            image = QSvgWidget(str(icon_path))
-            image.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-            image.setAccessibleName("QuillSail logo")
-            image.setFixedSize(QSize(78, 68))
-            if smoke and not image.renderer().isValid():
-                raise RuntimeError("The packaged QuillSail vector logo could not be loaded.")
+            image = Logo(icon_path)
+            self.logo_ready = not image.pixmap().isNull()
+            if not self.logo_ready:
+                log.error("The packaged QuillSail vector logo could not be rendered.")
             brand.addWidget(image)
             title = QLabel("<h1>QuillSail</h1><p>Your publication, on your computer.</p>")
             brand.addWidget(title, 1)
@@ -140,17 +158,17 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.busy = True
             self.toggle.setEnabled(False)
             self.open_button.setEnabled(False)
-            self.thread = QThread(self)
-            self.task = Task(callback)
-            self.task.moveToThread(self.thread)
-            self.thread.started.connect(self.task.execute)
-            self.task.finished.connect(completed)
-            self.task.failed.connect(self.failed)
-            self.task.finished.connect(self.thread.quit)
-            self.task.failed.connect(self.thread.quit)
-            self.thread.finished.connect(self.task.deleteLater)
-            self.thread.finished.connect(self.thread.deleteLater)
+            self.task = Task(callback, self)
+            self.task.finished.connect(completed, Qt.ConnectionType.QueuedConnection)
+            self.task.failed.connect(self.failed, Qt.ConnectionType.QueuedConnection)
+            self.thread = threading.Thread(target=self.task.execute, name="quillsail-desktop-action", daemon=True)
             self.thread.start()
+
+        def finish_operation(self):
+            # The queued result can arrive just before the worker returns.
+            # Join it before replacing any task or deleting the window tree.
+            self.thread.join()
+            self.task.deleteLater()
 
         def start(self):
             if not self.busy:
@@ -159,6 +177,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
 
         @Slot(object)
         def started(self, url):
+            self.finish_operation()
             self.busy = False
             self.status.setText("Your publication is running")
             self.address.setText(url)
@@ -167,7 +186,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.open_button.setEnabled(True)
             if smoke:
                 self.smoke_starts += 1
-                self.thread.finished.connect(self.stop if self.smoke_starts == 1 else self.close)
+                QTimer.singleShot(0, self.stop if self.smoke_starts == 1 else self.close)
             elif self.closing:
                 QTimer.singleShot(0, self.stop)
             elif open_browser:
@@ -184,19 +203,20 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
 
         @Slot(object)
         def stopped(self, _result=None):
+            self.finish_operation()
             self.busy = False
             self.status.setText("Stopped. Your content is saved.")
             self.address.setText("Start QuillSail to open your dashboard.")
             self.toggle.setText("Start")
             self.toggle.setEnabled(True)
             if self.closing:
-                # Let the operation thread finish before its Qt objects are destroyed.
-                self.thread.finished.connect(app.quit)
+                app.quit()
             elif smoke:
-                self.thread.finished.connect(self.start)
+                QTimer.singleShot(0, self.start)
 
         @Slot(str)
         def failed(self, message):
+            self.finish_operation()
             self.busy = False
             self.status.setText("QuillSail could not start: " + message)
             self.address.setText("View logs for details. Your publication files are in the data folder.")
@@ -205,7 +225,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             if smoke:
                 self.smoke_error, self.closing = True, True
             if self.closing:
-                self.thread.finished.connect(app.quit)
+                app.quit()
 
         def closeEvent(self, event):  # noqa: N802 - Qt virtual method
             event.ignore()
@@ -224,8 +244,10 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     window.show()
     try:
         result = app.exec()
-        return 1 if smoke and (window.smoke_error or window.smoke_starts != 2) else result
+        return 1 if smoke and (window.smoke_error or window.smoke_starts != 2 or not window.logo_ready) else result
     finally:
+        if window.thread is not None:
+            window.thread.join()
         window.runtime.stop()
         # Destroy the widget tree while QApplication still exists. Leaving it
         # to Python/Qt's atexit order can double-delete child wrappers in a bundle.
@@ -243,6 +265,8 @@ def main():
     parser.add_argument("--smoke-test-gui", action="store_true", help="Check native window startup, stop and restart with disposable data.")
     parser.add_argument("--version", action="version", version="QuillSail " + __version__)
     args = parser.parse_args()
+    if (args.smoke_test or args.smoke_test_gui) and sys.stderr is not None:
+        faulthandler.enable()
     if args.smoke_test:
         smoke_test()
         return

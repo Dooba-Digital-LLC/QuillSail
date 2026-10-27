@@ -64,6 +64,9 @@ jobs:
       - name: Build and test Linux desktop with a virtual display
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum python scripts/build_desktop.py --target ${{ matrix.target }}
+      - name: Summarize native macOS crash diagnostics
+        if: failure() && runner.os == 'macOS'
+        run: python scripts/desktop_diagnostics.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-${{ matrix.target }}
