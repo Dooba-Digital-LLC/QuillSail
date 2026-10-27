@@ -340,3 +340,19 @@ def test_success_retains_one_previous_app_and_preserves_failed_or_unrelated_tran
     assert not old.exists()
     assert failed.exists() and unrelated.exists() and current.exists()
     assert not (current / "update.archive").exists()
+
+
+def test_cleanup_never_deletes_current_transaction_through_a_path_alias(tmp_path):
+    installation = tmp_path / "QuillSail"
+    installation.mkdir()
+    current = tmp_path / ".quillsail-update-current"
+    current.mkdir()
+    (current / "previous").mkdir()
+    (current / "previous/old-app").write_text("synthetic previous version")
+    (tmp_path / "detour").mkdir()
+    alias = tmp_path / "detour" / ".." / current.name
+    plan = {"transaction": str(alias), "installation": str(installation), "version": "2.0.0"}
+    (current / "plan.json").write_text(json.dumps(plan))
+    update_install.record_success(plan, installation)
+    assert (current / "previous/old-app").read_text() == "synthetic previous version"
+    assert json.loads((current / "result.json").read_text())["status"] == "installed"

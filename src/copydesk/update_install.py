@@ -256,7 +256,7 @@ def cleanup_completed_transactions(installation: Path, current: Path):
     """Keep this update's previous application; remove older successful updates."""
     for old in installation.parent.glob(".quillsail-update-*"):
         try:
-            if old == current or old.is_symlink() or not old.is_dir():
+            if old.resolve() == current.resolve() or old.is_symlink() or not old.is_dir():
                 continue
             if (old / "plan.json").stat().st_size > 16_384 or (old / "result.json").stat().st_size > 16_384:
                 continue
@@ -271,7 +271,7 @@ def cleanup_completed_transactions(installation: Path, current: Path):
 
 
 def record_success(plan, install):
-    transaction = Path(plan["transaction"])
+    transaction = Path(plan["transaction"]).resolve()
     (transaction / "result.json").write_text(json.dumps({"status": "installed", "version": plan["version"]}), encoding="utf-8")
     (transaction / "update.archive").unlink(missing_ok=True)
     cleanup_completed_transactions(install, transaction)
@@ -334,6 +334,7 @@ def smoke_test():
                 "previous_version": "0.0.1", "version": "0.0.2", "length": archive.stat().st_size,
                 "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "install_lock": str(parent / "app.lock")}
         atomic_install(plan)
+        record_success(plan, install)
         assert executable(install, target).read_text() == "new executable"
         assert executable(transaction / "previous", target).read_text() == "old executable"
     print(json.dumps({"updater_install_check": True, "publication_files_opened": False}))

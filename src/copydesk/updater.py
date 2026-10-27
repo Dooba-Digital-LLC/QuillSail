@@ -197,7 +197,7 @@ class UpdateClient:
                 raise UpdateError("The available update changed. Check for updates again.")
             if shutil.disk_usage(installation.parent).free < update.length * 5 + 256 * 1024**2:
                 raise UpdateError("There is not enough free disk space to stage this update safely.")
-            transaction = Path(tempfile.mkdtemp(prefix=".quillsail-update-", dir=installation.parent))
+            transaction = Path(tempfile.mkdtemp(prefix=".quillsail-update-", dir=installation.parent)).resolve()
             if hasattr(fetcher, "download_size"):
                 fetcher.download_size = update.length
             # The filename and hash both come from the signed TUF target.
