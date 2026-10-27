@@ -17,12 +17,22 @@
   new ResizeObserver(resizePreview).observe(stage);
   function update() { resizePreview(); if (form.checkValidity()) form.requestSubmit(preview); }
   function changed() { dirty = true; notice.textContent = "Unsaved design. Preview it, then save when you're ready."; }
+  function homepagePreview() {
+    form.querySelector("[data-preview-format]").value = "home";
+    form.querySelector("[data-preview-kind]").value = "home";
+  }
+  form.querySelector("[data-preview-home]").addEventListener("click", homepagePreview);
   form.addEventListener("input", function (event) {
     changed();
+    if (/^(appearance\.hero_|hero_|remove_hero_)/.test(event.target.name || "")) homepagePreview();
     if (event.target.matches("[data-color-for]")) form.elements.namedItem(event.target.dataset.colorFor).value = event.target.value;
     clearTimeout(timer);
     if (!event.target.matches("[type=file], [type=radio]")) timer = setTimeout(update, 900);
   });
+  if (window.location.hash === "#design-hero") {
+    document.getElementById("design-hero").open = true;
+    homepagePreview(); update();
+  }
   form.addEventListener("change", function (event) { if (event.target.type === "file" && event.target.name !== "design_file") update(); });
   form.querySelector("[data-load-preset]").addEventListener("click", function (event) {
     var checked = form.querySelector('[name="preset"]:checked');

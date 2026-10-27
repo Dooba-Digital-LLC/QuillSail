@@ -6,9 +6,7 @@
 {% block content %}
 <div class="container container-medium blog-home">
   <header class="page-intro stack">
-    {% if site.organization %}<p class="eyebrow">{{ site.organization }}</p>{% endif %}
-    <h1>{{ site.name }}</h1>
-    {% if site.tagline %}<p class="lead">{{ site.tagline }}</p>{% endif %}
+    {% with hero_subtitle_class='lead' %}{% include 'partials/home_hero.html' %}{% endwith %}
     {% if setting('appearance.home_intro') %}<div class="prose">{{ setting('appearance.home_intro')|markdown }}</div>{% elif site.description %}<p class="muted">{{ site.description }}</p>{% endif %}
     <div class="cluster">
       <a href="{{ url_for('public.feed') }}" class="button button-small">{{ icon('rss') }} Follow by RSS</a>

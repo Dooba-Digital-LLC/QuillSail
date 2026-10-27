@@ -1,0 +1,10 @@
+{% set hero = home_hero() %}
+{% if hero.show_overline and hero.overline %}<p class="eyebrow org">{{ hero.overline }}</p>{% endif %}
+<h1 id="hero-title" class="hero-heading{% if hero.show_logo %} hero-has-logo{% endif %}">
+  {% if hero.show_logo %}
+  <img class="hero-logo{% if hero.logo_dark %} logo-light{% endif %}" src="{{ hero.logo }}" alt="{{ '' if hero.show_title else hero.title }}">
+  {% if hero.logo_dark %}<img class="hero-logo logo-dark" src="{{ hero.logo_dark }}" alt="{{ '' if hero.show_title else hero.title }}">{% endif %}
+  {% endif %}
+  {% if hero.show_title %}<span>{{ hero.title }}</span>{% endif %}
+</h1>
+{% if hero.show_subtitle and hero.subtitle %}<p class="{{ hero_subtitle_class|default('tagline') }}">{{ hero.subtitle }}</p>{% endif %}

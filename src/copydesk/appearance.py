@@ -25,7 +25,8 @@ FONTS = {
     "mono": "SFMono-Regular,Consolas,Liberation Mono,monospace",
 }
 UPLOADS = {"logo": "Publication logo", "logo_dark": "Logo for dark backgrounds",
-           "email_logo": "Email logo", "favicon": "Publication icon"}
+           "email_logo": "Email logo", "favicon": "Publication icon",
+           "hero_logo": "Homepage hero logo", "hero_logo_dark": "Homepage hero logo for dark backgrounds"}
 PRESETS = {
     "classic": {"title": "Classic", "description": "A familiar publication with generous reading space.", "values": {}},
     "broadsheet": {"title": "Broadsheet", "description": "Ink, warm paper, serif headlines and strong editorial rules.", "values": {
@@ -51,7 +52,7 @@ PRESETS = {
 
 # Loading a preset resets visual controls, while retaining logos, custom code,
 # homepage copy and installed template choice. Nothing is saved by loading it.
-VISUAL_KEYS = [d.key for d in settings.for_tab("appearance") if d.key not in {
+VISUAL_KEYS = [d.key for d in settings.for_tab("appearance") if not d.key.startswith("appearance.hero_") and d.key not in {
     "appearance.theme", "appearance.custom_css", "appearance.email_css", "appearance.home_intro",
     "appearance.show_subscriber_count", "appearance.brand_display", "appearance.logo_height",
     "appearance.custom_body_font", "appearance.custom_heading_font",
@@ -127,6 +128,23 @@ def image_url(role: str = "logo", *, external: bool = False) -> str:
     return external_url("public.upload", path=path) if external else url_for("public.upload", path=path)
 
 
+def home_hero() -> dict:
+    """Homepage branding is independent of navigation and email branding."""
+    custom_logo = image_url("hero_logo")
+    logo = custom_logo or image_url("logo")
+    dark = image_url("hero_logo_dark") or (image_url("logo_dark") if not custom_logo else "")
+    display = settings.get("appearance.hero_display")
+    return {
+        "title": settings.get("appearance.hero_title") or settings.get("site.name"),
+        "subtitle": settings.get("appearance.hero_subtitle") or settings.get("site.tagline"),
+        "overline": settings.get("appearance.hero_overline") or settings.get("site.organization"),
+        "show_subtitle": settings.get("appearance.hero_show_subtitle"),
+        "show_overline": settings.get("appearance.hero_show_overline"),
+        "logo": logo, "logo_dark": dark, "show_logo": display in {"logo", "both"} and bool(logo),
+        "show_title": display != "logo" or not logo,
+    }
+
+
 def email_brand() -> dict:
     """Explicit image dimensions keep wide logos within narrow email tables."""
     from copydesk.db import db
@@ -171,6 +189,7 @@ def web_tokens(d: dict) -> Markup:
         "design-size": f"{d['body_size']}px", "design-leading": d["line_spacing"],
         "container": f"{d['content_width']}px", "measure": f"{d['reading_width']}px",
         "radius": f"{d['corner_radius']}px", "design-space": f"{d['space']}px", "logo-height": f"{d['logo_height']}px",
+        "hero-logo-width": f"{d['hero_logo_width']}px",
     }
     light = {"bg": d["background"], "surface": d["surface"], "surface-2": mix(d["surface"], d["text_color"], .04),
              "text": d["text_color"], "muted": d["muted_color"], "border": d["border_color"],

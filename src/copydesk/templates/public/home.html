@@ -13,9 +13,7 @@
 {% block content %}
 <section class="hero" aria-labelledby="hero-title">
   <div class="container">
-    {% if site.organization %}<p class="eyebrow org">{{ site.organization }}</p>{% endif %}
-    <h1 id="hero-title">{{ site.name }}</h1>
-    {% if site.tagline %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
+    {% include 'partials/home_hero.html' %}
     {% include "partials/subscribe_box.html" %}
     {% if subscriber_count >= 25 %}
     <p class="small muted">Join {{ subscriber_count|number }} readers.</p>

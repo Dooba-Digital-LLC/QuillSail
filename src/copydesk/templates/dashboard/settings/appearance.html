@@ -33,6 +33,7 @@
 <form method="post" enctype="multipart/form-data" id="appearance-form" data-design-form>
   <button class="visually-hidden" tabindex="-1" aria-hidden="true" type="submit" formaction="{{ url_for('dash.appearance_preview') }}" formtarget="design-preview">Preview changes</button>
   {{ forms.csrf() }}<input type="hidden" name="full_design" value="1">
+  <input type="hidden" name="hero_controls" value="1">
   <input type="hidden" name="appearance.style" value="{{ values['appearance.style'] }}">
   <input type="hidden" name="preview_format" value="web" data-preview-format>
   <div class="design-workspace">
@@ -55,24 +56,26 @@
         </div>
       </section>
       {% for id, title, description, fields in groups %}
-      <details class="panel design-section"{% if id in ('identity',) %} open{% endif %}>
+      <details class="panel design-section" id="design-{{ id }}"{% if id in ('identity',) %} open{% endif %}>
         <summary><strong>{{ title }}</strong></summary>
         <div class="panel-body stack">
           <p class="help">{{ description }}</p>
-          {% if id == 'identity' %}
+          {% if id in ('identity', 'hero') %}
           <div class="design-logos">
-            {% for role, label in logo_roles.items() %}
+            {% for role, label in logo_roles.items() if role.startswith('hero_') == (id == 'hero') %}
             <div class="field">
               <label for="f-{{ role }}">{{ label }}</label>
-              {% if appearance_image(role) %}<div class="design-logo-preview{% if role == 'logo_dark' %} on-dark{% endif %}"><img src="{{ appearance_image(role) }}" alt="Current {{ label|lower }}"></div>{{ forms.checkbox('remove_' ~ role, 'Remove ' ~ label|lower) }}{% endif %}
+              {% if appearance_image(role) %}<div class="design-logo-preview{% if role.endswith('_dark') %} on-dark{% endif %}"><img src="{{ appearance_image(role) }}" alt="Current {{ label|lower }}"></div>{{ forms.checkbox('remove_' ~ role, 'Remove ' ~ label|lower) }}{% endif %}
               <input type="file" name="{{ role }}" id="f-{{ role }}" accept="image/png,image/jpeg,image/webp,image/gif">
               {% if errors.get('appearance.' ~ role) %}<p class="error-text">{{ errors['appearance.' ~ role] }}</p>{% endif %}
             </div>
             {% endfor %}
           </div>
-          <p class="help">PNG, JPEG, WebP or GIF. Transparent PNG works well for logos. Dark and email logos fall back to your main logo. Use a square image for the browser icon.</p>
+          {% if id == 'hero' %}<p class="help">PNG, JPEG, WebP or GIF. Upload a separate hero logo or leave it empty to reuse your publication logo. A transparent PNG works well. If no logo is available, the title remains visible.</p>
+          {% else %}<p class="help">PNG, JPEG, WebP or GIF. Transparent PNG works well for logos. Dark and email logos fall back to your main logo. Use a square image for the browser icon.</p>{% endif %}
           {% endif %}
           <div class="design-fields">{% for key in fields %}{{ field(key) }}{% endfor %}</div>
+          {% if id == 'hero' %}<p><button class="button button-small" type="submit" formaction="{{ url_for('dash.appearance_preview', preview_format='home') }}" formtarget="design-preview" data-preview-home>Preview homepage</button></p>{% endif %}
           {% if id == 'advanced' %}
           <p class="help">Website hooks: <code>.publication</code>, <code>.site-header</code>, <code>.issue-header</code>, <code>.issue-story-list</code>, <code>.issue-block</code> and <code>.prose</code>. Email hooks: <code>.email-shell</code>, <code>.email-masthead</code>, <code>.email-content</code>, <code>.email-story</code> and <code>.email-footer</code>. Use <code>!important</code> to override an existing email inline declaration. External CSS imports are ignored for email.</p>
           {% endif %}
@@ -92,7 +95,7 @@
     <aside class="design-preview-panel" aria-label="Design preview">
       <div class="design-preview-tools">
         <label for="design-preview-kind" class="visually-hidden">Preview type</label>
-        <select id="design-preview-kind" data-preview-kind><option value="web">Website</option><option value="email">Newsletter email</option></select>
+        <select id="design-preview-kind" data-preview-kind><option value="web">Website — issue</option><option value="home">Website — homepage</option><option value="email">Newsletter email</option></select>
         <button class="button button-small" type="button" data-preview-size="desktop" aria-pressed="true">Desktop</button>
         <button class="button button-small" type="button" data-preview-size="mobile" aria-pressed="false">Mobile</button>
         <button class="button button-small" type="submit" formaction="{{ url_for('dash.appearance_preview') }}" formtarget="design-preview" data-update-preview>Preview changes</button>

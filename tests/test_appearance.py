@@ -138,7 +138,7 @@ def test_logos_preview_without_storage_then_save_and_remove(app, editor_client):
     response = post(editor_client, **{role: (png(), role + ".png") for role in appearance.UPLOADS})
     assert response.status_code == 302
     with app.app_context():
-        assert db.session.scalar(select(func.count()).select_from(Upload)) == 4
+        assert db.session.scalar(select(func.count()).select_from(Upload)) == len(appearance.UPLOADS)
         for role in appearance.UPLOADS:
             path = app.extensions["copydesk"].config.uploads_dir / settings.get("appearance." + role)
             with Image.open(path) as image:

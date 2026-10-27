@@ -395,6 +395,7 @@ def _register_template_helpers(app: Flask, state: CopydeskState) -> None:
             "design": design,
             "design_tokens": appearance.web_tokens(design),
             "appearance_image": appearance.image_url,
+            "home_hero": appearance.home_hero,
             "email_brand": appearance.email_brand,
             "design_preview": g.get("appearance_preview", False),
             "es": appearance.email_design(design),

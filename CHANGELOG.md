@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0 — Beta
+
+- Customize the homepage hero independently of the publication name: title text, a logo, or both, plus an optional subtitle and overline. Upload dedicated light/dark hero logos or reuse the publication logo, and adjust the logo width.
+- Preview homepage changes privately before saving. Hero settings carry across design imports and remain in place when loading a style preset.
+
 ## 1.5.2 — Beta
 
 - Add a `quillsail` command. Help text, documentation, the systemd worker unit and the container now use it. `copydesk` keeps working as an alias, so existing scripts, cron jobs and services need no changes.

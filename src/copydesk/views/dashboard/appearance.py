@@ -7,11 +7,12 @@ from types import SimpleNamespace
 
 from flask import current_app, flash, g, make_response, redirect, render_template, request, url_for
 
-from copydesk import appearance, audit, settings, text
+from copydesk import appearance, audit, publication, settings, text
 from copydesk import permissions as perms
 from copydesk.auth import current_user
 from copydesk.db import db
 from copydesk.helpers import external_url, state
+from copydesk.subscribers import signup_groups
 from copydesk.themes import ThemeLoader
 from copydesk.uploads import UploadError, prepare_image, store_image
 from copydesk.utils import utcnow
@@ -21,7 +22,9 @@ from copydesk.views.dashboard import bp
 def _values():
     values, errors = {}, {}
     for d in settings.for_tab("appearance"):
-        raw = request.form.get(d.key, False if d.type == "bool" and request.form.get("full_design") else settings.get(d.key))
+        checkbox_form = request.form.get("full_design") and (
+            not d.key.startswith("appearance.hero_") or request.form.get("hero_controls"))
+        raw = request.form.get(d.key, False if d.type == "bool" and checkbox_form else settings.get(d.key))
         value, error = settings.parse_form_value(d, raw)
         values[d.key] = value
         if error:
@@ -88,6 +91,8 @@ def appearance_page():
                 return redirect(url_for("dash.settings", tab="appearance"))
     groups = [
         ("identity", "Your identity", "Upload your publication's own branding.", ["brand_display", "logo_height"]),
+        ("hero", "Homepage hero", "Choose the title, subtitle and logo for the top of your homepage. These controls leave the publication name, navigation and emails unchanged.",
+         ["hero_display", "hero_title", "hero_subtitle", "hero_show_subtitle", "hero_overline", "hero_show_overline", "hero_logo_width"]),
         ("type", "Typography", "System font stacks work without external font services. Custom stacks use fonts installed on readers' devices.",
          ["article_font", "heading_font", "custom_body_font", "custom_heading_font", "body_size", "line_height"]),
         ("palette", "Color palette", "Choose your paper, ink and accent. Links and buttons adjust for contrast.",
@@ -143,7 +148,12 @@ def appearance_preview():
             items.append(SimpleNamespace(kind="text", title=title, web_html=rendered,
                                          html=text.email_html(rendered, appearance.design()["link"], state().config.origin), section="", article=None))
         kind = request.args.get("preview_format") or request.form.get("preview_format", "web")
-        if kind == "email":
+        if kind == "home":
+            template = "public/blog_home.html" if publication.is_blog() else "public/home.html"
+            html = render_template(env.get_template(template), latest_issue=None, featured=None, recent=[],
+                                   subscriber_count=0, groups=signup_groups() if settings.get("newsletter.ask_audience") else [],
+                                   page=SimpleNamespace(items=[]), active_nav="home")
+        elif kind == "email":
             g.csp_override = "default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'"
             template = env.get_template("email/issue.html")
             html = render_template(template, issue=issue, items=items, intro_text=issue.intro,

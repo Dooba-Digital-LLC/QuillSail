@@ -146,6 +146,19 @@ define("appearance.style", "classic", "Starting style", type="choice", tab="appe
 define("appearance.logo_dark", "", "Logo for dark backgrounds", tab="appearance", extra={"upload": True})
 define("appearance.email_logo", "", "Email logo", tab="appearance", extra={"upload": True})
 define("appearance.favicon", "", "Publication icon", tab="appearance", extra={"upload": True})
+define("appearance.hero_logo", "", "Homepage hero logo", tab="appearance", extra={"upload": True})
+define("appearance.hero_logo_dark", "", "Homepage hero logo for dark backgrounds", tab="appearance", extra={"upload": True})
+define("appearance.hero_display", "title", "Hero content", type="choice", tab="appearance",
+       choices=[("title", "Title text"), ("logo", "Logo"), ("both", "Logo and title text")])
+define("appearance.hero_title", "", "Hero title", tab="appearance", max_length=160,
+       help="Homepage only. Leave blank to use the publication name.")
+define("appearance.hero_subtitle", "", "Hero subtitle", tab="appearance", max_length=300,
+       help="Homepage only. Leave blank to use the publication tagline.")
+define("appearance.hero_overline", "", "Hero overline", tab="appearance", max_length=160,
+       help="The small line above the title. Leave blank to use Published by from General settings.")
+define("appearance.hero_show_subtitle", True, "Show hero subtitle", type="bool", tab="appearance")
+define("appearance.hero_show_overline", True, "Show hero overline", type="bool", tab="appearance")
+define("appearance.hero_logo_width", 480, "Hero logo width (pixels)", type="int", tab="appearance", extra={"min": 120, "max": 1000})
 define("appearance.brand_display", "logo", "Masthead shows", type="choice", tab="appearance",
        choices=[("logo", "Logo, or publication name if no logo is uploaded"), ("both", "Logo and publication name"), ("name", "Publication name")])
 define("appearance.heading_font", "inherit", "Heading typeface", type="choice", choices=DESIGN_FONTS, tab="appearance")
