@@ -4,6 +4,7 @@
 
 - Render the desktop launcher logo and window icon from the vector master, preserving their aspect ratio and sharp edges on Retina and other high-DPI displays.
 - Generate desktop application icons from the vector artwork at full resolution.
+- Align the homepage hero left, centered or right. The default keeps newsletter homepages centered and blog homepages left-aligned.
 
 ## 1.7.0 — Beta
 

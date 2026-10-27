@@ -92,7 +92,7 @@ def appearance_page():
     groups = [
         ("identity", "Your identity", "Upload your publication's own branding.", ["brand_display", "logo_height"]),
         ("hero", "Homepage hero", "Choose the title, subtitle and logo for the top of your homepage. These controls leave the publication name, navigation and emails unchanged.",
-         ["hero_display", "hero_title", "hero_subtitle", "hero_show_subtitle", "hero_overline", "hero_show_overline", "hero_logo_width"]),
+         ["hero_display", "hero_align", "hero_title", "hero_subtitle", "hero_show_subtitle", "hero_overline", "hero_show_overline", "hero_logo_width"]),
         ("type", "Typography", "System font stacks work without external font services. Custom stacks use fonts installed on readers' devices.",
          ["article_font", "heading_font", "custom_body_font", "custom_heading_font", "body_size", "line_height"]),
         ("palette", "Color palette", "Choose your paper, ink and accent. Links and buttons adjust for contrast.",

@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero hero-align-{{ home_hero().align }}" aria-labelledby="hero-title">
   <div class="container">
     {% include 'partials/home_hero.html' %}
     {% include "partials/subscribe_box.html" %}

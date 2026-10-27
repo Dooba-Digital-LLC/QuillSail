@@ -1,9 +1,17 @@
 /* All designer rules are scoped to public pages. Custom themes may override them. */
 .publication .logo-dark{display:none}.publication .brand{gap:12px}
-.publication .hero-logo{width:var(--hero-logo-width,480px);max-width:100%;height:auto;max-height:300px;object-fit:contain;margin-inline:auto}
+.publication .hero-logo{width:var(--hero-logo-width,480px);max-width:100%;height:auto;max-height:300px;object-fit:contain}
 .publication .hero-has-logo{display:flex;flex-direction:column;align-items:center;gap:20px;margin-bottom:24px}
-.publication .blog-home .hero-logo{margin-inline:0}
-.publication .blog-home .hero-has-logo{align-items:flex-start}
+/* Hero alignment. The newsletter hero aligns its whole section; the blog intro aligns only the hero lines. */
+.publication .hero.hero-align-left,.publication .hero-align-left>:is(.eyebrow,.hero-heading,.lead){text-align:left}
+.publication .hero.hero-align-center,.publication .hero-align-center>:is(.eyebrow,.hero-heading,.lead){text-align:center}
+.publication .hero.hero-align-right,.publication .hero-align-right>:is(.eyebrow,.hero-heading,.lead){text-align:right}
+.publication .hero-align-left :is(.tagline,.lead,.subscribe-box){margin-inline:0 auto}
+.publication .hero-align-center :is(.tagline,.lead,.subscribe-box){margin-inline:auto}
+.publication .hero-align-right :is(.tagline,.lead,.subscribe-box){margin-inline:auto 0}
+.publication .hero-align-left .hero-has-logo{align-items:flex-start}.publication .hero-align-right .hero-has-logo{align-items:flex-end}
+.publication .hero-align-left .pill-choices{justify-content:flex-start}.publication .hero-align-right .pill-choices{justify-content:flex-end}
+.publication .hero-align-left :is(.subscribe-groups legend,.fine-print){text-align:left}.publication .hero-align-right :is(.subscribe-groups legend,.fine-print){text-align:right}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .publication .logo-light{display:none}:root:not([data-theme=light]) .publication .logo-dark{display:block}}
 :root[data-theme=dark] .publication .logo-light{display:none}:root[data-theme=dark] .publication .logo-dark{display:block}
 .publication.designed{background:var(--bg);color:var(--text);font-family:var(--font-article)}

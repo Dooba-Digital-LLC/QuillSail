@@ -150,6 +150,10 @@ define("appearance.hero_logo", "", "Homepage hero logo", tab="appearance", extra
 define("appearance.hero_logo_dark", "", "Homepage hero logo for dark backgrounds", tab="appearance", extra={"upload": True})
 define("appearance.hero_display", "title", "Hero content", type="choice", tab="appearance",
        choices=[("title", "Title text"), ("logo", "Logo"), ("both", "Logo and title text")])
+define("appearance.hero_align", "default", "Hero alignment", type="choice", tab="appearance",
+       choices=[("default", "Default (centered for newsletters, left for blogs)"), ("left", "Left"),
+                ("center", "Centered"), ("right", "Right")],
+       help="Lines up the overline, title or logo, and subtitle.")
 define("appearance.hero_title", "", "Hero title", tab="appearance", max_length=160,
        help="Homepage only. Leave blank to use the publication name.")
 define("appearance.hero_subtitle", "", "Hero subtitle", tab="appearance", max_length=300,

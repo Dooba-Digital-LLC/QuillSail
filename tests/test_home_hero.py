@@ -158,3 +158,25 @@ def test_hero_design_import_export_and_style_preservation(app, editor_client):
     response = save(editor_client, action="import", design_file=(BytesIO(json.dumps(document).encode()), "design.json"))
     assert response.status_code == 200 and b'value="Imported homepage"' in response.data
     assert snapshot(app) == before
+
+
+@pytest.mark.parametrize("mode, default", [("newsletter", "center"), ("blog", "left"), ("hybrid", "left")])
+def test_hero_alignment_defaults_to_the_existing_layout_and_can_be_changed(app, editor_client, mode, default):
+    with app.app_context():
+        settings.set_values({"site.mode": mode})
+        db.session.commit()
+
+    def alignment(document):
+        intro = document.xpath("//*[@id='hero-title']/ancestor::*[contains(@class,'hero-align-')][1]")[0]
+        return [name for name in intro.get("class").split() if name.startswith("hero-align-")]
+
+    assert alignment(page(editor_client)) == ["hero-align-" + default]
+    for choice in ("left", "center", "right"):
+        assert save(editor_client, **{"appearance.hero_align": choice}).status_code == 302
+        assert alignment(page(editor_client)) == ["hero-align-" + choice]
+    preview = editor_client.post(PATH + "/preview", data={"csrf_token": "test-csrf", "preview_format": "home",
+                                                           "appearance.hero_align": "center"})
+    assert alignment(html.fromstring(preview.data)) == ["hero-align-center"]
+    assert alignment(page(editor_client)) == ["hero-align-right"]
+    assert save(editor_client, **{"appearance.hero_align": "diagonal"}).status_code == 422
+    assert alignment(page(editor_client)) == ["hero-align-right"]

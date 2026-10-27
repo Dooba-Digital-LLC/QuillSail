@@ -14,7 +14,7 @@ from flask import g, url_for
 from markupsafe import Markup
 from sqlalchemy import select
 
-from copydesk import settings
+from copydesk import publication, settings
 from copydesk.colors import accent_tokens, ensure_contrast, mix
 
 FONTS = {
@@ -134,6 +134,9 @@ def home_hero() -> dict:
     logo = custom_logo or image_url("logo")
     dark = image_url("hero_logo_dark") or (image_url("logo_dark") if not custom_logo else "")
     display = settings.get("appearance.hero_display")
+    align = settings.get("appearance.hero_align")
+    if align not in {"left", "center", "right"}:
+        align = "left" if publication.is_blog() else "center"
     return {
         "title": settings.get("appearance.hero_title") or settings.get("site.name"),
         "subtitle": settings.get("appearance.hero_subtitle") or settings.get("site.tagline"),
@@ -141,7 +144,7 @@ def home_hero() -> dict:
         "show_subtitle": settings.get("appearance.hero_show_subtitle"),
         "show_overline": settings.get("appearance.hero_show_overline"),
         "logo": logo, "logo_dark": dark, "show_logo": display in {"logo", "both"} and bool(logo),
-        "show_title": display != "logo" or not logo,
+        "show_title": display != "logo" or not logo, "align": align,
     }
 
 
