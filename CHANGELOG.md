@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0 — Beta
+
+- Check for and install desktop updates from the launcher or `quillsail update`. Choose stable or beta releases; updates require an explicit install action.
+- Authenticate updates with The Update Framework, including pinned root keys, signed metadata, expiration, rollback checks and archive hashes. Release publishing signs the feed and a scheduled workflow renews its metadata.
+- Stage updates outside publication data, wait for the old application to close, and replace the app using a separate native helper. Keep the previous application and restore it if replacement fails.
+- Give desktop application icons a white rounded background.
+
 ## 1.7.1 — Beta
 
 - Render the desktop launcher logo and window icon from the vector master, preserving their aspect ratio and sharp edges on Retina and other high-DPI displays.

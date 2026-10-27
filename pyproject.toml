@@ -54,6 +54,8 @@ dependencies = [
     "cryptography>=43",
     "python-dotenv>=1.0",
     "premailer>=3.10",
+    "packaging>=24",
+    "tuf>=7.0.1,<8",
 ]
 
 [project.optional-dependencies]
@@ -87,6 +89,7 @@ copydesk = [
     "migrations/*",
     "migrations/**/*",
     "extensions/**/*",
+    "updates/*",
 ]
 
 [tool.pytest.ini_options]

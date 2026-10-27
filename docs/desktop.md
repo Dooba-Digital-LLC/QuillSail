@@ -18,6 +18,20 @@ Email initially stays in local `.eml` files. Configure a sender in Settings → 
 
 ## Data and updates
 
+In builds with update support, choose **Check for updates**, then **Install QuillSail…**. Select the Stable or Beta channel; Beta is selected initially while QuillSail is in beta. Installing an update downloads and verifies it, finishes background work, closes the app, replaces the application, and restarts it. Checks run only when requested and updates require confirmation. Close other QuillSail windows for that application before updating. Read-only installations and apps running from a translocated Mac download must be moved to a writable application folder first; the updater does not request administrator access.
+
+The equivalent commands are:
+
+```sh
+quillsail update --check
+quillsail update --app /Applications/QuillSail.app
+quillsail update --app /path/to/QuillSail --channel stable --yes
+```
+
+`--app` names the complete desktop application folder. A command running outside the desktop bundle installs synchronously; reopen the app afterwards. The packaged executable also accepts `--check-updates` or `--update --yes`. Source, pip and Docker server installations retain their existing upgrade procedure; `quillsail update --check` can check desktop release availability without changing those installations. `quillsail upgrade` remains the database-migration command.
+
+Versions before updater support must be replaced manually once using a newer desktop download. Committing a change to GitHub does not create a new downloadable version. A maintainer must publish a tested release and its signed update metadata before clients can receive it.
+
 The app keeps its publication outside the application bundle, so replacing the app preserves your account, settings, secret key, content and uploaded files:
 
 | System | Default data folder |
@@ -29,6 +43,10 @@ The app keeps its publication outside the application bundle, so replacing the a
 Quit QuillSail before backing up or replacing the app. Copy the complete data folder to protected storage. Before a schema upgrade, the launcher automatically saves a consistent SQLite database backup, configuration and uploaded files under `backups/`. If startup reports an upgrade failure, preserve that backup and consult [maintenance](maintenance.md) before retrying or restoring an older app. Do not restore pending mail jobs into an active sender without reviewing them.
 
 Each launcher owns one desktop publication. Repeated starts cannot create a second worker for the same folder. Desktop configuration is isolated from server environment variables and existing CLI/server installations. Advanced users can select a separate empty folder with `quillsail desktop --data-dir PATH`.
+
+An OS lock prevents replacing a desktop application while its launcher is open. The verified archive and previous application remain in a private `.quillsail-update-*` folder beside the application. If replacement fails, the helper restores the previous application and records the error for the next launch. Application replacement does not restore or alter publication files. After database migrations have run, recovering an older version still requires the matching publication backup described in [maintenance](maintenance.md).
+
+See [maintaining signed updates](desktop-updates.md) for trust-root setup, signing keys, feed renewal and fork configuration. There is no unsigned update fallback.
 
 ## Building a bundle
 

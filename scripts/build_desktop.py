@@ -18,11 +18,13 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 from pathlib import Path
 
 from PIL import Image
 
 import copydesk
+from copydesk.update_install import extract_archive, marker_path, read_install
 
 
 def target_name(system=None, machine=None):
@@ -118,6 +120,18 @@ def main():
         command += ["--osx-bundle-identifier", "org.quillsail.desktop"]
     command += [str(root / "scripts/desktop_entry.py")]
     subprocess.run(command, check=True)
+    # The helper has its own small Python runtime and runs outside the app that
+    # it replaces (required while Windows still holds executable/library locks).
+    helper_output = work / "helper-dist"
+    subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",
+                    "--name", "QuillSailUpdater", "--distpath", str(helper_output),
+                    "--workpath", str(work / "helper-build"), "--specpath", str(work),
+                    str(root / "scripts/update_helper_entry.py")], check=True)
+    app_root = output / ("QuillSail.app" if sys.platform == "darwin" else "QuillSail")
+    resources = app_root / "Contents/Resources" if sys.platform == "darwin" else app_root
+    shutil.copytree(helper_output / "QuillSailUpdater", resources / "updater", dirs_exist_ok=True, symlinks=True)
+    marker_path(app_root, target).write_text(json.dumps({"format": "quillsail.install.v1",
+        "version": copydesk.__version__, "target": target, "updater_protocol": 1}) + "\n", encoding="utf-8")
     # Installer provenance is build-machine specific, never needed at runtime.
     for path in output.rglob("direct_url.json"):
         path.unlink()
@@ -139,6 +153,8 @@ def main():
     # This uses a disposable database and file mail. It sends no email.
     subprocess.run([str(executable), "--smoke-test"], check=True, timeout=120)
     subprocess.run([str(executable), "--smoke-test-gui"], check=True, timeout=120)
+    helper = resources / "updater" / ("QuillSailUpdater.exe" if sys.platform == "win32" else "QuillSailUpdater")
+    subprocess.run([str(helper), "--smoke-test"], check=True, timeout=120)
     if sys.platform == "darwin":
         artifact = output / (name + ".zip")
         subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(artifact)], check=True)
@@ -148,9 +164,15 @@ def main():
         artifact = output / (name + ".tar.gz")
         with tarfile.open(artifact, "w:gz") as archive:
             archive.add(output / "QuillSail", arcname="QuillSail")
+    # Exercise the actual platform archive, including macOS framework symlinks.
+    with tempfile.TemporaryDirectory(prefix="quillsail-update-extraction-") as folder:
+        extracted = extract_archive(artifact, Path(folder) / "unpacked", target)
+        assert read_install(extracted)["version"] == copydesk.__version__
+        if sys.platform == "darwin":
+            subprocess.run(["codesign", "--verify", "--deep", "--strict", str(extracted)], check=True)
     report = {"version": copydesk.__version__, "target": target, "archive": artifact.name,
               "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "setup_restart_check": True,
-              "gui_lifecycle_check": True, "commit": os.environ.get("GITHUB_SHA", "local")}
+              "gui_lifecycle_check": True, "updater_install_check": True, "commit": os.environ.get("GITHUB_SHA", "local")}
     (output / (name + ".json")).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Desktop bundle ready: {output / name}")
 

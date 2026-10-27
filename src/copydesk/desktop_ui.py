@@ -24,15 +24,29 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         from PySide6.QtGui import QAction, QDesktopServices, QIcon
         from PySide6.QtWidgets import (
             QApplication,
+            QComboBox,
             QHBoxLayout,
             QLabel,
             QMainWindow,
+            QMessageBox,
+            QProgressBar,
             QPushButton,
             QVBoxLayout,
             QWidget,
         )
     except ImportError as exc:
         raise RuntimeError("Install the desktop extra with: pip install 'copydesk[desktop]'") from exc
+
+    from copydesk.update_install import InstallError, application_lock, read_install
+    from copydesk.updater import (
+        UpdateClient,
+        install_lock_path,
+        installation_path,
+        last_install_result,
+        launch_installer,
+        save_channel,
+        saved_channel,
+    )
 
     root = (data_dir or default_data_dir()).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -49,6 +63,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     class Task(QObject):
         finished = Signal(object)
         failed = Signal(str)
+        progress = Signal(str, int)
 
         def __init__(self, operation, parent):
             super().__init__(parent)
@@ -88,9 +103,10 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.busy = self.closing = False
             self.task = self.thread = None
             self.smoke_starts, self.smoke_error = 0, False
+            self.available_update = self.update_plan = None
             self.setWindowTitle("QuillSail")
-            self.setMinimumSize(460, 400)
-            self.resize(540, 460)
+            self.setMinimumSize(460, 500)
+            self.resize(540, 560)
             icon_path = Path(__file__).parent / "static/brand/quillsail.svg"
             self.setWindowIcon(QIcon(str(icon_path)))
             content = QWidget()
@@ -130,6 +146,30 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             files.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(root))))
             row.addWidget(files)
             layout.addLayout(row)
+            self.update_button = QPushButton("Check for updates")
+            self.update_button.setMinimumHeight(40)
+            self.update_button.setAccessibleName("Check for QuillSail updates")
+            self.update_button.clicked.connect(self.check_or_install_update)
+            self.update_channel = QComboBox()
+            self.update_channel.addItem("Stable", "stable")
+            self.update_channel.addItem("Beta", "beta")
+            self.update_channel.setCurrentIndex(0 if saved_channel() == "stable" else 1)
+            channel_label = QLabel("Update channel")
+            channel_label.setBuddy(self.update_channel)
+            update_row = QHBoxLayout()
+            update_row.addWidget(channel_label)
+            update_row.addWidget(self.update_channel)
+            update_row.addWidget(self.update_button, 1)
+            layout.addLayout(update_row)
+            self.update_channel.currentIndexChanged.connect(self.update_channel_changed)
+            self.update_status = QLabel("Updates are installed only when you choose to install them.")
+            self.update_status.setTextFormat(Qt.TextFormat.PlainText)
+            self.update_status.setWordWrap(True)
+            layout.addWidget(self.update_status)
+            self.update_progress = QProgressBar()
+            self.update_progress.setAccessibleName("Update progress")
+            self.update_progress.hide()
+            layout.addWidget(self.update_progress)
             note = QLabel("Your local website and background jobs run while QuillSail is open.\nYour content stays saved when you stop or update the app.")
             note.setWordWrap(True)
             layout.addWidget(note)
@@ -154,13 +194,16 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.menuBar().addMenu("QuillSail").addAction(quit_action)
             QTimer.singleShot(0, self.start)
 
-        def operation(self, callback, completed):
+        def operation(self, callback, completed, on_failed=None):
             self.busy = True
             self.toggle.setEnabled(False)
             self.open_button.setEnabled(False)
+            self.update_button.setEnabled(False)
+            self.update_channel.setEnabled(False)
             self.task = Task(callback, self)
             self.task.finished.connect(completed, Qt.ConnectionType.QueuedConnection)
-            self.task.failed.connect(self.failed, Qt.ConnectionType.QueuedConnection)
+            self.task.failed.connect(on_failed or self.failed, Qt.ConnectionType.QueuedConnection)
+            self.task.progress.connect(self.update_progress_changed, Qt.ConnectionType.QueuedConnection)
             self.thread = threading.Thread(target=self.task.execute, name="quillsail-desktop-action", daemon=True)
             self.thread.start()
 
@@ -169,6 +212,98 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             # Join it before replacing any task or deleting the window tree.
             self.thread.join()
             self.task.deleteLater()
+            self.update_button.setEnabled(True)
+            self.update_channel.setEnabled(True)
+
+        def update_channel_changed(self):
+            self.available_update = None
+            self.update_button.setText("Check for updates")
+            self.update_status.setText("Check for an update on the selected channel.")
+            try:
+                save_channel(self.update_channel.currentData())
+            except OSError:
+                self.update_status.setText("This channel is selected, but the preference could not be saved for the next launch.")
+
+        @Slot(str, int)
+        def update_progress_changed(self, message, percent):
+            self.update_status.setText(message)
+            self.update_progress.show()
+            self.update_progress.setRange(0, 0 if percent < 0 else 100)
+            if percent >= 0:
+                self.update_progress.setValue(percent)
+
+        def check_or_install_update(self):
+            if self.busy or self.closing:
+                return
+            if self.available_update is None:
+                self.update_progress_changed("Checking for updates…", -1)
+                channel = self.update_channel.currentData()
+                target = read_install(installation)["target"] if installation else None
+                self.operation(lambda: UpdateClient().check(channel=channel, target=target), self.update_checked, self.update_failed)
+                return
+            release = self.available_update
+            dialog = QMessageBox(self)
+            dialog.setWindowTitle("Update QuillSail")
+            dialog.setTextFormat(Qt.TextFormat.PlainText)
+            dialog.setText(f"Download and install QuillSail {release.version}?")
+            dialog.setInformativeText("QuillSail will finish background work, install the verified update, and restart. Your publication files stay saved. Close any other QuillSail windows first.")
+            dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+            dialog.button(QMessageBox.StandardButton.Ok).setText("Download and restart")
+            dialog.setDefaultButton(QMessageBox.StandardButton.Cancel)
+            if dialog.exec() != QMessageBox.StandardButton.Ok:
+                return
+            try:
+                install_root = installation_path()
+            except Exception as exc:  # noqa: BLE001 - show a useful source-install message
+                self.update_status.setText(str(exc))
+                return
+            self.update_progress_changed("Downloading update…", 0)
+            self.operation(lambda: UpdateClient().prepare(release, install_root, data_dir=root,
+                           progress=lambda message, percent: self.task.progress.emit(message, percent)),
+                           self.update_prepared, self.update_failed)
+
+        @Slot(object)
+        def update_checked(self, update):
+            self.finish_operation()
+            self.busy = False
+            self.toggle.setEnabled(True)
+            self.open_button.setEnabled(bool(self.runtime.server))
+            self.update_progress.hide()
+            if self.closing:
+                QTimer.singleShot(0, self.close)
+                return
+            self.available_update = update if update.available else None
+            self.update_button.setText(f"Install QuillSail {update.version}…" if update.available else "Check for updates")
+            self.update_status.setText(f"QuillSail {update.version} is available on the {update.channel} channel."
+                                       if update.available else f"QuillSail {__version__} is up to date on the {update.channel} channel.")
+
+        @Slot(object)
+        def update_prepared(self, plan):
+            self.finish_operation()
+            self.busy = False
+            self.update_plan = plan
+            self.closing = True
+            self.update_progress_changed("Finishing background work before updating…", -1)
+            self.stop()
+
+        @Slot(str)
+        def update_failed(self, message):
+            handoff_failed = self.update_plan is not None
+            self.finish_operation()
+            self.busy = False
+            self.available_update = self.update_plan = None
+            self.update_button.setText("Check for updates")
+            self.update_status.setText(message)
+            self.update_progress.hide()
+            self.toggle.setEnabled(True)
+            self.open_button.setEnabled(bool(self.runtime.server))
+            if self.closing:
+                if handoff_failed:
+                    self.closing = False
+                    if self.runtime.server is None:
+                        QTimer.singleShot(0, self.start)
+                else:
+                    QTimer.singleShot(0, self.close)
 
         def start(self):
             if not self.busy:
@@ -199,7 +334,11 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         def stop(self):
             if not self.busy:
                 self.status.setText("Finishing background work and stopping…")
-                self.operation(self.runtime.stop, self.stopped)
+                def stop_and_handoff():
+                    self.runtime.stop()
+                    if self.update_plan is not None:
+                        launch_installer(self.update_plan)
+                self.operation(stop_and_handoff, self.stopped, self.update_failed if self.update_plan else None)
 
         @Slot(object)
         def stopped(self, _result=None):
@@ -243,7 +382,20 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName("QuillSail")
     app.setOrganizationName("QuillSail")
+    guard = None
+    installation = installation_path() if getattr(sys, "frozen", False) else None
+    if installation:
+        guard = application_lock(install_lock_path(installation))
+        try:
+            guard.__enter__()
+        except InstallError as exc:
+            QMessageBox.information(None, "QuillSail is already open", str(exc))
+            handler.close()
+            logging.getLogger().removeHandler(handler)
+            return 1
     window = Window()
+    if installation and (last := last_install_result(installation)) and last.get("status") == "failed":
+        window.update_status.setText("The last update could not be installed. " + last.get("error", "Try checking for updates again."))
     window.show()
     try:
         result = app.exec()
@@ -258,6 +410,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         logging.getLogger().removeHandler(handler)
         handler.close()
+        if guard:
+            guard.__exit__(None, None, None)
 
 
 def main():
@@ -266,8 +420,23 @@ def main():
     parser.add_argument("--no-browser", action="store_true", help="Start the launcher without opening the browser.")
     parser.add_argument("--smoke-test", action="store_true", help="Check a disposable local publication, then exit.")
     parser.add_argument("--smoke-test-gui", action="store_true", help="Check native window startup, stop and restart with disposable data.")
+    update = parser.add_mutually_exclusive_group()
+    update.add_argument("--check-updates", action="store_true", help="Check for a signed desktop update, then exit.")
+    update.add_argument("--update", action="store_true", help="Download and install an available signed desktop update.")
+    parser.add_argument("--channel", choices=("stable", "beta"), default="beta", help="Desktop update channel.")
+    parser.add_argument("--yes", action="store_true", help="Approve a command-line update without prompting.")
     parser.add_argument("--version", action="version", version="QuillSail " + __version__)
     args = parser.parse_args()
+    if args.check_updates or args.update:
+        from copydesk.cli import main as cli_main
+
+        command = ["update", "--channel", args.channel]
+        if args.check_updates:
+            command.append("--check")
+        if args.yes:
+            command.append("--yes")
+        cli_main(command, prog_name="QuillSail")
+        return
     if (args.smoke_test or args.smoke_test_gui) and sys.stderr is not None:
         faulthandler.enable()
     if args.smoke_test:

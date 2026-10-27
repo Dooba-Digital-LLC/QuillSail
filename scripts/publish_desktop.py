@@ -45,7 +45,7 @@ def validate_downloads(folder, version, commit):
         archive = folder / (stem + suffix)
         report = json.loads((folder / (stem + ".json")).read_text(encoding="utf-8"))
         expected = {"version": version, "target": target, "archive": archive.name, "commit": commit,
-                    "setup_restart_check": True, "gui_lifecycle_check": True}
+                    "setup_restart_check": True, "gui_lifecycle_check": True, "updater_install_check": True}
         if any(report.get(key) != value for key, value in expected.items()):
             raise ValueError(f"The {target} build report does not match the tested release commit.")
         if not archive.is_file() or archive.is_symlink() or not archive.stat().st_size or digest(archive) != report.get("sha256"):
@@ -141,15 +141,22 @@ def publish(client, version, commit, files):
 
 
 def main():
+    from update_feed import publish_feed
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("downloads", type=Path)
     args = parser.parse_args()
+    signing_keys = os.environ.get("DESKTOP_UPDATE_KEYS")
+    if not signing_keys:
+        raise ValueError("Configure DESKTOP_UPDATE_KEYS before publishing desktop releases with updater support.")
     commit = os.environ["DESKTOP_COMMIT"]
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("DESKTOP_COMMIT must be the full tested commit SHA.")
     version = source_version()
     files = validate_downloads(args.downloads, version, commit)
-    print(publish(GitHub(os.environ["GH_REPO"], os.environ["GH_TOKEN"]), version, commit, files))
+    client = GitHub(os.environ["GH_REPO"], os.environ["GH_TOKEN"])
+    print(publish(client, version, commit, files))
+    print(publish_feed(client, signing_keys, folder=args.downloads))
 
 
 if __name__ == "__main__":

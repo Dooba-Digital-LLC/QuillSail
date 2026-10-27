@@ -27,7 +27,8 @@ def downloads(folder):
         archive = folder / (stem + extension)
         archive.write_bytes(b"synthetic-disposable-bundle:" + target.encode())
         report = {"version": VERSION, "target": target, "archive": archive.name, "commit": COMMIT,
-                  "sha256": release.digest(archive), "setup_restart_check": True, "gui_lifecycle_check": True}
+                  "sha256": release.digest(archive), "setup_restart_check": True, "gui_lifecycle_check": True,
+                  "updater_install_check": True}
         (folder / (stem + ".json")).write_text(json.dumps(report))
 
 
