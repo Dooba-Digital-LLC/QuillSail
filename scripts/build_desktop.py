@@ -51,7 +51,7 @@ def licenses(target):
 
 
 def render_icon(source, destination):
-    """Rasterize the vector master at the app icon's full native resolution."""
+    """Render the vector logo on a white, rounded app icon tile."""
     from PySide6.QtCore import QRectF, Qt
     from PySide6.QtGui import QImage, QPainter
     from PySide6.QtSvg import QSvgRenderer
@@ -65,7 +65,10 @@ def render_icon(source, destination):
     painter = QPainter(canvas)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     try:
-        renderer.render(painter, QRectF(112, 112, 800, 800))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(Qt.GlobalColor.white)
+        painter.drawRoundedRect(QRectF(64, 64, 896, 896), 196, 196)
+        renderer.render(painter, QRectF(176, 176, 672, 672))
     finally:
         painter.end()
     if not canvas.save(str(destination)):
