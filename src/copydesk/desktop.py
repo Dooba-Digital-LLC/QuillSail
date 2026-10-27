@@ -272,7 +272,10 @@ def smoke_test():
     import re
 
     import requests
+    from cryptography.fernet import Fernet
 
+    cipher = Fernet(Fernet.generate_key())
+    assert cipher.decrypt(cipher.encrypt(b"local-packaging-check")) == b"local-packaging-check"
     with tempfile.TemporaryDirectory(prefix="quillsail-desktop-smoke-") as directory:
         runtime = DesktopRuntime(Path(directory))
         try:
@@ -295,4 +298,4 @@ def smoke_test():
                 assert browser.get(runtime.url + "/healthz", timeout=15).json()["database"] == "ok"
         finally:
             runtime.stop()
-    print(json.dumps({"desktop_smoke": "passed", "setup_and_dashboard": True, "restart_preserves_data": True, "sent_emails": 0}))
+    print(json.dumps({"desktop_smoke": "passed", "setup_and_dashboard": True, "restart_preserves_data": True, "crypto_roundtrip": True, "sent_emails": 0}))

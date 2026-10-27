@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - target: macos-arm64
-            os: macos-14
+            os: macos-15
             python_arch: arm64
           - target: macos-x86_64
             os: macos-15-intel
@@ -37,6 +37,8 @@ jobs:
             os: ubuntu-22.04
             python_arch: x64
     runs-on: ${{ matrix.os }}
+    env:
+      OPENSSL_STATIC: '1'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,7 +57,7 @@ jobs:
       - run: python -m build --wheel
       - name: Install only the wheel and desktop build dependencies
         shell: bash
-        run: python -m pip install "$(echo dist/*.whl)[desktop-build]"
+        run: python -m pip install --no-cache-dir "$(echo dist/*.whl)[desktop-build]"
       - name: Build and test native desktop
         if: runner.os != 'Linux'
         run: python scripts/build_desktop.py --target ${{ matrix.target }}

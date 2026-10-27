@@ -13,6 +13,7 @@ import json
 import os
 import platform
 import plistlib
+import re
 import shutil
 import subprocess
 import sys
@@ -57,6 +58,15 @@ def main():
     target = target_name()
     if arguments.target and arguments.target != target:
         parser.error(f"Requested {arguments.target}, but this runner builds {target}.")
+    if sys.platform == "darwin":
+        from cryptography.hazmat.bindings import _rust
+
+        linkage = subprocess.check_output(["otool", "-L", _rust.__file__], text=True)
+        if re.search(r"lib(?:ssl|crypto)(?:\.\d+)*\.dylib", linkage):
+            raise RuntimeError(
+                "The macOS cryptography binding dynamically links OpenSSL. Install desktop build dependencies "
+                "in a clean environment with OPENSSL_STATIC=1 and --no-cache-dir before bundling."
+            )
     root = Path(__file__).resolve().parents[1]
     output = arguments.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
