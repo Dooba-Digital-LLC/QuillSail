@@ -98,6 +98,7 @@ Demo accounts use `demo-password-123`; use the demo only in a local test install
 - [Follow-up review](docs/review.md)
 - [Database, SMTP, and university deployment verification](docs/verification.md)
 - [Backups and upgrades](docs/maintenance.md)
+- [One-command server updates and recovery](docs/server-updates.md)
 - [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
 
 ## Development

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -112,3 +113,20 @@ def release_targets(folder: Path, reports: list[dict], channel: str):
         target.unrecognized_fields["custom"].update(channel=channel, updater_protocol=1)
         result[target.path] = target
     return result
+
+
+def server_targets(folder: Path, report: dict, channel: str):
+    version = report.get("version", "")
+    if (channel not in {"stable", "beta"} or not re.fullmatch(r"\d+\.\d+\.\d+", version)
+            or report.get("server_update_check") is not True or report.get("package_install_check") is not True
+            or report.get("server_update_protocol") != 1 or report.get("archive") != f"copydesk-{version}-py3-none-any.whl"):
+        raise ValueError("Only a tested server wheel can enter the update feed.")
+    archive = folder / report["archive"]
+    if archive.is_symlink():
+        raise ValueError("Server release wheels must be ordinary files.")
+    info = TargetFile.from_file(f"{channel}/server", str(archive), ["sha256"])
+    if info.hashes["sha256"] != report["sha256"]:
+        raise ValueError("The server wheel changed after verification.")
+    info.unrecognized_fields["custom"] = {"version": version, "archive": archive.name, "target": "server", "channel": channel,
+                                          "commit": report["commit"], "updater_protocol": 1, "server_update_protocol": 1}
+    return {info.path: info}

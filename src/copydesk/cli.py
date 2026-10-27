@@ -5,7 +5,7 @@
     quillsail worker          send email and do other background work
     quillsail jobs run        process waiting jobs once, then exit (for cron)
     quillsail upgrade         update the database after installing a new version
-    quillsail update          check for or install a signed desktop update
+    quillsail update          update a desktop app or a registered server
     quillsail check           check the configuration, database and email
     quillsail user ...        create users, reset passwords, manage groups
     quillsail subscribers ... import and export the subscriber list
@@ -31,6 +31,7 @@ import click
 
 from copydesk import __version__
 from copydesk.config import ConfigError, load_config
+from copydesk.update_commands import update
 
 TEMPLATE = Path(__file__).parent / "config_template.toml"
 
@@ -67,67 +68,7 @@ def main(ctx: click.Context, config_path: str | None) -> None:
 # --------------------------------------------------------------------------- init
 
 
-@main.command("update")
-@click.option("--check", "check_only", is_flag=True, help="Check availability without downloading or installing.")
-@click.option("--app", type=click.Path(path_type=Path, exists=True, file_okay=False), help="Desktop application folder, such as /Applications/QuillSail.app.")
-@click.option("--channel", type=click.Choice(["stable", "beta"]), default="beta", show_default=True)
-@click.option("--yes", "-y", is_flag=True, help="Approve downloading and replacing the desktop application.")
-def update(check_only, app, channel, yes):
-    """Check for a signed desktop release and install it when one is available.
-
-    Quit the desktop application before updating from a terminal. Publication
-    files are preserved. Git, pip and Docker installations keep their existing
-    installation workflow; --check also works from those installations.
-    """
-    from copydesk.update_install import (
-        InstallError,
-        application_lock,
-        atomic_install,
-        read_install,
-        record_success,
-    )
-    from copydesk.updater import (
-        UpdateClient,
-        UpdateError,
-        install_lock_path,
-        installation_path,
-        launch_installer,
-    )
-
-    try:
-        installation = installation_path(app) if app is not None or getattr(sys, "frozen", False) else None
-        installed = read_install(installation) if installation else None
-        current = installed["version"] if installed else __version__
-        client = UpdateClient()
-        result = client.check(channel=channel, current=current, target=installed["target"] if installed else None)
-        if not result.available:
-            click.echo(f"QuillSail {current} is up to date on the {channel} channel.")
-            return
-        click.echo(f"QuillSail {result.version} is available (installed: {current}).")
-        click.echo(result.release_url)
-        if check_only:
-            return
-        if installation is None:
-            raise UpdateError("Use --app with your desktop application folder to install this update. For a server/source installation, install the new package through your existing Git, pip or Docker workflow, then run quillsail upgrade.")
-        if not yes:
-            click.confirm("Download the verified update and replace the desktop app? Close all QuillSail windows first", abort=True)
-        click.echo("Downloading and verifying the update…")
-        if not getattr(sys, "frozen", False):
-            # A Python CLI outside the installed app can replace it synchronously.
-            with application_lock(install_lock_path(installation)):
-                plan = client.prepare(result, installation, restart=False)
-            details = json.loads(plan.read_text(encoding="utf-8"))
-            installed = atomic_install(details)
-            record_success(details, installed)
-            click.echo(f"Installed QuillSail {result.version}. Open the desktop application to continue.")
-        else:
-            plan = client.prepare(result, installation, restart=False)
-            launch_installer(plan)
-            click.echo("Update prepared. The installer will replace the app after this command exits. Open QuillSail when it finishes.")
-            click.echo(f"Installation result: {plan.parent / 'result.json'}")
-    except (UpdateError, InstallError, OSError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
+main.add_command(update)
 
 @main.command()
 @click.option("--dir", "directory", default=".", type=click.Path(file_okay=False), show_default=True,

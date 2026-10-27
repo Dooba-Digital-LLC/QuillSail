@@ -63,6 +63,12 @@ To install a downloaded release wheel, use `pip install '/path/to/copydesk-VERSI
 
 ## Backups and upgrades
 
+The [managed server updater](server-updates.md) provides one-command updates for
+versioned Python/systemd and Docker Compose installations. Register once with
+`quillsail update setup`, then run `sudo quillsail update` for complete backed-up
+deployment updates. Older releases can use the documented bootstrap installer.
+The commands below remain available for manually managed deployments.
+
 Stop web and worker before backing up or migrating. For Compose, preserve the complete named volume with Docker's volume-backup facilities, or export application data and separately protect the instance configuration/uploads. Follow [maintenance](maintenance.md); the instance secret key is required to decrypt saved email credentials after restore.
 
 For a Compose source upgrade, select the reviewed release, stop web/worker, take a backup, build the new image, run the init service, and start the services:

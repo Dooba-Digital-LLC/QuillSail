@@ -23,12 +23,12 @@ In builds with update support, choose **Check for updates**, then **Install Quil
 The equivalent commands are:
 
 ```sh
-quillsail update --check
+quillsail update --desktop --check
 quillsail update --app /Applications/QuillSail.app
 quillsail update --app /path/to/QuillSail --channel stable --yes
 ```
 
-`--app` names the complete desktop application folder. A command running outside the desktop bundle installs synchronously; reopen the app afterwards. The packaged executable also accepts `--check-updates` or `--update --yes`. Source, pip and Docker server installations retain their existing upgrade procedure; `quillsail update --check` can check desktop release availability without changing those installations. `quillsail upgrade` remains the database-migration command.
+`--app` names the complete desktop application folder. A command running outside the desktop bundle installs synchronously; reopen the app afterwards. The packaged executable also accepts `--check-updates` or `--update --yes`. Without `--app` or `--desktop`, the CLI manages a registered server; see [server updates](server-updates.md). `quillsail upgrade` remains the database-migration command.
 
 Versions before updater support must be replaced manually once using a newer desktop download. Committing a change to GitHub does not create a new downloadable version. A maintainer must publish a tested release and its signed update metadata before clients can receive it.
 
@@ -63,7 +63,7 @@ Replace VERSION with the built version. Bundles appear in `dist/desktop/`. The b
 
 On Intel macOS, install the build dependencies in a clean environment with `OPENSSL_STATIC=1 python -m pip install --no-cache-dir 'dist/copydesk-VERSION-py3-none-any.whl[desktop-build]'`. This keeps a source-built cryptography binding independent of Python's OpenSSL library. The build rejects dynamically linked macOS bindings, which can collide when bundled. See [Cryptography's installation guide](https://cryptography.io/en/latest/installation/).
 
-The **Desktop bundles** GitHub Actions workflow explicitly builds all four targets on native runners. Pull requests and ordinary manual runs only save workflow artifacts. A maintainer can run it on `main` with **publish** enabled to publish a desktop beta after every target passes. It validates source commits and hashes, stages all assets in a draft, then publishes the complete release. A failed upload leaves a resumable draft. Published versions cannot be overwritten by the script. This workflow publishes desktop downloads only; it does not publish containers or packages to a registry.
+The **Desktop bundles** GitHub Actions workflow explicitly builds all four targets on native runners and verifies the server wheel/source. Pull requests and ordinary manual runs only save workflow artifacts. A maintainer can run it on `main` with **publish** enabled to publish a beta after every target passes. It validates source commits and hashes, stages all assets in a draft, then publishes the complete release. A failed upload leaves a resumable draft. Published versions cannot be overwritten by the script. This workflow publishes downloadable desktop bundles and server packages; it does not publish containers or packages to a registry.
 
 Local macOS builds are ad-hoc signed. Public download distribution still needs Developer ID signing/notarization, and Windows distribution should use an appropriate code-signing process. These release credentials are not part of the repository. No signing identity or notarization account is configured by the build script.
 

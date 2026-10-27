@@ -24,6 +24,7 @@ from copydesk.update_metadata import (
     online_keys,
     read_published_metadata,
     release_targets,
+    server_targets,
 )
 from copydesk.updater import RELEASES_URL, UpdateClient, UpdateError, installation_path
 
@@ -112,6 +113,48 @@ def test_signed_update_is_selected_for_exact_channel_platform_and_newer_version(
         client.check(target=TARGET, current="1.0.0", channel="stable")
     with pytest.raises(UpdateError, match="No beta"):
         client.check(target="macos-arm64", current="1.0.0")
+
+
+@pytest.mark.parametrize("tamper", [False, True])
+def test_signed_server_wheel_uses_authenticated_metadata_and_download_hash(tmp_path, tamper):
+    root_path, keys_path = tmp_path / "root.json", tmp_path / "keys.json"
+    root = initialize(keys_path, root_path)
+    fetcher = MemoryFetcher()
+    wheel = tmp_path / "copydesk-2.0.0-py3-none-any.whl"
+    wheel.write_bytes(b"synthetic server package")
+    report = {"version": "2.0.0", "archive": wheel.name, "commit": "a" * 40,
+              "server_update_check": True, "package_install_check": True, "server_update_protocol": 1,
+              "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()}
+    targets = server_targets(tmp_path, report, "beta")
+    metadata = build_metadata(root, online_keys(keys_path.read_text()), targets, 1)
+    fetcher.content.update({BASE + name: content for name, content in metadata.items()})
+    url = f"{RELEASES_URL}/download/v2.0.0/{wheel.name}"
+    fetcher.content[url] = b"corrupt server package!!" if tamper else wheel.read_bytes()
+    client = UpdateClient(cache=tmp_path / "cache", bootstrap=root_path.read_bytes(), metadata_url=BASE, fetcher=fetcher)
+    release = client.check(target="server", current="1.0.0")
+    assert release.available and release.target == "server"
+    destination = tmp_path / "download.whl"
+    if tamper:
+        with pytest.raises(UpdateError):
+            client.download(release, destination)
+        assert not destination.exists()
+    else:
+        assert client.download(release, destination).read_bytes() == wheel.read_bytes()
+        assert url in fetcher.urls
+
+
+def test_server_feed_rejects_unverified_build_or_changed_wheel(tmp_path):
+    wheel = tmp_path / "copydesk-2.0.0-py3-none-any.whl"
+    wheel.write_bytes(b"synthetic package")
+    report = {"version": "2.0.0", "archive": wheel.name, "commit": "a" * 40,
+              "server_update_check": False, "package_install_check": True, "server_update_protocol": 1,
+              "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()}
+    with pytest.raises(ValueError, match="tested"):
+        server_targets(tmp_path, report, "beta")
+    report["server_update_check"] = True
+    wheel.write_bytes(b"changed package")
+    with pytest.raises(ValueError, match="changed"):
+        server_targets(tmp_path, report, "beta")
 
 
 def test_tampered_metadata_cannot_advertise_an_update(repository):
@@ -256,7 +299,7 @@ def test_cli_check_and_declined_install_never_launch_an_installer(repository, tm
     monkeypatch.setattr("copydesk.updater.native_target", lambda: TARGET)
     monkeypatch.setattr("copydesk.updater.launch_installer", lambda _plan: pytest.fail("installer unexpectedly launched"))
     runner = CliRunner()
-    result = runner.invoke(main, ["update", "--check"])
+    result = runner.invoke(main, ["update", "--desktop", "--check"])
     assert result.exit_code == 0 and "2.0.0 is available" in result.output
     installation = install_at(tmp_path / "installed")
     result = runner.invoke(main, ["update", "--app", str(installation)], input="n\n")

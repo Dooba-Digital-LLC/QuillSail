@@ -22,6 +22,15 @@ Copy uploads, themes, and extensions to the configured locations. Verify sign-in
 
 ## Upgrade
 
+For a registered Linux Python/systemd or Compose installation, run
+`sudo quillsail update`. It prepares the authenticated release, pauses traffic
+and jobs, backs up the complete instance and native database, migrates, activates
+and checks web/worker health, and recovers failures. See [server updates](server-updates.md)
+for one-time setup, older-server bootstrap, `--check`, `--resume` and rollback.
+Desktop installations use the launcher's update button or `quillsail update --app PATH`.
+
+For deployments managed by another orchestrator, follow its maintenance process:
+
 Stop web and worker processes, take a backup, install the new package, run `quillsail upgrade` with the instance configuration, then restart services. Test on a restored staging instance first. Migrations run through Alembic; downgrades are not a supported operational recovery mechanism. Roll back by restoring the previous package and its matching database backup.
 
 Check `/healthz` for database reachability, the dashboard System page for worker activity, and service logs for errors. Health checks do not prove SMTP or worker availability. `quillsail check`, `quillsail jobs list`, `quillsail user --help`, and `quillsail subscribers --help` provide maintenance commands. Keep dependency updates and restore rehearsals on the organization's maintenance schedule.

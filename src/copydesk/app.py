@@ -186,7 +186,13 @@ SETUP_EXEMPT = {"static", "public.health", "public.theme_asset", "public.upload"
 def _register_request_hooks(app: Flask, state: CopydeskState) -> None:
     @app.before_request
     def _before():
+        from copydesk.maintenance import active
+
         endpoint = request.endpoint or ""
+        if endpoint != "public.health" and active(state.config):
+            return app.response_class("This publication is being updated. Please try again shortly.",
+                                      status=503, mimetype="text/plain",
+                                      headers={"Cache-Control": "no-store", "Retry-After": "60"})
         if endpoint == "static":
             return None
         try:

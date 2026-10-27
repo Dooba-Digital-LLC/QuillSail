@@ -1,4 +1,4 @@
-# Maintaining signed desktop updates
+# Maintaining signed desktop and server updates
 
 The desktop updater uses the maintained [python-tuf client](https://theupdateframework.readthedocs.io/en/latest/api/tuf.ngclient.updater.html). Each package ships a trusted root under `copydesk/updates/root.json`. Root signatures require two of three offline Ed25519 keys. Separate online targets, snapshot and timestamp keys authenticate release metadata. Archives must match the signed length and SHA-256 digest; expired metadata, metadata rollback, mismatched processors and application downgrades are rejected.
 
@@ -18,7 +18,13 @@ Forks must also change `REPOSITORY` and `METADATA_URL` in `copydesk/updater.py` 
 
 ## Publishing and renewal
 
-Run the **Desktop bundles** workflow on `main` with publication explicitly enabled. Each of the four native builders must pass browser/database restart checks, GUI lifecycle checks, and the separate installer smoke test. The publisher validates all reports, publishes immutable versioned application downloads, and signs the Beta feed with the configured online keys. It refuses publication if signing credentials are absent.
+Run the **Desktop bundles** workflow on `main` with publication explicitly enabled. Each of the four native builders must pass browser/database restart checks, GUI lifecycle checks, and the separate installer smoke test. The server builder verifies wheel/sdist contents, a clean package installation, and a real disposable web/worker update and recovery. The publisher validates all reports, publishes immutable versioned application downloads plus the server wheel/source, and signs the Beta feed with the configured online keys. It refuses publication if signing credentials are absent.
+
+The signed `CHANNEL/server` target binds the exact wheel, digest, length, version,
+commit and server-update protocol. The client reauthenticates metadata before
+download. See [server updates](server-updates.md) for its separate deployment
+transaction and recovery rules. Keep `server-build.json` and the tested wheel
+alongside desktop reports when promoting a release to another channel.
 
 The fixed `desktop-updates` GitHub release hosts versioned TUF root, targets and snapshot metadata plus `timestamp.json`. Channel and platform are signed virtual target names; their custom metadata binds the exact immutable release archive name and version. The client passes those verified hashes and lengths to TUF's download verifier. Timestamp is uploaded last, so an interrupted publication cannot authorize incomplete downloads. Versioned metadata is retained for cached clients and root rotation.
 

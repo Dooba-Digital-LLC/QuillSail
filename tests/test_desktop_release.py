@@ -55,6 +55,22 @@ def test_release_requires_four_tested_archives_with_matching_checksums_and_commi
     assert len((tmp_path / "SHA256SUMS.txt").read_text().splitlines()) == 4
 
 
+def test_combined_release_requires_tested_matching_server_package(tmp_path):
+    downloads(tmp_path)
+    wheel, source = tmp_path / f"copydesk-{VERSION}-py3-none-any.whl", tmp_path / f"copydesk-{VERSION}.tar.gz"
+    wheel.write_bytes(b"synthetic portable server package")
+    source.write_bytes(b"synthetic source package")
+    report = {"version": VERSION, "commit": COMMIT, "archive": wheel.name, "source": source.name,
+              "sha256": release.digest(wheel), "source_sha256": release.digest(source),
+              "package_install_check": True, "server_update_check": True, "server_update_protocol": 1}
+    (tmp_path / "server-build.json").write_text(json.dumps(report))
+    files = release.validate_downloads(tmp_path, VERSION, COMMIT, include_server=True)
+    assert len(files) == 9 and wheel in files and source in files
+    wheel.write_bytes(b"changed after verification")
+    with pytest.raises(ValueError, match="changed"):
+        release.validate_downloads(tmp_path, VERSION, COMMIT, include_server=True)
+
+
 @pytest.mark.parametrize("problem", ["missing", "tampered", "untested", "old-commit", "extra"])
 def test_incomplete_or_unverified_release_is_rejected(tmp_path, problem):
     downloads(tmp_path)

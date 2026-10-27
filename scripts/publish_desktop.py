@@ -38,7 +38,7 @@ def source_version():
     raise ValueError("The source version must be a numeric release version.")
 
 
-def validate_downloads(folder, version, commit):
+def validate_downloads(folder, version, commit, *, include_server=False):
     files, reports = [], []
     for target, suffix in TARGETS.items():
         stem = f"QuillSail-{version}-{target}"
@@ -53,7 +53,19 @@ def validate_downloads(folder, version, commit):
         reports.append(report)
         files.append(archive)
     expected_names = {file.name for file in files}
-    actual_names = {file.name for pattern in ("*.zip", "*.tar.gz") for file in folder.glob(pattern)}
+    if include_server:
+        report_path = folder / "server-build.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        wheel, source = folder / f"copydesk-{version}-py3-none-any.whl", folder / f"copydesk-{version}.tar.gz"
+        expected = {"version": version, "commit": commit, "archive": wheel.name, "source": source.name,
+                    "package_install_check": True, "server_update_check": True, "server_update_protocol": 1}
+        if any(report.get(key) != value for key, value in expected.items()):
+            raise ValueError("The tested server package does not match the release commit.")
+        if wheel.is_symlink() or source.is_symlink() or digest(wheel) != report.get("sha256") or digest(source) != report.get("source_sha256"):
+            raise ValueError("The server package changed after verification.")
+        files.extend([wheel, source, report_path])
+        expected_names.update((source.name, wheel.name))
+    actual_names = {file.name for pattern in ("*.zip", "*.tar.gz", "*.whl") for file in folder.glob(pattern)}
     if actual_names != expected_names:
         raise ValueError("Unexpected or outdated desktop downloads are present.")
     checksums = folder / "SHA256SUMS.txt"
@@ -122,8 +134,13 @@ def publish(client, version, commit, files):
         f"[Desktop guide](https://github.com/{client.repository}/blob/{tag}/docs/desktop.md) · Source commit: `{commit}`", "",
         "SHA256SUMS.txt and desktop-builds.json contain the download checksums and native build reports.",
     ])
+    server_wheel = next((file for file in files if file.suffix == ".whl"), None)
+    if server_wheel:
+        body += (f"\n\nServer/CLI package: [{server_wheel.name}](https://github.com/{client.repository}/releases/download/{tag}/{server_wheel.name}). "
+                 "Registered servers update with `sudo quillsail update`; the command prepares a release, backs up, migrates, validates web/worker health and recovers failures. "
+                 f"[Server setup and recovery](https://github.com/{client.repository}/blob/{tag}/docs/server-updates.md).")
     release = existing or client.request("POST", "releases", {"tag_name": tag, "target_commitish": commit,
-        "name": f"QuillSail {version} Beta — Desktop", "body": body, "draft": True, "prerelease": True})
+        "name": f"QuillSail {version} Beta", "body": body, "draft": True, "prerelease": True})
     current = {asset["name"]: asset for asset in release.get("assets", [])}
     for file in files:
         asset = current.get(file.name)
@@ -153,7 +170,7 @@ def main():
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("DESKTOP_COMMIT must be the full tested commit SHA.")
     version = source_version()
-    files = validate_downloads(args.downloads, version, commit)
+    files = validate_downloads(args.downloads, version, commit, include_server=True)
     client = GitHub(os.environ["GH_REPO"], os.environ["GH_TOKEN"])
     print(publish(client, version, commit, files))
     print(publish_feed(client, signing_keys, folder=args.downloads))

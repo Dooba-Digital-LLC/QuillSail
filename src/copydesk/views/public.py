@@ -8,6 +8,7 @@ from flask import (
     Blueprint,
     Response,
     abort,
+    current_app,
     g,
     jsonify,
     redirect,
@@ -446,10 +447,13 @@ def favicon():
 
 @bp.get("/healthz")
 def health():
+    from copydesk.maintenance import active
+
     try:
         db.session.execute(text("SELECT 1"))
         database = "ok"
     except Exception:  # noqa: BLE001 - report, don't crash
         database = "unavailable"
     status = 200 if database == "ok" else 503
-    return jsonify(status="ok" if status == 200 else "error", database=database, version=__version__), status
+    return jsonify(status="ok" if status == 200 else "error", database=database, version=__version__,
+                   maintenance=active(current_app.extensions["copydesk"].config)), status

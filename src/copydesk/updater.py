@@ -145,7 +145,7 @@ class UpdateClient:
             raise UpdateError("Choose the stable or beta update channel.")
         info = client.get_targetinfo(f"{channel}/{target}")
         if info is None:
-            raise UpdateError(f"No {channel} desktop release is available for this computer.")
+            raise UpdateError(f"No {channel} {'server' if target == 'server' else 'desktop'} release is available for this installation.")
         custom = info.unrecognized_fields.get("custom", {})
         if not isinstance(custom, dict):
             raise UpdateError("The signed update has invalid application metadata.")
@@ -159,13 +159,35 @@ class UpdateClient:
         except (InvalidVersion, ValueError, TypeError) as exc:
             raise UpdateError("The signed update has an invalid version.") from exc
         suffix = ".tar.gz" if target.startswith("linux-") else ".zip"
-        archive = f"QuillSail-{version}-{target}{suffix}"
+        archive = f"copydesk-{version}-py3-none-any.whl" if target == "server" else f"QuillSail-{version}-{target}{suffix}"
         digest = info.hashes.get("sha256", "")
+        if target == "server" and custom.get("server_update_protocol") != 1:
+            raise UpdateError("This server release needs a newer update protocol.")
         if (custom.get("archive") != archive or custom.get("target") != target or custom.get("channel") != channel
                 or custom.get("updater_protocol") != PROTOCOL or type(info.length) is not int or not 0 < info.length <= MAX_ARCHIVE
                 or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest)):
             raise UpdateError("The signed update does not match this application or computer.")
         return Update(current, version, target, channel, archive, info.length, digest)
+
+    def download(self, update: Update, destination: Path, *, progress=None):
+        """Refresh trust and authenticate an exact release before any deployment."""
+        lock = self._lock()
+        try:
+            client, fetcher = self._client(progress)
+            client.refresh()
+            if self._info(client, update.channel, update.target, update.current) != update or not update.available:
+                raise UpdateError("The available update changed. Check for updates again.")
+            if hasattr(fetcher, "download_size"):
+                fetcher.download_size = update.length
+            destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            client.download_target(TargetFile(update.length, {"sha256": update.sha256}, update.archive),
+                                   str(destination), target_base_url=f"{RELEASES_URL}/download/v{update.version}/")
+            return destination
+        except (DownloadError, RepositoryError, OSError) as exc:
+            destination.unlink(missing_ok=True)
+            raise UpdateError("The update could not be downloaded and verified. The installation is unchanged.") from exc
+        finally:
+            lock.release()
 
     def check(self, *, channel="beta", target=None, current=__version__):
         lock = self._lock()

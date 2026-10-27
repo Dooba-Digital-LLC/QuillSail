@@ -112,6 +112,10 @@ def _backoff(attempts: int) -> int:
 
 def run_one(worker: str | None = None) -> bool:
     """Run the next waiting job. Returns False if there was nothing to do."""
+    from copydesk.maintenance import active
+
+    if active(current_app.extensions["copydesk"].config):
+        return False
     worker = worker or worker_id()
     job = _claim(worker)
     if job is None:
@@ -177,6 +181,10 @@ def renew_lease() -> None:
 def maintenance() -> None:
     """Housekeeping that runs every so often: recover stuck jobs, start scheduled issues."""
     from copydesk import newsletter
+    from copydesk.maintenance import active
+
+    if active(current_app.extensions["copydesk"].config):
+        return
 
     now = utcnow()
     db.session.execute(
@@ -194,6 +202,7 @@ def maintenance() -> None:
 
 def heartbeat() -> None:
     settings.set_value(HEARTBEAT_KEY, utcnow().isoformat(timespec="seconds"))
+    settings.set_value("system.worker_identity", worker_id())
     db.session.commit()
 
 

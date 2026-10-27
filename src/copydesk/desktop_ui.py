@@ -431,7 +431,7 @@ def main():
     if args.check_updates or args.update:
         from copydesk.cli import main as cli_main
 
-        command = ["update", "--channel", args.channel]
+        command = ["update", "--desktop", "--channel", args.channel]
         if args.check_updates:
             command.append("--check")
         if args.yes:

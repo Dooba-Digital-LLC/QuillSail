@@ -20,6 +20,7 @@ from copydesk.update_metadata import (
     online_keys,
     read_published_metadata,
     release_targets,
+    server_targets,
 )
 from copydesk.updater import BOOTSTRAP, METADATA_URL
 
@@ -46,6 +47,8 @@ def publish_feed(client, signing_keys, *, folder=None, channel="beta"):
     if folder:
         manifest = json.loads((folder / "desktop-builds.json").read_text(encoding="utf-8"))
         existing.update(release_targets(folder, manifest["builds"], channel))
+        if (folder / "server-build.json").exists():
+            existing.update(server_targets(folder, json.loads((folder / "server-build.json").read_text(encoding="utf-8")), channel))
     if not existing:
         raise ValueError("No tested desktop release is available to sign.")
     metadata = build_metadata(root, online_keys(signing_keys), existing, max(version + 1, int(time.time())))

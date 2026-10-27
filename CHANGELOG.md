@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0 — Beta
+
+- Add complete `quillsail update` server transactions for registered versioned Python/systemd and Docker Compose installations: verify releases, prepare environments/images online, pause traffic and queued mail, back up the instance/native database, migrate, activate and validate web/worker health.
+- Recover failed updates with matching code and data, resume interrupted transactions, and provide explicit rollback with a safety backup of current content. Retain protected recovery journals and backups.
+- Add one-time deployment registration and a checksum-pinned bootstrap installer for older servers. Keep desktop updates available through the launcher and `quillsail update --app PATH`.
+- Build and validate server wheel/source artifacts alongside all four desktop downloads, and authenticate server wheels through the same TUF release feed.
+
 ## 1.8.0 — Beta
 
 - Check for and install desktop updates from the launcher or `quillsail update`. Choose stable or beta releases; updates require an explicit install action.
