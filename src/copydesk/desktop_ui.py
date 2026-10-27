@@ -210,7 +210,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.toggle.setText("Start")
             self.toggle.setEnabled(True)
             if self.closing:
-                app.quit()
+                QTimer.singleShot(0, self.close)
             elif smoke:
                 QTimer.singleShot(0, self.start)
 
@@ -225,17 +225,20 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             if smoke:
                 self.smoke_error, self.closing = True, True
             if self.closing:
-                app.quit()
+                app.exit(1 if smoke else 0)
 
         def closeEvent(self, event):  # noqa: N802 - Qt virtual method
-            event.ignore()
             self.closing = True
             if self.busy:
+                event.ignore()
                 return
             if self.runtime.server:
+                event.ignore()
                 self.stop()
             else:
-                app.quit()
+                # QApplication.quit() sends another close event on macOS.
+                # Accept this one once the worker has stopped instead.
+                event.accept()
 
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName("QuillSail")
