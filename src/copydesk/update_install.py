@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import time
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -305,6 +306,15 @@ def clean_environment():
 
 
 def smoke_test():
+    command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, str(Path(__file__).resolve())]
+    child = subprocess.Popen([*command, "--smoke-wait-child"], env=clean_environment())
+    reaper = threading.Thread(target=child.wait)
+    reaper.start()
+    try:
+        wait_for_exit(child.pid, timeout=10)
+    finally:
+        reaper.join(timeout=10)
+    assert child.returncode == 0
     with tempfile.TemporaryDirectory(prefix="quillsail-update-smoke-") as folder:
         parent = Path(folder)
         target = "windows-x86_64" if sys.platform == "win32" else "linux-x86_64"
@@ -333,7 +343,11 @@ def main():
     parser = argparse.ArgumentParser(description="QuillSail update installer")
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--smoke-wait-child", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.smoke_wait_child:
+        time.sleep(0.5)
+        return
     if args.smoke_test:
         smoke_test()
         return
