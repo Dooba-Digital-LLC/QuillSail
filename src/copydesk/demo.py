@@ -1,4 +1,4 @@
-"""Sample content for trying QuillSail out: `copydesk demo`.
+"""Sample content for trying QuillSail out: `quillsail demo`.
 
 Creates fictional writers in each reader group, articles at every stage of
 the editorial workflow, and one sent issue, so you can click around before

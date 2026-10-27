@@ -2,7 +2,7 @@
 
     gunicorn "copydesk.wsgi:app"
 
-The configuration file is found the same way as the `copydesk` command finds
+The configuration file is found the same way as the `quillsail` command finds
 it: the COPYDESK_CONFIG environment variable, then ./copydesk.toml, then
 /etc/copydesk/copydesk.toml.
 """

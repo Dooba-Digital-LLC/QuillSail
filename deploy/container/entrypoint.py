@@ -117,8 +117,8 @@ def main(arguments=None):
             ],
         )
     if command == "worker":
-        os.execvp("copydesk", ["copydesk", "worker", *arguments[1:]])
-    os.execvp("copydesk", ["copydesk", *arguments])
+        os.execvp("quillsail", ["quillsail", "worker", *arguments[1:]])
+    os.execvp("quillsail", ["quillsail", *arguments])
 
 
 if __name__ == "__main__":

@@ -65,4 +65,4 @@ One sender is active for the publication. A new connection replaces it after suc
 
 **Disconnect** removes the saved sender and resumes the server configuration. To revoke the app grant itself, use the Google or Microsoft account's app-permissions page. Provider app-credential changes apply to new connections; reconnect an existing account when rotating its provider secret. Provider limits, spam policies, and organization rules still apply; use a suitable SMTP relay/provider for larger newsletters.
 
-Upgrade existing instances with `copydesk upgrade` before restarting the web and worker processes. Migration 0002 adds the encrypted connection and temporary OAuth-flow tables; it leaves existing SMTP settings and publication content intact.
+Upgrade existing instances with `quillsail upgrade` before restarting the web and worker processes. Migration 0002 adds the encrypted connection and temporary OAuth-flow tables; it leaves existing SMTP settings and publication content intact.

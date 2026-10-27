@@ -1,15 +1,15 @@
-"""The `copydesk` command.
+"""The `quillsail` command. `copydesk` is kept as an alias for existing installs.
 
-    copydesk init            set up a new site (config file, database, first admin)
-    copydesk serve           run a development server (with a background worker)
-    copydesk worker          send email and do other background work
-    copydesk jobs run        process waiting jobs once, then exit (for cron)
-    copydesk upgrade         update the database after installing a new version
-    copydesk check           check the configuration, database and email
-    copydesk user ...        create users, reset passwords, manage groups
-    copydesk subscribers ... import and export the subscriber list
-    copydesk export / import back up or move all data as JSON
-    copydesk ext ...         commands added by extensions
+    quillsail init            set up a new site (config file, database, first admin)
+    quillsail serve           run a development server (with a background worker)
+    quillsail worker          send email and do other background work
+    quillsail jobs run        process waiting jobs once, then exit (for cron)
+    quillsail upgrade         update the database after installing a new version
+    quillsail check           check the configuration, database and email
+    quillsail user ...        create users, reset passwords, manage groups
+    quillsail subscribers ... import and export the subscriber list
+    quillsail export / import back up or move all data as JSON
+    quillsail ext ...         commands added by extensions
 
 Run any command with --help for details.
 """
@@ -90,7 +90,7 @@ def init(directory, site_name, mode, base_url, database_url, admin_email, admin_
     config_file = root / "copydesk.toml"
     if config_file.exists() and not force:
         raise click.ClickException(
-            f"{config_file} already exists. To update the database after an upgrade, run `copydesk upgrade`. "
+            f"{config_file} already exists. To update the database after an upgrade, run `quillsail upgrade`. "
             "To start over, use --force."
         )
 
@@ -156,7 +156,7 @@ def init(directory, site_name, mode, base_url, database_url, admin_email, admin_
         db.session.commit()
     click.echo("Created the database and your administrator account.")
     click.secho("\nDone! Next steps:", bold=True, fg="green")
-    click.echo(f"  1. Start it:        copydesk serve   (then open {base_url})")
+    click.echo(f"  1. Start it:        quillsail serve   (then open {base_url})")
     click.echo("  2. Set up email:    open Settings -> Email to connect Gmail, Outlook, or an SMTP server.")
     click.echo("  3. Go live:         see docs/installation.md for running it on a server.")
 
@@ -209,7 +209,7 @@ def jobs():
               help="Stop after this many seconds (fits a once-a-minute cron job).")
 @pass_context
 def jobs_run(ctx: Context, max_jobs, max_seconds):
-    """Process waiting jobs, then exit. Good for cron: * * * * * copydesk jobs run"""
+    """Process waiting jobs, then exit. Good for cron: * * * * * quillsail jobs run"""
     from copydesk.jobs import run_pending
 
     with ctx.app().app_context():
@@ -308,7 +308,7 @@ def check(ctx: Context, smtp, send_test, now):
             pending = migrate.needs_upgrade(db.engine)
             report(not pending, f"Database ({db.engine.dialect.name}) is reachable"
                    + (" and up to date" if not pending else " but needs updating"),
-                   "Run `copydesk upgrade`.")
+                   "Run `quillsail upgrade`.")
         except Exception as exc:  # noqa: BLE001
             report(False, f"Can't reach the database: {exc}", "Check [database] url in copydesk.toml.")
         for label, path in (("Uploads folder", config.uploads_dir), ("Data folder", config.data_dir)):
@@ -438,7 +438,7 @@ def user_set_password(ctx: Context, email, password):
 @click.argument("group_slug")
 @pass_context
 def user_add_group(ctx: Context, email, group_slug):
-    """Put someone in a group, e.g.: copydesk user add-group ada@example.edu editors"""
+    """Put someone in a group, e.g.: quillsail user add-group ada@example.edu editors"""
     from sqlalchemy import select
 
     from copydesk import groups

@@ -2,7 +2,7 @@
 
 QuillSail reads the explicit `--config` path, then `COPYDESK_CONFIG`, then `./copydesk.toml`, then `/etc/copydesk/copydesk.toml`. Relative paths resolve beside the selected file. Environment values override TOML. Restart both web and worker processes after changes.
 
-`copydesk init` writes a commented configuration. The packaged `src/copydesk/config_template.toml` is the complete starting reference.
+`quillsail init` writes a commented configuration. The packaged `src/copydesk/config_template.toml` is the complete starting reference.
 
 | Section | Settings |
 | --- | --- |

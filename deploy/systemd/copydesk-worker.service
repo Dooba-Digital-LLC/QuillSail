@@ -8,7 +8,7 @@ User=copydesk
 Group=copydesk
 WorkingDirectory=/var/lib/copydesk
 Environment=COPYDESK_CONFIG=/var/lib/copydesk/copydesk.toml
-ExecStart=/opt/copydesk/current/venv/bin/copydesk worker
+ExecStart=/opt/copydesk/current/venv/bin/quillsail worker
 Restart=on-failure
 RestartSec=3
 UMask=0077

@@ -36,7 +36,7 @@ def app(tmp_path, database_url):
     mail.outbox.clear()
     with app.app_context():
         migrate.upgrade(db.engine)
-        seed.seed('The Tech Stack')
+        seed.seed('Example Newsletter')
         create_admin(email='editor@example.edu', name='Test Editor', password='correct-horse-battery-123')
         db.session.commit()
     yield app

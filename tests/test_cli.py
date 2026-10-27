@@ -16,7 +16,7 @@ def test_install_demo_export_restore(tmp_path):
             "--dir",
             str(site),
             "--site-name",
-            "The Tech Stack",
+            "Example Newsletter",
             "--base-url",
             "http://localhost:5055",
             "--admin-name",
@@ -138,3 +138,13 @@ def test_restore_rejects_existing_data_without_accounts(tmp_path):
         assert db.session.get(Job, job_id).payload == {"keep": True}
     db.session.remove()
     db.engine.dispose()
+
+
+def test_quillsail_command_keeps_copydesk_alias():
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    scripts = tomllib.loads(pyproject.read_text())["project"]["scripts"]
+    assert scripts["quillsail"] == "copydesk.cli:main"
+    assert scripts["copydesk"] == "copydesk.cli:main"

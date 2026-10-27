@@ -1,4 +1,4 @@
-"""Database migrations, run with `copydesk upgrade` (like MediaWiki's update.php).
+"""Database migrations, run with `quillsail upgrade` (like MediaWiki's update.php).
 
 Every schema change ships as an Alembic migration in copydesk/migrations, so
 upgrading QuillSail never means hand-editing the database.

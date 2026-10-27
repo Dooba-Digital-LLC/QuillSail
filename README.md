@@ -6,7 +6,7 @@ Self-hosted blogs and newsletters where readers write.
 
 QuillSail brings blog publishing, reader submissions, editorial review, customizable community groups, and newsletter delivery into one application. Organizations host their own installation and own their data. Choose Newsletter, Blog, or Blog + newsletter. The publication name, branding, groups, permissions, pages, and email content are configurable.
 
-The product name is **QuillSail**, with capital Q and S. This release retains the existing `copydesk` Python package, command, configuration names, and integration identifiers for compatibility with installed sites.
+The product name is **QuillSail**, with capital Q and S. The command is `quillsail`. The older `copydesk` command still works as an alias, and the `copydesk` Python package, configuration names, and integration identifiers are unchanged for compatibility with installed sites.
 
 The project originated in work for **The Tech Stack**, a publication operated by the University of South Carolina Association for Computing Machinery. Other installations choose their own name, branding and community rules.
 
@@ -53,14 +53,14 @@ Requires Python 3.11 or newer. From this source directory:
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e '.[dev]'
-copydesk init --dir ./instance --site-name 'My publication' --mode hybrid --base-url http://localhost:5055
-copydesk --config ./instance/copydesk.toml serve --port 5055
+quillsail init --dir ./instance --site-name 'My publication' --mode hybrid --base-url http://localhost:5055
+quillsail --config ./instance/copydesk.toml serve --port 5055
 ```
 
 Open http://localhost:5055 and sign in with the administrator account you created. The development server runs a background worker. Email defaults to the console backend, so messages appear in the server log. To add fictional example content on an empty test site:
 
 ```sh
-copydesk --config ./instance/copydesk.toml demo
+quillsail --config ./instance/copydesk.toml demo
 ```
 
 Demo accounts use `demo-password-123`; use the demo only in a local test installation.

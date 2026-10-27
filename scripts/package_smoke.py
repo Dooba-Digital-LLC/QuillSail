@@ -20,7 +20,10 @@ def main(wheel):
             [sys.executable, "-m", "venv", str(root / "venv")], check=True, env=environment
         )
         python = root / "venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-        command = root / "venv" / ("Scripts/copydesk.exe" if os.name == "nt" else "bin/copydesk")
+        scripts = root / "venv" / ("Scripts" if os.name == "nt" else "bin")
+        suffix = ".exe" if os.name == "nt" else ""
+        command = scripts / f"quillsail{suffix}"
+        alias = scripts / f"copydesk{suffix}"
         subprocess.run(
             [
                 str(python),
@@ -59,6 +62,10 @@ def main(wheel):
             cwd=root,
             env=environment,
         )
+        version = subprocess.run(
+            [str(alias), "--version"], check=True, capture_output=True, text=True, env=environment
+        )
+        assert "QuillSail" in version.stdout, version.stdout
         code = """from pathlib import Path
 import copydesk
 from copydesk.app import create_app

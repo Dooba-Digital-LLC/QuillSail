@@ -73,8 +73,8 @@ max_size_mb = 10
 
 
 [jobs]
-# Emails are sent by a background worker. Run `copydesk worker` as a
-# service (see docs/installation.md), or `copydesk jobs run` from cron.
+# Emails are sent by a background worker. Run `quillsail worker` as a
+# service (see docs/installation.md), or `quillsail jobs run` from cron.
 # If you can't run a second process, set this to true to run the worker
 # inside the web server instead.
 run_in_web = false

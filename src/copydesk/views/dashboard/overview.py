@@ -27,7 +27,7 @@ def system_warnings() -> list[tuple[str, str]]:
     stale = last_seen is None or utcnow() - last_seen > timedelta(minutes=5)
     if counts.get("queued", 0) and stale:
         warnings.append(("error", f"{counts['queued']} background jobs (such as emails) are waiting, but no worker "
-                                  "has run in the last 5 minutes. Start `copydesk worker`, or see System status."))
+                                  "has run in the last 5 minutes. Start `quillsail worker`, or see System status."))
     if counts.get("failed"):
         warnings.append(("warning", f"{counts['failed']} background jobs failed. See System status for details."))
     mail_status = public_status()

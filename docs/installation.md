@@ -31,8 +31,8 @@ Useful commands:
 ```sh
 docker compose --env-file deploy/compose.env ps
 docker compose --env-file deploy/compose.env logs --tail=100 web worker
-docker compose --env-file deploy/compose.env exec web copydesk check
-docker compose --env-file deploy/compose.env exec worker copydesk jobs list
+docker compose --env-file deploy/compose.env exec web quillsail check
+docker compose --env-file deploy/compose.env exec worker quillsail jobs list
 ```
 
 Web health checks query the database through `/healthz`. Worker checks inspect its recent database heartbeat. These checks do not prove inbox delivery. Configuration and setup codes are private; do not paste them into public issues.
@@ -49,8 +49,8 @@ Use Python 3.11+ in a virtual environment. From the source checkout or extracted
 python3 -m venv .venv
 . .venv/bin/activate
 pip install '.[server]'
-copydesk init --dir ./instance --site-name 'My publication' --mode hybrid --base-url http://localhost:5055
-copydesk --config ./instance/copydesk.toml serve --port 5055
+quillsail init --dir ./instance --site-name 'My publication' --mode hybrid --base-url http://localhost:5055
+quillsail --config ./instance/copydesk.toml serve --port 5055
 ```
 
 Initialization prompts for the first administrator and writes a configuration with mode 0600. `serve` is for local development. Choose `--mode newsletter`, `blog`, or `hybrid`; hosts can change mode later in General settings. There is no frontend build step.

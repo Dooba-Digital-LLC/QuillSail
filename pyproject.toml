@@ -63,6 +63,7 @@ dev = ["pytest>=8", "ruff>=0.5", "responses>=0.25", "build>=1.2", "twine>=6", "P
 integration = ["aiosmtpd>=1.4.6", "trustme>=1.2"]
 
 [project.scripts]
+quillsail = "copydesk.cli:main"
 copydesk = "copydesk.cli:main"
 
 [tool.setuptools.dynamic]

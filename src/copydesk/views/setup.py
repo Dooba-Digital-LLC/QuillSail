@@ -1,6 +1,6 @@
 """First run: create the first administrator from the browser.
 
-Normally `copydesk init` does this on the command line. When QuillSail starts
+Normally `quillsail init` does this on the command line. When QuillSail starts
 with no accounts (in Docker, say), every page redirects here. To stop a
 stranger from claiming the site first, the form asks for a one-time setup
 code, which is written to the server log and to data/setup-code.txt.
@@ -99,7 +99,7 @@ def index():
 
 
 def create_admin(*, email: str, name: str, password: str) -> User:
-    """Create a confirmed administrator account (used by setup and `copydesk init`)."""
+    """Create a confirmed administrator account (used by setup and `quillsail init`)."""
     user = User(
         email=email,
         username=suggest_username(name, email),

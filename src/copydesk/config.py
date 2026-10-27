@@ -6,7 +6,7 @@ an editor might want to change (the publication's name, colours, reader
 groups, permissions) lives in the database and is edited in the dashboard.
 
 Lookup order for the file:
-  1. the path passed in explicitly (``copydesk --config ...``)
+  1. the path passed in explicitly (``quillsail --config ...``)
   2. the COPYDESK_CONFIG environment variable
   3. ./copydesk.toml
   4. /etc/copydesk/copydesk.toml
@@ -154,7 +154,7 @@ def load_config(
     file_path = find_config_file(path)
     if file_path is None and require_file:
         raise ConfigError(
-            "No configuration file found. Run `copydesk init` to create one, or set "
+            "No configuration file found. Run `quillsail init` to create one, or set "
             f"{CONFIG_ENV} to its location."
         )
 
@@ -207,7 +207,7 @@ def _build(data: dict[str, Any], file_path: Path | None, root: Path) -> Config:
             secret_key = "insecure-development-key"
         else:
             raise ConfigError(
-                "site.secret_key is not set. Run `copydesk init`, or generate one with "
+                "site.secret_key is not set. Run `quillsail init`, or generate one with "
                 "`python -c \"import secrets; print(secrets.token_hex(32))\"`."
             )
     elif len(secret_key) < 32 and not (debug or testing):

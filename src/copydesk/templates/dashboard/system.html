@@ -33,7 +33,7 @@
         {% elif last_seen %}<span class="status status-danger">Worker not running</span> <span class="small muted">last seen {{ ui.ago(last_seen) }}</span>
         {% else %}<span class="status status-danger">No worker has run yet</span>{% endif %}
       </p>
-      <p class="help">Emails are sent by a background worker. Start it with <code>copydesk worker</code> (see the systemd examples in the installation guide), run <code>copydesk jobs run</code> from cron, or set <code>run_in_web = true</code> under <code>[jobs]</code>.</p>
+      <p class="help">Emails are sent by a background worker. Start it with <code>quillsail worker</code> (see the systemd examples in the installation guide), run <code>quillsail jobs run</code> from cron, or set <code>run_in_web = true</code> under <code>[jobs]</code>.</p>
       <dl class="definition-list small">
         <dt>Waiting</dt><dd>{{ counts.get("queued", 0) }}</dd>
         <dt>Running</dt><dd>{{ counts.get("running", 0) }}</dd>

@@ -10,7 +10,7 @@ Everyone represents all visitors. Members represents confirmed accounts. Editors
 
 ## Blog mode and newsletter reuse
 
-Hosts choose **Newsletter**, **Blog**, or **Blog + newsletter** during browser setup, with `copydesk init --mode blog` / `--mode hybrid`, or later under **Settings → General → Publication type**. The default remains Newsletter. Switching modes preserves existing posts, issues, subscriptions, groups and permissions.
+Hosts choose **Newsletter**, **Blog**, or **Blog + newsletter** during browser setup, with `quillsail init --mode blog` / `--mode hybrid`, or later under **Settings → General → Publication type**. The default remains Newsletter. Switching modes preserves existing posts, issues, subscriptions, groups and permissions.
 
 Blog modes use a chronological post home page and RSS link. Blog + newsletter also shows email subscriptions; Blog hides the newsletter calls to action. Existing issue and subscription URLs remain available so changing presentation does not break previously shared links. Use the Writing and Accounts settings to choose whether to accept community submissions or keep the blog for its existing authors.
 
@@ -48,4 +48,4 @@ Close judging/voting and publish the final results. Judge mode requires at least
 
 ## Subscribers and accounts
 
-Subscribers need only an email address. Members have accounts for writing and access to community groups. Manage subscribers separately from members. Import/export commands are available through `copydesk subscribers --help`; only import addresses with appropriate permission to receive the publication. Accounts can edit profiles, notification preferences, subscriptions, group requests, and passwords, download personal data, and request account deletion. Deleting an account anonymizes it; already published writing may remain in the archive.
+Subscribers need only an email address. Members have accounts for writing and access to community groups. Manage subscribers separately from members. Import/export commands are available through `quillsail subscribers --help`; only import addresses with appropriate permission to receive the publication. Accounts can edit profiles, notification preferences, subscriptions, group requests, and passwords, download personal data, and request account deletion. Deleting an account anonymizes it; already published writing may remain in the archive.

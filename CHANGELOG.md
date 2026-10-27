@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2 — Beta
+
+- Add a `quillsail` command. Help text, documentation, the systemd worker unit and the container now use it. `copydesk` keeps working as an alias, so existing scripts, cron jobs and services need no changes.
+
 ## 1.5.1 — Beta
 
 - Embed uploaded publication logos as related PNG image parts in outgoing email, so their display does not depend on an external image download. Preserve browser preview URLs and plain-text alternatives across SMTP, Gmail and Outlook.

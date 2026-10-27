@@ -1,4 +1,4 @@
-"""Alembic environment for QuillSail. Run migrations with `copydesk upgrade`."""
+"""Alembic environment for QuillSail. Run migrations with `quillsail upgrade`."""
 
 from alembic import context
 from sqlalchemy import create_engine, pool

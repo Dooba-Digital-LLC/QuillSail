@@ -42,7 +42,7 @@ def test_composer_and_preview(editor_client, app):
     assert editor_client.get(response.location).status_code == 200
     with app.app_context():
         issue = db.session.scalar(select(Issue))
-        issue.intro = 'Welcome to The Tech Stack.'
+        issue.intro = 'Welcome to Example Newsletter.'
         newsletter.add_block(issue, 'text', title='Community', body='News for everyone.')
         db.session.commit()
         issue_id = issue.id

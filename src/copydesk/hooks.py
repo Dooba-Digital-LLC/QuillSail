@@ -218,7 +218,7 @@ class Extension:
         return fn
 
     def command(self, *args: Any, **kwargs: Any):
-        """Add a command-line command: ``copydesk ext <name> ...``."""
+        """Add a command-line command: ``quillsail ext <name> ...``."""
         import click
 
         def decorator(fn):

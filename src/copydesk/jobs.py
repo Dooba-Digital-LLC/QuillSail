@@ -6,8 +6,8 @@ accepted" email can't get lost even if the server restarts a second later.
 
 Run jobs in one of three ways (see docs/installation.md):
 
-* ``copydesk worker``: a long-running process (recommended; systemd examples are in the installation guide).
-* ``copydesk jobs run``: process what's waiting, then exit. Run it from cron,
+* ``quillsail worker``: a long-running process (recommended; systemd examples are in the installation guide).
+* ``quillsail jobs run``: process what's waiting, then exit. Run it from cron,
   like MediaWiki's runJobs.php.
 * ``[jobs] run_in_web = true``: a thread inside the web server. Fine for small
   sites that can't run a second process.
@@ -219,7 +219,7 @@ def queue_counts() -> dict[str, int]:
 
 
 class Worker:
-    """The long-running loop behind ``copydesk worker``."""
+    """The long-running loop behind ``quillsail worker``."""
 
     def __init__(self, app: Flask, poll_interval: float = 2.0, maintenance_interval: float = 30.0) -> None:
         self.app = app
@@ -258,7 +258,7 @@ class Worker:
 
 
 def start_background_worker(app: Flask) -> threading.Thread:
-    """Run a worker in a daemon thread of this process (``run_in_web`` and ``copydesk serve``)."""
+    """Run a worker in a daemon thread of this process (``run_in_web`` and ``quillsail serve``)."""
     existing = app.extensions.get("copydesk_worker_thread")
     if existing is not None and existing.is_alive():
         return existing

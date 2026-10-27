@@ -18,7 +18,7 @@
       {{ forms.input("code", "Setup code", form.get("code"), errors=errors, required=True, autocomplete="off",
                      help="So nobody else can claim your site first. It's in the server log, and in data/setup-code.txt next to your copydesk.toml.") }}
       {{ forms.input("site_name", "Publication name", form.get("site_name"), errors=errors, required=True,
-                     placeholder="The Tech Stack") }}
+                     placeholder="Example Newsletter") }}
       {{ forms.select('site_mode', 'Publication type', [('newsletter', 'Newsletter'), ('blog', 'Blog'), ('hybrid', 'Blog + newsletter')], form.get('site_mode', 'newsletter'), errors=errors, help='You can change this later in Settings → General.') }}
       <hr>
       {{ forms.input("display_name", "Your name", form.get("display_name"), errors=errors, required=True, autocomplete="name") }}

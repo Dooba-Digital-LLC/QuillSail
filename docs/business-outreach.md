@@ -24,4 +24,4 @@ Only the introduction, public-audience blocks, and selected articles whose visib
 
 The secret is shown only when the link is created; the database stores its hash. To get another link, generate a replacement, which invalidates the old one. **Revoke link** removes access immediately. Scheduling or publishing the issue also disables the preview. These links are a sharing capability: recipients can forward them, so send them only to the intended reviewers.
 
-To upgrade an existing installation, back up its database and configuration, install the new version, run `copydesk upgrade`, and restart the web and worker services. Migration `0005` adds the business inbox and preview-link tables without altering existing issue content.
+To upgrade an existing installation, back up its database and configuration, install the new version, run `quillsail upgrade`, and restart the web and worker services. Migration `0005` adds the business inbox and preview-link tables without altering existing issue content.
