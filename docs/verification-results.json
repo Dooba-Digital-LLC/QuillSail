@@ -1,0 +1,237 @@
+{
+  "test_runs": {
+    "sqlite": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "postgres": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "mariadb": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "python311": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "python312": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "python314": {
+      "tests": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "smtp": {
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "postgres_roundtrip": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "mariadb_roundtrip": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "production_https": {
+    "checks": [
+      "Public HTTPS health and database connectivity",
+      "Subpath CSS and JavaScript assets",
+      "Administrator login, secure cookie scope, authenticated cache headers",
+      "CSRF enforcement on the deployed server",
+      "Private draft creation, saving, and revision history",
+      "Issue composer, block persistence, HTML and text preview routes",
+      "Test drafts and issues removed through CMS controls",
+      "Existing host homepage remains byte-for-byte unchanged"
+    ]
+  },
+  "production_load_probe": {
+    "duration_seconds": 60,
+    "concurrency": 4,
+    "successful_requests": 479,
+    "failed_requests": 0,
+    "median_ms": 187.9,
+    "p95_ms": 248.5,
+    "errors": []
+  },
+  "production_smtp": {
+    "transport": "implicit TLS",
+    "provider": "Purelymail",
+    "worker_attempts": 1,
+    "recipient_confirmed_inbox_receipt": true
+  },
+  "started_date": "2026-10-25",
+  "completed_date": "2026-10-26",
+  "email_connector_update": {
+    "version": "1.1.0",
+    "date": "2026-10-26",
+    "test_runs": {
+      "sqlite": {
+        "tests": 124,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "postgres": {
+        "tests": 124,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      }
+    },
+    "oauth_provider_http": "mocked",
+    "live_google_sign_in_verified": false,
+    "live_microsoft_sign_in_verified": false,
+    "production_https": {
+      "checks": [
+        "Public HTTPS health and database connectivity",
+        "Subpath CSS and JavaScript assets",
+        "Administrator login, secure cookie scope, authenticated cache headers",
+        "Gmail/Outlook-first setup, correct public callbacks, existing SMTP authentication",
+        "CSRF enforcement on the deployed server",
+        "Private draft creation, saving, and revision history",
+        "Issue composer, block persistence, HTML and text preview routes",
+        "Test drafts and issues removed through CMS controls",
+        "Existing host homepage remains byte-for-byte unchanged"
+      ]
+    },
+    "production_smtp_authentication_verified": true,
+    "google_app_configured": true,
+    "google_sign_in_page": {
+      "status": 200,
+      "host": "accounts.google.com",
+      "path": "/v3/signin/identifier",
+      "oauth_errors": []
+    },
+    "google_account_consent_verified": false,
+    "microsoft_registration": "deferred"
+  },
+  "competition_update": {
+    "version": "1.2.0",
+    "date": "2026-10-26",
+    "test_runs": {
+      "sqlite": {
+        "tests": 136,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "postgres": {
+        "tests": 136,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      }
+    },
+    "schema_revision": "0003",
+    "production_deployed": true,
+    "modes": [
+      "judges",
+      "readers",
+      "both"
+    ],
+    "entry_format": "text with optional project URL",
+    "public_results": "separate Judges Choice and Readers Choice snapshots",
+    "production_https": {
+      "checks": [
+        "Public HTTPS health and database connectivity",
+        "Subpath CSS and JavaScript assets",
+        "Administrator login, secure cookie scope, authenticated cache headers",
+        "Gmail/Outlook-first setup, correct public callbacks, existing SMTP authentication",
+        "Competition modes, draft creation/preview, judge setup, CSRF, draft privacy and cleanup",
+        "CSRF enforcement on the deployed server",
+        "Private draft creation, saving, and revision history",
+        "Issue composer, block persistence, HTML and text preview routes",
+        "Test drafts and issues removed through CMS controls",
+        "Existing host homepage remains byte-for-byte unchanged"
+      ]
+    },
+    "production_smtp_authentication_verified": true,
+    "gmail_app_configuration_retained": true,
+    "outlook_registration": "deferred"
+  },
+  "blog_update": {
+    "version": "1.3.0",
+    "date": "2026-10-26",
+    "test_runs": {
+      "sqlite": {
+        "tests": 155,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "postgres": {
+        "tests": 155,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      }
+    },
+    "schema_revision": "0004",
+    "production_deployed": true,
+    "modes": [
+      "newsletter",
+      "blog",
+      "hybrid"
+    ],
+    "local_newsletter_reuse": true,
+    "cross_installation_editorial_submissions": true,
+    "remote_source_fetching": false,
+    "production_https": {
+      "checks": [
+        "Public HTTPS health and database connectivity",
+        "Subpath CSS and JavaScript assets",
+        "Administrator login, secure cookie scope, authenticated cache headers",
+        "Blog publication modes, external newsletter configuration and attributed submission form",
+        "Gmail/Outlook-first setup, correct public callbacks, existing SMTP authentication",
+        "Competition modes, draft creation/preview, judge setup, CSRF, draft privacy and cleanup",
+        "CSRF enforcement on the deployed server",
+        "Private draft creation, saving, and revision history",
+        "Issue composer, block persistence, HTML and text preview routes",
+        "Test drafts and issues removed through CMS controls",
+        "Existing host homepage remains byte-for-byte unchanged"
+      ]
+    },
+    "production_smtp_authentication_verified": true
+  },
+  "deployment_identity": "Private reference installation; host/access details omitted from public source.",
+  "public_repository_preparation": {
+    "date": "2026-10-26",
+    "scope": "local only",
+    "tests": {
+      "tests": 158,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2
+    },
+    "clean_wheel_installation": true,
+    "package_metadata_checks": true,
+    "known_credential_boundary_check": true,
+    "entrypoint_runtime_outside_docker": true,
+    "docker_image_execution_verified": false,
+    "github_workflows_dispatched": false,
+    "github_publication_performed": false
+  }
+}

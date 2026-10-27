@@ -1,0 +1,28 @@
+{% extends "competitions/base.html" %}
+{% block competition_title %}{{ entry.title }} · {{ competition.title }}{% endblock %}
+{% block content %}
+<div class="container container-narrow">
+  <header class="page-intro stack"><p class="eyebrow"><a href="{{ url_for('competitions.detail', competition_id=competition.id) }}">{{ competition.title }}</a></p><h1>{{ entry.title }}</h1><p class="muted">By {{ entry.author.display_name if entry.author else 'Former contributor' }}</p>
+  {% if entry.user_id == current_user.id or managing %}<span class="status">{{ entry.status|capitalize }}</span>{% if entry.moderation_note %}<p class="alert alert-info">Organizer feedback: {{ entry.moderation_note }}</p>{% endif %}{% endif %}</header>
+  <article class="prose">{{ entry.body|markdown }}</article>
+  {% if entry.project_url %}<p class="section"><a class="button" href="{{ entry.project_url }}" target="_blank" rel="noopener noreferrer ugc">Visit project {{ icon('external') }}</a></p>{% endif %}
+  {% if entry.user_id == current_user.id and phase == 'submissions' %}
+  <div class="section cluster"><a class="button" href="{{ url_for('competitions.enter', competition_id=competition.id) }}">Edit entry</a><form method="post" action="{{ url_for('competitions.withdraw', competition_id=competition.id, entry_id=entry.id) }}" data-confirm="Withdraw your entry? You can resubmit while submissions are open.">{{ forms.csrf() }}<button class="link-button" type="submit">Withdraw entry</button></form></div>
+  {% endif %}
+  {% if entry.status == 'approved' and phase == 'judging' and competition.mode != 'judges' and entry.user_id != current_user.id %}
+  <section class="panel section"><div class="panel-body stack"><h2>Readers’ Choice</h2><p>One vote per verified reader for this competition. You may change your vote until voting closes.</p>
+    {% if current_user.is_verified %}<form method="post" action="{{ url_for('competitions.vote', competition_id=competition.id) }}">{{ forms.csrf() }}<input type="hidden" name="entry_id" value="{{ entry.id }}"><button class="button button-primary">{{ 'Your current vote' if vote and vote.entry_id == entry.id else 'Vote for this entry' }}</button></form>
+    {% else %}<a class="button" href="{{ url_for('auth.login', next=request.path) }}">Sign in to vote</a>{% endif %}
+  </div></section>
+  {% endif %}
+  {% if is_judge and competition.mode != 'readers' and entry.user_id != current_user.id and entry.status == 'approved' and phase == 'judging' %}
+  <section class="panel section"><div class="panel-header"><h2>Judge this entry</h2></div><div class="panel-body">
+    <form method="post" action="{{ url_for('competitions.score', competition_id=competition.id, entry_id=entry.id) }}" class="form" data-warn-unsaved>{{ forms.csrf() }}
+      {{ forms.input('score', 'Score out of 100', score.score if score else '', type='number', required=True, attrs='min="0" max="100" step="1"', help='Use the competition rules and criteria. Scores are averaged for Judges’ Choice.') }}
+      {{ forms.textarea('notes', 'Private judge notes', score.notes if score else '', rows=4, help='Visible to you only; never published with results.') }}
+      <button class="button button-primary">Save score</button>
+    </form>
+  </div></section>
+  {% endif %}
+</div>
+{% endblock %}

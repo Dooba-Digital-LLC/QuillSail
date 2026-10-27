@@ -1,0 +1,32 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}{{ inquiry.title }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.businesses') }}">Business outreach</a> / {{ inquiry.organization }}</p>{% endblock %}
+{% block actions %}{% if inquiry.verified_at %}<a class="button button-primary" href="{{ reply_url }}">Reply by email</a>{% endif %}{% endblock %}
+{% block content %}
+{{ forms.error_summary(errors) }}
+<div class="grid-main-side"><div class="stack">
+<section class="panel"><div class="panel-header"><h2>Opportunity or request</h2></div><div class="panel-body stack">
+  <dl class="definition-list"><dt>Organization</dt><dd>{{ inquiry.organization }}</dd><dt>Type</dt><dd>{{ kinds.get(inquiry.kind) }}</dd>
+  {% for label,value in [('Skills',inquiry.skills),('Location / format',inquiry.location),('Compensation',inquiry.compensation),('Deadline',inquiry.deadline)] %}{% if value %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endif %}{% endfor %}
+  {% if inquiry.application_url %}<dt>Application / information</dt><dd><a href="{{ inquiry.application_url }}" rel="noopener noreferrer">{{ inquiry.application_url }}</a></dd>{% endif %}</dl>
+  <div class="prose">{{ inquiry.description|markdown }}</div>
+</div></section>
+<section class="panel"><div class="panel-header"><h2>Private contact information</h2></div><div class="panel-body">
+  <dl class="definition-list"><dt>Contact</dt><dd>{{ inquiry.contact_name }}</dd><dt>Email</dt><dd>{{ inquiry.email }}</dd><dt>Email confirmed</dt><dd>{{ inquiry.verified_at|datetime if inquiry.verified_at else 'Not yet confirmed' }}</dd>
+  {% if inquiry.website_url %}<dt>Website</dt><dd><a href="{{ inquiry.website_url }}" rel="noopener noreferrer">{{ inquiry.website_url }}</a></dd>{% endif %}
+  <dt>Permission to publish email</dt><dd>{{ 'Yes' if inquiry.share_contact else 'No — keep private' }}</dd></dl>
+</div></section>
+</div><aside class="stack">
+<section class="panel"><div class="panel-header"><h2>Follow-up</h2></div><form class="panel-body form" method="post">
+  {{ forms.csrf() }}{{ forms.select('status','Status',([('unverified','Awaiting email confirmation')] if not inquiry.verified_at else []) + statuses,form.get('status',inquiry.status),errors=errors) }}
+  {{ forms.textarea('staff_notes','Private staff notes',form.get('staff_notes',inquiry.staff_notes),errors=errors,rows=7,help='Contact history, questions, and next steps. These are never copied into an article.') }}
+  <button class="button" type="submit" name="action" value="save">Save follow-up</button>
+</form></section>
+<section class="panel"><div class="panel-header"><h2>Newsletter handoff</h2></div><div class="panel-body stack">
+  <p class="small">Approve the request, then create an editorial draft. This copies the opportunity details and any contact email the business allowed you to publish. It never publishes or sends automatically.</p>
+  {% if inquiry.article %}<a class="button" href="{{ url_for('write.edit',article_id=inquiry.article_id) }}">Open editorial draft</a>
+  {% elif inquiry.status == 'approved' and inquiry.verified_at and can('submit') %}<form method="post">{{ forms.csrf() }}<button class="button" name="action" value="draft" type="submit">Create editorial draft</button></form>{% endif %}
+</div></section>
+<form method="post">{{ forms.csrf() }}<button class="button button-small" name="action" value="delete" type="submit" data-confirm="Delete this private business inquiry?">Delete inquiry</button></form>
+</aside></div>
+{% endblock %}

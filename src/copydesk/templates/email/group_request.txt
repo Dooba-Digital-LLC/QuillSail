@@ -1,0 +1,7 @@
+{{ membership.user.display_name }} ({{ membership.user.email }}) asked to join {{ membership.group.name }}.
+{% for spec in membership.group.fields %}{% if membership.data.get(spec.key) %}{{ spec.label }}: {{ membership.data.get(spec.key) }}
+{% endif %}{% endfor %}{% if membership.note %}
+Their note: {{ membership.note }}
+{% endif %}
+Approve or turn down: {{ url }}
+{% include "email/_signature.txt" %}

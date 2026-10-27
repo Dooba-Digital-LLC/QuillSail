@@ -1,0 +1,36 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}{{ competition.title }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.competitions') }}">Competitions</a></p>{% endblock %}
+{% block lead %}<p class="lead">{{ competition_modes[competition.mode] }} · {{ competition_phases[phase] }}</p>{% endblock %}
+{% block actions %}<a class="button" href="{{ url_for('competitions.detail', competition_id=competition.id) }}">{{ 'Preview' if phase == 'draft' else 'View competition' }}</a>{% if phase == 'draft' %}<a class="button" href="{{ url_for('dash.competition_edit', competition_id=competition.id) }}">Edit setup</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel"><div class="panel-body stack">
+  <div class="competition-steps" aria-label="Competition phases">{% for key, label in competition_phases.items() %}<span{% if key == phase %} class="status status-info" aria-current="step"{% else %} class="small muted"{% endif %}>{{ label }}</span>{% endfor %}</div>
+  <p>{% if phase == 'draft' %}Review your brief, rules, dates and judges, then open the competition. Setup becomes locked when it opens.{% elif phase == 'submissions' %}Participants can submit and revise entries. Approve entries here before judging starts.{% elif phase == 'judging' %}Entries are frozen. Judges can score approved entries; verified readers can vote when enabled.{% elif phase == 'closed' %}Scoring and voting are closed. Review the standings, finish moderation, and publish the results.{% else %}Results are published and frozen. The public competition page shows the final rankings.{% endif %}</p>
+  {% if phase != 'results' %}<form method="post" action="{{ url_for('dash.competition_phase', competition_id=competition.id) }}" data-confirm="Advance this competition? Check the phase and deadlines before continuing.">{{ forms.csrf() }}
+    {% set action, label = {'draft': ('open', 'Open for entries'), 'submissions': ('judge', 'Close entries and start judging'), 'judging': ('close', 'Close judging and voting'), 'closed': ('publish', 'Publish final results')}[phase] %}
+    <button class="button button-primary" name="action" value="{{ action }}">{{ label }} {{ icon('arrow-right') }}</button>
+  </form>{% endif %}
+  {% if competition.entries_close_at %}<p class="small muted">Submissions close {{ competition.entries_close_at|datetime }}.</p>{% endif %}
+  {% if competition.ends_at %}<p class="small muted">Judging and voting close {{ competition.ends_at|datetime }}.</p>{% endif %}
+  {% if competition.mode != 'readers' %}<p class="small muted">Judges: administrators{% for judge in competition.judges %}, {{ judge.user.display_name }}{% endfor %}. Each approved entry needs at least one judge score.</p>{% endif %}
+</div></section>
+<section class="section stack"><h2>Entries · {{ entries|length }}</h2>
+{% for entry in entries %}
+<section class="panel"><div class="panel-header"><div><h3><a href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=entry.id) }}">{{ entry.title }}</a></h3><p class="small muted">{{ entry.author.display_name if entry.author else 'Former contributor' }}</p></div><span class="status">{{ entry.status|capitalize }}</span></div>
+  {% if phase != 'results' and entry.status != 'withdrawn' %}<div class="panel-body"><form method="post" action="{{ url_for('dash.competition_moderate', competition_id=competition.id, entry_id=entry.id) }}" class="form">
+    {{ forms.csrf() }}{{ forms.textarea('moderation_note_' ~ entry.id, 'Organizer feedback to entrant', entry.moderation_note, rows=2, help='Only the entrant and organizers see this feedback.') }}
+    <div class="cluster"><button class="button" name="decision" value="approved">Approve entry</button><button class="button" name="decision" value="rejected">Reject entry</button></div>
+  </form></div>{% endif %}
+</section>
+{% else %}<p class="muted">No entries yet.</p>{% endfor %}
+</section>
+{% if phase in ['judging', 'closed', 'results'] %}
+<section class="section stack"><h2>{{ 'Final' if phase == 'results' else 'Provisional' }} standings</h2><p class="help">Judge averages use scores from active verified judges. Reader totals use votes from active verified accounts. Only approved entries are eligible. Public totals stay hidden until results are published.</p>
+<div class="panel table-wrap"><table><thead><tr><th>Entry</th>{% if competition.mode != 'readers' %}<th>Judge average</th><th>Scores</th>{% endif %}{% if competition.mode != 'judges' %}<th>Reader votes</th>{% endif %}</tr></thead><tbody>
+{% for row in standings %}<tr><td><a href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=row.entry.id) }}">{{ row.entry.title }}</a></td>{% if competition.mode != 'readers' %}<td>{{ row.average if row.average is not none else 'Needs scoring' }}</td><td>{{ row.score_count }}</td>{% endif %}{% if competition.mode != 'judges' %}<td>{{ row.votes }}</td>{% endif %}</tr>{% endfor %}
+</tbody></table></div>
+</section>
+{% endif %}
+{% if phase == 'draft' %}<form class="section" method="post" action="{{ url_for('dash.competition_phase', competition_id=competition.id) }}" data-confirm="Delete this draft competition?">{{ forms.csrf() }}<button class="link-button danger" name="action" value="delete">Delete draft competition</button></form>{% endif %}
+{% endblock %}

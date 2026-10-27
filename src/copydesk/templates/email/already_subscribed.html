@@ -1,0 +1,10 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}This address already gets {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">You're already subscribed</h1>
+<p style="{{ es.p }}">Someone (probably you) tried to sign this address up for {{ site.name }}, but it's already on the list. Nothing has changed.</p>
+<p style="{{ es.p }}">Want to change what you get, or stop getting it?</p>
+{{ m.button(manage_url, "Manage my subscription") }}
+{% endblock %}
+{% block footer %}<a href="{{ unsubscribe_url }}" style="color:#6b7280;">Unsubscribe</a>{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ page.title }} · {{ site.name }}{% endblock %}
+{% block description %}{{ page.body|excerpt(160) }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% if not page.is_published %}
+  <div class="flashes">{{ ui.alert("warning", "This page is hidden. Only people who manage pages can see it.") }}</div>
+  {% endif %}
+  <header class="article-header">
+    <h1>{{ page.title }}</h1>
+  </header>
+  <div class="prose">
+    {{ page.body|markdown }}
+  </div>
+  {% if can("manage_pages") %}
+  <p class="article-footer small"><a href="{{ url_for('dash.page_edit', page_id=page.id) }}">{{ icon("edit") }} Edit this page</a></p>
+  {% endif %}
+</div>
+{% endblock %}

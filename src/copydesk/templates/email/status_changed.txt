@@ -1,0 +1,20 @@
+{% set who = actor.display_name if actor and actor.display_name else "An editor" %}Hi {{ user.display_name }},
+
+{% if new == "in_review" %}{{ who }} has started reading "{{ article.display_title }}". You'll hear back soon.
+{% elif new == "changes_requested" %}{{ who }} read "{{ article.display_title }}" and asked for some changes. That's a normal part of editing. It means they want to run it.
+{% if message %}
+{{ message }}
+{% endif %}
+Make your edits, then press Resubmit.
+{% elif new == "accepted" %}Good news: "{{ article.display_title }}" was accepted! It'll be published on the site or in an upcoming issue, and we'll email you when it's live.
+{% if message %}
+{{ message }}
+{% endif %}{% elif new == "published" %}"{{ article.display_title }}" is live on {{ site.name }}. Thank you for writing it.
+{% elif new == "declined" %}Thank you for sending "{{ article.display_title }}" to {{ site.name }}. This time, the editors decided not to publish it.
+{% if message %}
+{{ message }}
+{% endif %}
+We hope you'll write for us again.
+{% endif %}
+{{ url }}
+{% include "email/_signature.txt" %}

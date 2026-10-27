@@ -1,0 +1,11 @@
+{% extends "email/layout.html" %}
+{% block preheader %}You're subscribed to {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Welcome to {{ site.name }}</h1>
+<div style="{{ es.p }}">{{ email_markdown(body) }}</div>
+<p style="{{ es.p }}"><a href="{{ external_url('public.issues') }}" style="color:{{ accent.accent }};">Read past issues</a>{% if setting("submissions.enabled") %} · <a href="{{ external_url('write.index') }}" style="color:{{ accent.accent }};">Write for us</a>{% endif %}</p>
+{% endblock %}
+{% block footer %}
+You're getting this because you subscribed to {{ site.name }}.<br>
+<a href="{{ manage_url }}" style="color:#6b7280;">Manage your subscription</a> · <a href="{{ unsubscribe_url }}" style="color:#6b7280;">Unsubscribe</a>
+{% endblock %}

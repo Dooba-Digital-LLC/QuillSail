@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{{ email_subject }}</title>
+</head>
+<body class="email-body email-{{ es.layout }}" style="margin:0;padding:0;background-color:{{ es.background }};-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:{{ es.background }};">{% block preheader %}{% endblock %}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ es.background }};">
+    <tr><td align="center" style="padding:24px 12px;">
+      <!--[if mso]><table role="presentation" width="{{ es.width }}" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+      <table class="email-shell" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:{{ es.width }}px;">
+        <tr><td class="email-masthead-cell" style="padding:0 4px 16px;font-family:{{ es.heading_font }};font-size:22px;font-weight:800;color:{{ es.text }};text-align:{{ es.align }};{% if es.layout == 'editorial' %}border-top:4px double {{ es.text }};padding-top:18px;{% endif %}">
+          {% block masthead %}<a href="{{ external_url('public.home') }}" style="color:{{ es.text }};text-decoration:none;">{% include 'email/brand.html' %}</a>{% endblock %}
+        </td></tr>
+        <tr><td class="email-content" style="background-color:{{ es.surface }};border:1px solid {{ es.border }};border-radius:{{ es.radius }}px;padding:{{ es.padding }}px;font-family:{{ es.font }};font-size:{{ es.size }}px;line-height:{{ es.leading }};color:{{ es.text }};">
+          {% block content %}{% endblock %}
+        </td></tr>
+        <tr><td class="email-footer" style="padding:20px 12px 8px;font-family:{{ es.font }};font-size:13px;line-height:1.55;color:{{ es.muted }};text-align:center;">
+          {% block footer %}You're getting this email because of your account at <a href="{{ external_url('public.home') }}" style="color:{{ es.muted }};">{{ site.name }}</a>. <a href="{{ external_url('account.notifications') }}" style="color:{{ es.muted }};">Choose which emails you get</a>.{% endblock %}
+          <p style="margin:12px 0 0;font-family:{{ es.font }};font-size:12px;line-height:20px;color:{{ es.muted }};">Powered by QuillSail<img src="{{ external_url('static', filename='brand/quillsail.png', v=version) }}" width="19" height="16" alt="" style="display:inline-block;width:19px;height:16px;vertical-align:middle;border:0;margin-left:5px;"></p>
+          {{ slot('email_footer') }}
+          {% if setting('newsletter.postal_address') %}<br><br>{{ setting('newsletter.postal_address')|replace('\n', ', ') }}{% endif %}
+        </td></tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+  </table>
+</body>
+</html>

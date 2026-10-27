@@ -1,0 +1,8 @@
+Hi {{ user.display_name }},
+
+{{ inviter.display_name }} created an account for you at {{ site.name }}. Choose a password to get started:
+
+{{ url }}
+
+The link works for a week. You sign in with this email address.
+{% include "email/_signature.txt" %}

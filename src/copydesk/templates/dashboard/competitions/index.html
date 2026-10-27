@@ -1,0 +1,10 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}Competitions{% endblock %}
+{% block lead %}<p class="lead">Host challenges, review entries, and recognize the community’s best work.</p>{% endblock %}
+{% block actions %}<a class="button button-primary" href="{{ url_for('dash.competition_new') }}">{{ icon('plus') }} New competition</a>{% endblock %}
+{% block content %}
+{% if page.items %}<div class="panel table-wrap"><table><thead><tr><th>Competition</th><th>Selection</th><th>Phase</th></tr></thead><tbody>
+{% for item in page.items %}<tr><td><a href="{{ url_for('dash.competition', competition_id=item.id) }}">{{ item.title }}</a></td><td>{{ competition_modes[item.mode] }}</td><td><span class="status">{{ competition_phases[competition_phase(item)] }}</span></td></tr>{% endfor %}
+</tbody></table></div>{{ ui.pagination(page, 'dash.competitions') }}
+{% else %}{{ ui.empty('Host your first competition', 'Choose judges, reader voting, or both. Review submissions before they go public.', url_for('dash.competition_new'), 'New competition', 'award') }}{% endif %}
+{% endblock %}

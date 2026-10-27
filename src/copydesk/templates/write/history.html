@@ -1,0 +1,43 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Version history · {{ article.display_title }} · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <p class="eyebrow"><a href="{{ url_for('write.status', article_id=article.id) if article.has_author(current_user) else url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a></p>
+    <h1>Version history</h1>
+    <p class="lead">Every time this piece is saved with changes, the old version is kept here. Compare any version with the one before it, or restore it.</p>
+  </header>
+
+  {% if revisions %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th scope="col">Saved</th><th scope="col">By</th><th scope="col">Note</th><th scope="col" class="numeric">Words</th><th scope="col" class="actions"><span class="visually-hidden">Actions</span></th></tr>
+      </thead>
+      <tbody>
+        {% for revision in revisions %}
+        <tr>
+          <td class="nowrap">{{ revision.created_at|datetime }}{% if loop.first %} <span class="chip">Current</span>{% endif %}</td>
+          <td>{{ revision.user.display_name if revision.user else "Unknown" }}</td>
+          <td>{{ revision.summary or "" }}</td>
+          <td class="numeric">
+            {{ revision.word_count|number }}
+            {% if not loop.last %}
+              {% set change = revision.word_count - revisions[loop.index].word_count %}
+              <span class="small {{ 'yes' if change > 0 else 'muted' }}">({{ "+" if change > 0 else "" }}{{ change }})</span>
+            {% endif %}
+          </td>
+          <td class="actions"><a class="button button-small" href="{{ url_for('write.revision', article_id=article.id, revision_id=revision.id) }}">{{ "See changes" if not loop.last else "See first version" }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ ui.empty("No saved versions yet", "A version is kept every time this piece is saved with changes.", icon_name="history") }}
+  {% endif %}
+</div>
+{% endblock %}

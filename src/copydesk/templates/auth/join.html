@@ -1,0 +1,76 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Create an account · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card wide">
+    <h1>Create an account</h1>
+    <p class="lead">Write for {{ site.name }}, follow your submissions and manage your subscription.</p>
+
+    {% if not is_open %}
+      {{ ui.alert("info", note) }}
+    {% else %}
+      {% if note %}<p class="help">{{ note }}</p>{% endif %}
+      {{ forms.error_summary(errors) }}
+
+      <form class="form" method="post" novalidate>
+        {{ forms.csrf() }}
+        {{ forms.honeypot() }}
+        {% if request.args.get("next") %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
+
+        {{ forms.input("display_name", "Your name", form.get("display_name"), errors=errors, required=True,
+                       help="As you'd like it to appear on your writing.", autocomplete="name") }}
+        {{ forms.input("email", "Email address", form.get("email"), type="email", errors=errors, required=True,
+                       help="We'll send a link to confirm it.", autocomplete="email") }}
+        {{ forms.input("password", "Password", "", type="password", errors=errors, required=True,
+                       help="At least 10 characters. A few random words work well.", autocomplete="new-password") }}
+
+        {% if audience %}
+        <fieldset class="fieldset" id="f-groups">
+          <legend>Which of these describe you? <span class="optional">(optional)</span></legend>
+          <p class="help">Your groups appear next to your name on anything you publish, and help us send you the news that matters to you.</p>
+          <div class="choice-grid">
+            {% for group in audience %}
+            <div>
+              <label class="choice-card">
+                <input type="checkbox" name="groups" value="{{ group.slug }}"{% if group.slug in form.getlist("groups") %} checked{% endif %}>
+                <span class="check-label">
+                  <strong>{{ group.name }}</strong>
+                  <span class="help">{% if group.description %}{{ group.description }} {% endif %}{{ groups_api.policy_text(group) }}</span>
+                </span>
+              </label>
+              {% if group.fields %}
+              <div class="card" data-show-if="groups:{{ group.slug }}">
+                <p class="small muted">A few details for {{ group.name }} (you can change these later):</p>
+                {{ forms.group_fields(group, field_values.get(group.slug), errors) }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+        {% endif %}
+
+        {{ forms.checkbox("subscribe", "Email me new issues of " ~ site.name, form.get("subscribe"),
+                          help="You can unsubscribe at any time.") }}
+
+        {% if terms %}
+        <div class="field{% if errors.get('agree') %} has-error{% endif %}" id="f-agree">
+          {% if errors.get("agree") %}<p class="error-text">{{ errors.agree }}</p>{% endif %}
+          <label class="check">
+            <input type="checkbox" name="agree" value="1"{% if form.get("agree") %} checked{% endif %}>
+            <span class="check-label"><strong>I agree to the <a href="{{ url_for('public.page', slug=terms.slug) }}" target="_blank" rel="noopener">{{ terms.title }}</a></strong></span>
+          </label>
+        </div>
+        {% endif %}
+
+        <button class="button button-primary button-block" type="submit">Create account</button>
+      </form>
+    {% endif %}
+
+    <p class="auth-alt">Already have an account? <a href="{{ url_for('auth.login', next=request.args.get('next')) }}">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}

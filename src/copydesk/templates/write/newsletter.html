@@ -1,0 +1,26 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+{% block title %}Newsletter options · {{ article.display_title }}{% endblock %}
+{% block content %}
+<div class="container container-narrow">
+  <header class="page-intro"><p class="eyebrow"><a href="{{ url_for('public.article', slug=article.slug) }}">{{ article.display_title }}</a></p><h1>Share your post in a newsletter</h1><p class="lead">Your post stays on your blog. Choose where you'd like it to appear.</p></header>
+  {% if can('manage_issues') %}
+  <section class="panel"><div class="panel-header"><h2>This site's newsletter</h2></div><div class="panel-body stack">
+    {% if newsletter_enabled %}
+    <p>Add this post to a draft issue. Review the issue before sending; publishing a post does not email subscribers.</p>
+    <form method="post" class="form">{{ forms.csrf() }}
+      {% set options = [('new', 'Create a new draft issue')] %}{% for issue in issues %}{% set _ = options.append((issue.id|string, '#' ~ issue.number ~ ' ' ~ issue.display_title)) %}{% endfor %}
+      {{ forms.select('issue_id', 'Newsletter issue', options, request.form.get('issue_id', 'new')) }}
+      {{ forms.select('display', 'Include as', [('summary', 'Summary and link to the post'), ('full', 'Full article')], request.form.get('display', 'summary')) }}
+      <button class="button button-primary">{{ icon('plus') }} Add post to newsletter</button>
+    </form>
+    {% else %}<p>Enable <strong>Blog + newsletter</strong> in <a href="{{ url_for('dash.settings') }}">Settings → General</a> to create newsletter issues here.</p>{% endif %}
+  </div></section>
+  {% endif %}
+  <section class="panel"><div class="panel-header"><h2>A separate newsletter</h2></div><div class="panel-body stack">
+    {% if article.visibility != 'public' %}<p>Only public posts can be offered to another newsletter. This post's visibility is restricted.</p>
+    {% elif external_target %}<p>Continue to the newsletter website, sign in there, and review the submission form. Its editors decide whether to include your post. The form carries your public post's URL, title, author credit and excerpt.</p><a class="button" href="{{ external_target }}" target="_blank" rel="noopener noreferrer">Continue to newsletter {{ icon('external') }}</a>
+    {% else %}<p>Give the newsletter's editors this post's public URL, or configure the other QuillSail newsletter's website{% if can('manage_settings') %} in <a href="{{ url_for('dash.settings') }}">Settings → General</a>{% endif %} for a direct submission link.</p>{% if article.visibility == 'public' %}<p class="blog-share-url">{{ external_url('public.article', slug=article.slug) }}</p>{% endif %}{% endif %}
+  </div></section>
+</div>
+{% endblock %}

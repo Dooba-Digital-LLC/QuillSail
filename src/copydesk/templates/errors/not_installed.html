@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>QuillSail isn't installed yet</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/copydesk.css', v=version) }}">
+</head>
+<body>
+  <main class="center-message">
+    <div class="setup-brand">{% include 'partials/brand.html' %}<span class="small muted">{{ version }}</span></div>
+    <h1>The database isn't set up yet</h1>
+    <p class="lead">QuillSail is running, but it can't find its tables. On the server, run:</p>
+    <pre class="code-block">copydesk upgrade</pre>
+    <p class="muted">That creates (or updates) the database. If this is a brand-new site, <code>copydesk init</code> walks you through everything. Then reload this page.</p>
+  </main>
+</body>
+</html>

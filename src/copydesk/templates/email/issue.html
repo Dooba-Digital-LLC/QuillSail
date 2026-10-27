@@ -1,0 +1,72 @@
+{% extends "email/layout.html" %}
+{% block preheader %}{{ issue.preheader or (intro_text|excerpt(140) if intro_text else issue.display_title) }}{% endblock %}
+
+{% block masthead %}
+{% if shared_preview %}<p style="{{ es.small }}">Private preview for feedback. This edition has not been sent to subscribers.</p>{% endif %}
+{% if test %}
+<div style="margin:0 0 12px;padding:8px 12px;background:#fffaeb;border:1px solid #fedf89;border-radius:6px;font-family:{{ es.font }};font-size:13px;font-weight:600;color:#7a4b00;">Test email. Subscribers haven't received this.</div>
+{% endif %}
+<table class="email-masthead" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="font-family:{{ es.heading_font }};font-size:22px;font-weight:800;letter-spacing:-0.01em;text-align:{{ es.align }};color:{{ es.text }};">
+      <a href="{{ external_url('public.home') }}" style="color:{{ es.text }};text-decoration:none;">
+        {% include 'email/brand.html' %}
+      </a>
+    </td>
+    <td align="right" style="font-family:{{ es.font }};font-size:13px;color:{{ es.muted }};white-space:nowrap;">
+      <a href="{{ web_url }}" style="color:{{ es.muted }};">View in browser</a>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+
+{% block content %}
+<p style="{{ es.label }}">Issue #{{ issue.number }}{% if issue.sent_at or issue.send_started_at %} · {{ (issue.sent_at or issue.send_started_at)|date("long") }}{% endif %}</p>
+<h1 style="{{ es.h1 }}">{{ issue.display_title }}</h1>
+
+{% if intro_html %}
+<div style="font-family:{{ es.font }};font-size:{{ es.size }}px;line-height:{{ es.leading }};color:{{ es.text }};">{{ intro_html }}</div>
+{% endif %}
+
+{% for item in items %}
+  {% if item.kind == "heading" %}
+  <div style="margin:28px 0 0;padding:18px 0 0;border-top:2px solid {{ es.link }};">
+    <p style="margin:0;font-family:{{ es.font }};font-size:13px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:{{ es.link }};">{{ item.title }}</p>
+  </div>
+  {% elif item.kind == "article" %}
+  <div class="email-story" style="{{ es.story }}">
+    {% if item.section %}<p style="{{ es.label }}">{{ item.section }}</p>{% endif %}
+    <h2 style="{{ es.h2 }}">{% if shared_preview and not item.article.is_published %}{{ item.title }}{% else %}<a href="{{ item.url }}" style="color:{{ es.link if es.layout == 'reference' else es.text }};text-decoration:{{ 'underline' if es.layout == 'reference' else 'none' }};">{{ item.title }}</a>{% endif %}</h2>
+    <p style="margin:0 0 12px;font-family:{{ es.font }};font-size:14px;line-height:1.5;color:{{ es.muted }};">By {{ item.byline }}{% if item.reading_minutes %} · {{ item.reading_minutes }} min read{% endif %}</p>
+    {% if item.article and item.article.visibility == 'public' and item.article.source_url %}<p style="{{ es.p }}">Originally published{% if item.article.source_author %} by {{ item.article.source_author }}{% endif %}. <a href="{{ item.article.source_url }}" style="color:{{ es.link }};">Read the original blog post</a>.</p>{% endif %}
+    {% if item.display == "full" and item.html %}
+    <div style="font-family:{{ es.font }};font-size:{{ es.size }}px;line-height:{{ es.leading }};color:{{ es.text }};">{{ item.html }}</div>
+    {% else %}
+    <p style="{{ es.p }}">{{ item.summary }}</p>
+    <p style="margin:0;font-family:{{ es.font }};font-size:15px;font-weight:700;"><a href="{{ item.url }}" style="color:{{ es.link }};text-decoration:none;">Read the full article &rarr;</a></p>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="email-story" style="{{ es.story }}">
+    {% if item.title %}<h2 style="{{ es.h2 }}">{{ item.title }}</h2>{% endif %}
+    <div style="font-family:{{ es.font }};font-size:{{ es.size }}px;line-height:{{ es.leading }};color:{{ es.text }};">{{ item.html }}</div>
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% if setting("submissions.enabled") %}
+<div style="margin:28px 0 0;padding:16px 18px;background:{{ es.soft }};border-radius:{{ es.radius }}px;">
+  <p style="margin:0;font-family:{{ es.font }};font-size:15px;line-height:1.5;color:{{ es.text }};"><strong>Want to write for {{ site.name }}?</strong> Anyone in our community can submit a piece. <a href="{{ external_url('write.index') }}" style="color:{{ es.link }};">Start writing &rarr;</a></p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+{% if shared_preview %}
+Private preview of {{ site.name }}. Shared for feedback; you have not been subscribed.
+{% else %}
+{% if setting("newsletter.footer") %}<div style="margin:0 0 12px;">{{ email_markdown(setting("newsletter.footer"), es.muted) }}</div>{% endif %}
+You're getting this because you subscribed to {{ site.name }}{% if subscriber_groups %} as {{ subscriber_groups|map(attribute="label")|join(", ")|lower }}{% endif %}.<br>
+<a href="{{ manage_url }}" style="color:{{ es.muted }};">Choose what you get</a> · <a href="{{ unsubscribe_url }}" style="color:{{ es.muted }};">Unsubscribe</a>
+{% endif %}
+{% endblock %}

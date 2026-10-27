@@ -1,0 +1,31 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Add a subscriber{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.subscribers') }}">Subscribers</a></p>{% endblock %}
+
+{% block content %}
+{{ forms.error_summary(errors) }}
+<form class="panel form form-narrow" method="post">
+  <div class="panel-body form">
+    {{ forms.csrf() }}
+    {{ forms.input("email", "Email address", form.get("email"), type="email", errors=errors, required=True) }}
+    {{ forms.input("name", "Name", form.get("name"), optional=True) }}
+    {% if groups %}
+    <fieldset class="fieldset">
+      <legend>Groups <span class="optional">(optional)</span></legend>
+      <div class="pill-choices">
+        {% for group in groups %}
+        <label class="pill-choice"><input type="checkbox" name="groups" value="{{ group.id }}"{% if group.id|string in form.getlist("groups") %} checked{% endif %}><span>{{ group.name }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
+    {{ forms.checkbox("consent", "They've already agreed to get the newsletter", form.get("consent"),
+                      help="Subscribe them straight away. Leave this unticked to email them a confirmation link instead, which is the safer choice.") }}
+    <div class="form-actions">
+      <button class="button button-primary" type="submit">Add subscriber</button>
+      <a class="button button-ghost" href="{{ url_for('dash.subscribers') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

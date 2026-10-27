@@ -1,0 +1,115 @@
+/*
+ * Broadsheet: a newspaper look built on the default theme.
+ * It only changes custom properties and a few rules; every layout and
+ * accessibility feature comes from copydesk.css.
+ */
+
+html {
+  --font-display: var(--font-serif);
+  --font-article: var(--font-serif);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fbf8f1;
+    --bg-subtle: #f3eee2;
+    --bg-muted: #ebe4d3;
+    --surface: #fffdf8;
+    --surface-raised: #fffdf8;
+    --border: #ddd5c3;
+    --border-strong: #c2b8a2;
+    --text: #1b1a17;
+    --text-muted: #4f4b42;
+    --text-subtle: #67624f;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #fbf8f1;
+  --bg-subtle: #f3eee2;
+  --bg-muted: #ebe4d3;
+  --surface: #fffdf8;
+  --surface-raised: #fffdf8;
+  --border: #ddd5c3;
+  --border-strong: #c2b8a2;
+  --text: #1b1a17;
+  --text-muted: #4f4b42;
+  --text-subtle: #67624f;
+}
+
+.site-header {
+  border-bottom: 3px double var(--text);
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.hero {
+  background: var(--bg);
+  border-bottom: 3px double var(--text);
+}
+
+.hero h1 {
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+.hero .org,
+.eyebrow {
+  letter-spacing: 0.14em;
+}
+
+.section + .section {
+  border-top: 1px solid var(--text);
+}
+
+.section-heading {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.section-heading h2,
+.issue-block-heading h2 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 700;
+}
+
+.article-item h3,
+.featured h3,
+.issue-row h3,
+.issue-card h3 {
+  font-weight: 800;
+}
+
+.issue-card,
+.card-callout,
+.author-box {
+  border-radius: 2px;
+  box-shadow: none;
+  border-color: var(--border-strong);
+}
+
+.button {
+  border-radius: 2px;
+}
+
+.article-header {
+  text-align: center;
+}
+
+.article-header .byline {
+  justify-content: center;
+}
+
+.prose blockquote {
+  font-size: 1.1em;
+}
+
+.site-footer {
+  border-top: 3px double var(--text);
+}

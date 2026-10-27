@@ -1,0 +1,51 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Email and password{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <h1>Email and password</h1>
+  </div>
+</header>
+
+{{ forms.error_summary(errors) }}
+
+<section class="settings-section">
+  <h2>Email address</h2>
+  <p class="help">
+    You sign in with <strong>{{ current_user.email }}</strong>{% if current_user.is_verified %} (confirmed){% else %} (not confirmed yet){% endif %}.
+    To change it, we'll send a link to the new address. Nothing changes until you click it.
+  </p>
+  <form class="form form-narrow" method="post">
+    {{ forms.csrf() }}
+    <input type="hidden" name="action" value="email">
+    {{ forms.input("email", "New email address", request.form.get("email", "") if request.form.get("action") == "email" else "", type="email", errors=errors, required=True, autocomplete="email") }}
+    {{ forms.input("email_password", "Your current password", "", type="password", errors=errors, required=True, autocomplete="current-password") }}
+    <div class="form-actions"><button class="button" type="submit">Change email address</button></div>
+  </form>
+</section>
+
+<section class="settings-section">
+  <h2>Password</h2>
+  <form class="form form-narrow" method="post">
+    {{ forms.csrf() }}
+    <input type="hidden" name="action" value="password">
+    {{ forms.input("current", "Current password", "", type="password", errors=errors, required=True, autocomplete="current-password") }}
+    {{ forms.input("new", "New password", "", type="password", errors=errors, required=True, autocomplete="new-password",
+                   help="At least 10 characters. A few random words work well.") }}
+    {{ forms.input("confirm", "Type the new password again", "", type="password", errors=errors, required=True, autocomplete="new-password") }}
+    <div class="form-actions"><button class="button" type="submit">Change password</button></div>
+  </form>
+</section>
+
+<section class="settings-section">
+  <h2>Signed-in devices</h2>
+  <p class="help">If you signed in on a shared or lost device, sign out everywhere except here.</p>
+  <form method="post">
+    {{ forms.csrf() }}
+    <input type="hidden" name="action" value="signout_everywhere">
+    <button class="button" type="submit">{{ icon("logout") }} Sign out everywhere else</button>
+  </form>
+</section>
+{% endblock %}

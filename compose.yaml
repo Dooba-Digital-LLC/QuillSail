@@ -1,0 +1,57 @@
+name: copydesk
+
+x-copydesk: &copydesk
+  image: ${COPYDESK_IMAGE:-copydesk:local}
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    COPYDESK_CONFIG: /var/lib/copydesk/copydesk.toml
+    COPYDESK_BASE_URL: ${COPYDESK_BASE_URL:-http://localhost:8080}
+    COPYDESK_PROXY_HOPS: ${COPYDESK_PROXY_HOPS:-0}
+    COPYDESK_WEB_WORKERS: ${COPYDESK_WEB_WORKERS:-2}
+  volumes:
+    - copydesk-data:/var/lib/copydesk
+  read_only: true
+  tmpfs:
+    - /tmp:rw,nosuid,nodev,size=64m
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  stop_grace_period: 30s
+
+services:
+  init:
+    <<: *copydesk
+    command: [init]
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  web:
+    <<: *copydesk
+    command: [web]
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${COPYDESK_PORT:-8080}:8000"
+
+  worker:
+    <<: *copydesk
+    command: [worker]
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, /app/container/healthcheck.py, worker]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+volumes:
+  copydesk-data:

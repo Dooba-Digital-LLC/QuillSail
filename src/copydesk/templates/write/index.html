@@ -1,0 +1,98 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ 'My posts' if blog_mode and current_user.is_authenticated else 'Write for ' ~ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <h1>{{ 'My posts' if blog_mode and current_user.is_authenticated else 'Write for ' ~ site.name }}</h1>
+    {% if blog_mode and can('publish') %}<p class="lead">Write a post, save a private draft, and publish when you're ready. Newsletter inclusion is a separate choice.</p>{% else %}<div class="lead">{{ setting("submissions.intro")|markdown }}</div>{% endif %}
+  </header>
+  {% if submissions_open or can('publish') %}<p>Already published something on your own blog? <a href="{{ url_for('write.from_blog') }}">Offer an existing blog post</a> to the editors.</p>{% endif %}
+
+  {% if not submissions_open and not (blog_mode and can('publish')) %}
+  <div class="flashes">{{ ui.alert("info", setting("submissions.closed_message")) }}</div>
+  {% endif %}
+
+  {% if not current_user.is_authenticated %}
+  <section class="card-callout">
+    <h2>How it works</h2>
+    <ol class="checklist">
+      <li>{{ icon("user") }} <span><strong>Create a free account.</strong> It takes a minute.</span></li>
+      <li>{{ icon("pen") }} <span><strong>Write your piece here, in the browser.</strong> Drafts stay private until you submit them.</span></li>
+      <li>{{ icon("message") }} <span><strong>An editor reviews it.</strong> They may ask for changes. You'll get an email at every step.</span></li>
+      <li>{{ icon("send") }} <span><strong>It's published</strong> on the site{% if newsletter_enabled %}, and may be selected for a newsletter issue{% endif %}.</span></li>
+    </ol>
+    <div class="cluster section">
+      <a class="button button-primary" href="{{ url_for('auth.join', next=url_for('write.index')) }}">Create an account</a>
+      <a class="button" href="{{ url_for('auth.login', next=url_for('write.index')) }}">Sign in</a>
+    </div>
+    {% if guidelines %}<p class="muted">Before you start, read the <a href="{{ url_for('public.page', slug=guidelines.slug) }}">writing guidelines</a>.</p>{% endif %}
+  </section>
+
+  {% elif not current_user.is_verified %}
+  <div class="flashes">
+    {{ ui.alert("warning", Markup("<strong>Confirm your email address to start writing.</strong> We sent a link to " ~ (current_user.email|e) ~ ".")) }}
+  </div>
+
+  {% elif not can_submit %}
+  <div class="flashes">
+    {% set names = submit_groups|map(attribute="name")|join(", ") %}
+    {{ ui.alert("info", Markup("<strong>Your account can't submit writing yet.</strong> " ~
+        ("Submissions are open to " ~ (names|e) ~ ". " if names else "") ~
+        "<a href=\"" ~ url_for('account.groups') ~ "\">See your groups</a> to ask to join one.")) }}
+  </div>
+
+  {% else %}
+  <div class="spread section">
+    <p class="muted">
+      {% if guidelines %}{{ icon("book") }} <a href="{{ url_for('public.page', slug=guidelines.slug) }}">Read the writing guidelines</a>{% endif %}
+    </p>
+    {% if submissions_open or can("publish") %}
+    <form method="post" action="{{ url_for('write.new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="button button-primary" type="submit">{{ icon("pen") }} {{ 'New post' if blog_mode else 'Start a new piece' }}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if has_any %}
+    {% for key, label, statuses in buckets %}
+    {% if mine[key] %}
+    <section class="section" aria-labelledby="bucket-{{ key }}">
+      <h2 class="eyebrow" id="bucket-{{ key }}">{{ label }}</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th scope="col">Title</th><th scope="col">Status</th><th scope="col">Last change</th><th scope="col" class="actions"><span class="visually-hidden">Actions</span></th></tr>
+          </thead>
+          <tbody>
+            {% for item in mine[key] %}
+            <tr>
+              <td class="primary-cell">
+                <a href="{{ url_for('write.status', article_id=item.id) }}">{{ item.display_title }}</a>
+                <span class="sub">{{ pluralize(item.word_count, "word") }}{% if item.section %} · {{ item.section.name }}{% endif %}{% if item.authors|length > 1 %} · with {{ item.authors[1:]|map(attribute="display_name")|join(", ") }}{% endif %}</span>
+              </td>
+              <td>{{ ui.status(item.status) }}</td>
+              <td class="nowrap">{{ ui.ago(item.updated_at) }}</td>
+              <td class="actions">
+                {% if item.status in ("draft", "changes_requested") or (blog_mode and can('publish') and item.status in ('published', 'accepted')) %}
+                <a class="button button-small" href="{{ url_for('write.edit', article_id=item.id) }}">{{ icon("edit") }} Edit</a>
+                {% elif item.status == "published" %}
+                <a class="button button-small" href="{{ url_for('public.article', slug=item.slug) }}">View</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+    {% endfor %}
+  {% else %}
+  {{ ui.empty("You haven't written anything yet", "Start a new piece. It stays private until you submit it to the editors.", icon_name="pen") }}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

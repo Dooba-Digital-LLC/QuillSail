@@ -1,0 +1,115 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}Email connection{% endblock %}
+{% block lead %}<p class="lead">Choose the account your publication sends from.</p>{% endblock %}
+{% block content %}
+<nav aria-label="Settings sections"><ul class="tabs">
+{% for key, label in tabs %}<li><a href="{{ url_for('dash.settings', tab=key) }}"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
+</ul></nav>
+<div id="f-connection" tabindex="-1">{{ forms.error_summary(errors) }}</div>
+
+<section class="email-current panel" aria-labelledby="current-sender">
+  <div class="panel-body spread">
+    <div>
+      <p class="eyebrow">Current sender</p>
+      <h2 id="current-sender">{{ connection.email or connection.label }}</h2>
+      <p class="small muted">{{ connection.label }}{% if connection.source == 'server' %} · Server configuration{% endif %}
+        {% if connection.connected %} <span class="status status-success">Connected</span>{% endif %}</p>
+      {% if connection.problem %}<p class="error-text">{{ connection.problem }}</p>{% endif %}
+    </div>
+    <div class="cluster">
+      {% if connection.connected %}
+      <form method="post">{{ forms.csrf() }}<button class="button button-primary" name="action" value="test">{{ icon("mail") }} Send me a test email</button></form>
+      <form method="post">{{ forms.csrf() }}<button class="button" name="action" value="check">Check connection</button></form>
+      {% endif %}
+      {% if connection.source == 'dashboard' %}
+      <form method="post" data-confirm="Remove this email connection and use the server's configured email settings?">{{ forms.csrf() }}<button class="link-button" name="action" value="disconnect">Disconnect</button></form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="email-providers section">
+{% for key, provider in clients.items() %}
+<section class="panel email-provider" aria-labelledby="{{ key }}-heading">
+  <div class="panel-body stack">
+    <span class="email-provider-mark {{ key }}" aria-hidden="true">{{ 'G' if key == 'gmail' else 'O' }}</span>
+    <div><h2 id="{{ key }}-heading">{{ provider.name }}</h2>
+      <p class="muted">{{ 'Use a Gmail or Google Workspace account.' if key == 'gmail' else 'Use Outlook.com or a Microsoft 365 work or school account.' }}</p>
+    </div>
+    <p>Sign in, choose your account, and allow QuillSail to send your publication’s emails.</p>
+    {% if provider.ready %}
+    <form method="post" action="{{ url_for('dash.email_connect', provider=key) }}">{{ forms.csrf() }}
+      <button class="button button-primary" type="submit">Connect {{ provider.name }} {{ icon("arrow-right") }}</button>
+    </form>
+    {% else %}
+    <a class="button button-primary" href="#{{ key }}-setup">Set up {{ provider.name }} {{ icon("arrow-right") }}</a>
+    <p class="small muted">One-time app setup is needed before the first account can connect.</p>
+    {% endif %}
+    <p class="small muted">Email stays with your provider. QuillSail can send messages; it does not request access to read your inbox.</p>
+  </div>
+</section>
+{% endfor %}
+</div>
+<p class="help">Your provider’s sending limits and your organization’s account permissions apply. Connecting a new account replaces the current sender after sign-in succeeds.</p>
+
+<details class="panel section email-details" id="smtp-setup">
+  <summary class="panel-header"><h2>Other email providers and configuration files</h2><span class="small muted">SMTP · university relays · app passwords</span></summary>
+  <div class="panel-body stack">
+    <p>Use an SMTP server, or upload the settings your email provider or IT team gave you.</p>
+    <form method="post" enctype="multipart/form-data" class="form form-narrow">
+      {{ forms.csrf() }}<input type="hidden" name="action" value="import_smtp">
+      <div class="field"><label for="f-config_file">SMTP configuration file</label>
+        <p class="help">Upload an .env file or copydesk.toml containing a [mail] section. Only email settings are imported.</p>
+        <input id="f-config_file" name="config_file" type="file" accept=".env,.toml,text/plain" required>
+      </div>
+      <button class="button" type="submit">Import and check connection</button>
+    </form>
+    <hr>
+    <form method="post" class="form form-narrow" data-warn-unsaved>
+      {{ forms.csrf() }}<input type="hidden" name="action" value="smtp">
+      <h3>Enter SMTP settings</h3>
+      {{ forms.input('host', 'SMTP server', values.get('host', ''), placeholder='smtp.example.edu', required=True) }}
+      <div class="form-row">
+        {{ forms.input('port', 'Port', values.get('port') or 587, type='number', required=True, attrs='min="1" max="65535"') }}
+        {{ forms.select('security', 'Connection security', [('starttls', 'STARTTLS (usually port 587)'), ('ssl', 'TLS (usually port 465)'), ('none', 'Unauthenticated relay')], values.get('security') or 'starttls') }}
+      </div>
+      {{ forms.input('username', 'Username', values.get('username', ''), optional=True, autocomplete='off') }}
+      {{ forms.input('password', 'Password or app password', '', type='password', optional=True, autocomplete='new-password', help='Saved passwords are never displayed. Leave blank to keep a saved dashboard password for the same server and username.') }}
+      {{ forms.input('from_email', 'Sender email address', values.get('from_email', ''), type='email', required=True) }}
+      {{ forms.input('rate_per_minute', 'Emails per minute', values.get('rate_per_minute') or 60, type='number', required=True, attrs='min="1" max="10000"') }}
+      <button class="button" type="submit">Save and check connection</button>
+    </form>
+  </div>
+</details>
+
+<section class="section stack" aria-labelledby="provider-setup-heading">
+  <h2 id="provider-setup-heading">One-time app setup</h2>
+  <p class="muted">Google and Microsoft need to recognize this installation of QuillSail before an account can connect. Set this up once; afterwards, admins just sign in to choose a sending account.</p>
+  {% for key, provider in clients.items() %}
+  <details class="panel email-details" id="{{ key }}-setup"{% if not provider.ready %} open{% endif %}>
+    <summary class="panel-header"><h3>{{ provider.name }} app setup</h3><span class="small muted">{{ 'Configured' if provider.ready else 'Setup needed' }}</span></summary>
+    <div class="panel-body stack">
+      {% if key == 'gmail' %}
+      <p>Create a <strong>Web application</strong> OAuth client in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud</a>, enable the Gmail API, and add the callback URL below. During testing, add the sending account as a test user.</p>
+      <p class="help">Permissions: send email and identify the connected account. Google may require consent-screen verification before offering sign-in broadly.</p>
+      {% else %}
+      <p>Create an app in <a href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer">Microsoft Entra</a>, add a <strong>Web</strong> redirect URI, and create a client secret. To support personal and work accounts, choose the corresponding multi-tenant account option.</p>
+      <p class="help">Delegated permissions: Mail.Send and User.Read, plus OpenID sign-in and offline access. Your organization may need to approve the app.</p>
+      {% endif %}
+      {{ forms.input(key ~ '-callback', 'Callback URL', provider.callback, attrs='readonly', help='Register this exact URL with the provider.') }}
+      <form method="post" enctype="multipart/form-data" class="form form-narrow" data-warn-unsaved>
+        {{ forms.csrf() }}<input type="hidden" name="action" value="save_client"><input type="hidden" name="provider" value="{{ key }}">
+        {{ forms.input(key ~ '_client_id', 'Application client ID', provider.client_id, autocomplete='off') }}
+        {{ forms.input(key ~ '_client_secret', 'Client secret', '', type='password', autocomplete='new-password', help='Enter the secret value, not its identifier. Leave blank to keep the secret for the same app.') }}
+        {% if key == 'outlook' %}{{ forms.input(key ~ '_tenant', 'Accounts allowed to connect', provider.tenant, help='common allows personal and work accounts; use a tenant ID to limit access to your organization.') }}{% endif %}
+        <div class="field"><label for="f-{{ key }}-credentials">Or upload an app credentials JSON file</label>
+          <input id="f-{{ key }}-credentials" type="file" name="credentials" accept=".json,application/json">
+          <p class="help">{{ 'Google’s downloaded web client JSON is supported.' if key == 'gmail' else 'Use JSON containing client_id, client_secret, and optionally tenant.' }}</p>
+        </div>
+        <button class="button" type="submit">Save {{ provider.name }} app setup</button>
+      </form>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endblock %}

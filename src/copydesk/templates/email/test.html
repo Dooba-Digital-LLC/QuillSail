@@ -1,0 +1,7 @@
+{% extends "email/layout.html" %}
+{% block preheader %}If you can read this, email from {{ site.name }} works.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Email works!</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }}, this is a test email from {{ site.name }}. If you're reading it, QuillSail can send email.</p>
+<p style="{{ es.small }}">Tip: if it landed in spam, ask whoever runs your mail server about SPF, DKIM and DMARC for the sending domain. See docs/email.md.</p>
+{% endblock %}

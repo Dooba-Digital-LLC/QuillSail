@@ -1,0 +1,14 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}The editors have “{{ article.display_title }}”. Here's what happens next.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">We got your piece</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+<p style="{{ es.p }}">Thanks for sending <strong>“{{ article.display_title }}”</strong> to {{ site.name }}. Here's what happens next:</p>
+<ol style="margin:0 0 16px;padding-left:22px;font-family:{{ es.font }};font-size:16px;line-height:1.6;color:#16181d;">
+  <li style="margin:0 0 6px;">An editor reads it.</li>
+  <li style="margin:0 0 6px;">They might ask for some changes. That's normal, and you'll get an email if they do.</li>
+  <li style="margin:0;">Once it's accepted, it goes on the site and often into the newsletter.</li>
+</ol>
+{{ m.button(url, "Follow your piece") }}
+{% endblock %}

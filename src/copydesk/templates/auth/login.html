@@ -1,0 +1,33 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Sign in · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Sign in</h1>
+    <p class="lead">Welcome back to {{ site.name }}.</p>
+
+    {% if error %}<div class="flashes">{{ ui.alert("error", error) }}</div>{% endif %}
+
+    <form class="form" method="post">
+      {{ forms.csrf() }}
+      <input type="hidden" name="next" value="{{ request.values.get('next', '') }}">
+      {{ forms.input("email", "Email address", email, type="email", required=True, autocomplete="email",
+                     attrs="autofocus" if not email else "") }}
+      <div class="field">
+        <div class="spread">
+          <label for="f-password">Password</label>
+          <a class="small" href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a>
+        </div>
+        <input id="f-password" type="password" name="password" required autocomplete="current-password"{% if email %} autofocus{% endif %}>
+      </div>
+      {{ forms.checkbox("remember", "Keep me signed in for 30 days", True) }}
+      <button class="button button-primary button-block" type="submit">Sign in</button>
+    </form>
+
+    <p class="auth-alt">New here? <a href="{{ url_for('auth.join', next=request.values.get('next')) }}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

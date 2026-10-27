@@ -1,0 +1,79 @@
+{% extends "layout/dashboard.html" %}
+
+{% block head %}{% if issue.status == "sending" %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
+{% block page_title %}Issue #{{ issue.number }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.issues') }}">Issues</a></p>{% endblock %}
+{% block heading %}Issue #{{ issue.number }}{% if issue.title %}: {{ issue.title }}{% endif %}{% endblock %}
+{% block lead %}
+<p class="lead cluster">
+  {{ ui.issue_status(issue) }}
+  {% if issue.status == "sent" %}<span>Sent {{ issue.sent_at|datetime }} to {{ audience_label|lower if audience_label == "Everyone" else audience_label }}</span>
+  {% elif issue.status == "sending" %}<span>Sending now. This page updates every 10 seconds.</span>{% endif %}
+</p>
+{% endblock %}
+{% block actions %}
+  <a class="button" href="{{ url_for('dash.issue_preview', issue_id=issue.id) }}">{{ icon("eye") }} See the email</a>
+  {% if issue.is_public %}<a class="button" href="{{ url_for('public.issue', number=issue.number) }}">{{ icon("globe") }} On the website</a>{% endif %}
+  {% if stats.failed and can("send_issues") and issue.status == "sent" %}
+  <form method="post" action="{{ url_for('dash.issue_retry', issue_id=issue.id) }}">{{ forms.csrf() }}<button class="button button-primary" type="submit">{{ icon("refresh") }} Retry {{ stats.failed }} failed</button></form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Recipients</span><span class="stat-value">{{ stats.total|number }}</span></div>
+  <div class="stat"><span class="stat-label">Sent</span><span class="stat-value">{{ stats.sent|number }}</span></div>
+  {% if stats.queued %}<div class="stat"><span class="stat-label">Waiting to send</span><span class="stat-value">{{ stats.queued|number }}</span></div>{% endif %}
+  <div class="stat"><span class="stat-label">Failed</span><span class="stat-value">{{ stats.failed|number }}</span><span class="stat-note">Bad addresses or mail server errors</span></div>
+  {% if stats.skipped %}<div class="stat"><span class="stat-label">Skipped</span><span class="stat-value">{{ stats.skipped|number }}</span><span class="stat-note">Unsubscribed before it went out</span></div>{% endif %}
+</div>
+
+{% if issue.status == "sending" %}
+<section class="panel">
+  <div class="panel-body stack">
+    {% set done = stats.sent + stats.failed + stats.skipped %}
+    <label for="send-progress"><strong>{{ done|number }} of {{ stats.total|number }}</strong> processed</label>
+    <progress id="send-progress" class="progress" max="{{ stats.total or 1 }}" value="{{ done }}"></progress>
+    <p class="help">Emails go out at a steady pace so your mail server doesn't flag them as spam. You can leave this page; sending continues in the background.</p>
+  </div>
+</section>
+{% endif %}
+
+{% if failures %}
+<section class="panel">
+  <div class="panel-header"><h2>Failed deliveries</h2><span class="small muted">Addresses that fail three times in a row stop getting issues.</span></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th scope="col">Email</th><th scope="col">What went wrong</th><th scope="col" class="numeric">Tries</th></tr></thead>
+      <tbody>
+        {% for delivery in failures %}
+        <tr>
+          <td>{% if delivery.subscriber %}<a href="{{ url_for('dash.subscriber', subscriber_id=delivery.subscriber.id) }}">{{ delivery.email }}</a>{% else %}{{ delivery.email }}{% endif %}</td>
+          <td class="small">{{ delivery.error }}</td>
+          <td class="numeric">{{ delivery.attempts }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-header"><h2>Contents</h2></div>
+  <ul class="panel-list">
+    {% for entry in issue.items %}
+    <li>
+      <span>
+        {% if entry.kind == "article" and entry.article %}<a class="title" href="{{ url_for('dash.article', article_id=entry.article.id) }}">{{ entry.article.display_title }}</a>
+        {% elif entry.kind == "heading" %}<strong>{{ entry.title }}</strong> <span class="muted">(heading)</span>
+        {% else %}{{ entry.title or "Text block" }} <span class="muted">(text)</span>{% endif %}
+      </span>
+      {% if entry.audience_groups %}<span class="cluster">{% for group in entry.audience_groups %}{{ ui.badge(group) }}{% endfor %}</span>{% endif %}
+    </li>
+    {% else %}
+    <li class="muted">This issue had no items.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

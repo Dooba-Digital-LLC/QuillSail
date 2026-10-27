@@ -1,0 +1,8 @@
+{% extends "layout/public.html" %}
+{% block title %}Business outreach · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}<div class="container container-narrow"><section class="card-callout">
+{% if confirmed %}<h1>Thanks. Your inquiry is ready for review.</h1><p>The editors can now review your request and follow up using the contact details you provided. Nothing has been published or added to a mailing list.</p>
+{% else %}<h1>Check your email</h1><p>Open the confirmation message and confirm your inquiry so the editors can review it. Check Junk or Spam if it does not arrive.</p>{% endif %}
+<a href="{{ url_for('public.home') }}">Back to {{ site.name }}</a>
+</section></div>{% endblock %}

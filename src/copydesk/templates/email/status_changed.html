@@ -1,0 +1,30 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% set who = actor.display_name if actor and actor.display_name else "An editor" %}
+{% block preheader %}{{ email_subject }}{% endblock %}
+{% block content %}
+<p style="{{ es.label }}">{{ STATUSES[new].label }}</p>
+<h1 style="{{ es.h1 }}">{{ article.display_title }}</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+{% if new == "in_review" %}
+<p style="{{ es.p }}">{{ who }} has started reading your piece. You'll hear back soon.</p>
+{{ m.button(url, "See where it's at") }}
+{% elif new == "changes_requested" %}
+<p style="{{ es.p }}">{{ who }} read your piece and asked for some changes. That's a normal part of editing. It means they want to run it.</p>
+{% if message %}<div style="{{ es.quote }}">{{ email_markdown(message) }}</div>{% endif %}
+<p style="{{ es.p }}">Make your edits, then press <strong>Resubmit</strong>.</p>
+{{ m.button(url, "Make changes") }}
+{% elif new == "accepted" %}
+<p style="{{ es.p }}">Good news: your piece was accepted! It'll be published on the site or in an upcoming issue, and we'll email you when it's live.</p>
+{% if message %}<div style="{{ es.quote }}">{{ email_markdown(message) }}</div>{% endif %}
+{{ m.button(url, "See your piece") }}
+{% elif new == "published" %}
+<p style="{{ es.p }}">Your piece is live on {{ site.name }}. Thank you for writing it. Share it with anyone who'd enjoy it.</p>
+{{ m.button(url, "Read it on the site") }}
+{% elif new == "declined" %}
+<p style="{{ es.p }}">Thank you for sending your piece to {{ site.name }}. This time, the editors decided not to publish it.</p>
+{% if message %}<div style="{{ es.quote }}">{{ email_markdown(message) }}</div>{% endif %}
+<p style="{{ es.p }}">We hope you'll write for us again.</p>
+{{ m.button(url, "See the details") }}
+{% endif %}
+{% endblock %}

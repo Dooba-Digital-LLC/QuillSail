@@ -1,0 +1,73 @@
+{% extends "layout/base.html" %}
+{% import "macros/ui.html" as ui with context %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}{% block page_title %}Dashboard{% endblock %} · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block body_class %}dashboard{% endblock %}
+{% block custom_css %}{% endblock %}
+
+{% block body %}
+{% set counts = dash_counts() %}
+<div class="dash">
+  <aside class="dash-sidebar" id="cd-dash-nav" aria-label="Dashboard">
+    <a class="dash-brand" href="{{ url_for('dash.overview') }}">{{ site.name }}<span>Dashboard</span></a>
+    <nav>
+      {% for heading, links in dash_nav %}
+        {% set visible = [] %}
+        {% for key, label, icon_name, perm in links %}{% if perm is none or can(perm) %}{% set _ = visible.append((key, label, icon_name)) %}{% endif %}{% endfor %}
+        {% if visible %}
+        {% if heading %}<p class="dash-nav-label">{{ heading }}</p>{% endif %}
+        <ul class="dash-nav">
+          {% for key, label, icon_name in visible %}
+          <li>
+            <a href="{{ url_for('dash.' ~ key) }}"{% if dash_active == key %} aria-current="page"{% endif %}>
+              {{ icon(icon_name) }} {{ label }}
+              {% if counts.get(key) %}<span class="count" aria-label="{{ counts[key] }} waiting">{{ counts[key] }}</span>{% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      {% endfor %}
+      {% set extra = extension_dashboard_links() %}
+      {% if extra %}
+      <p class="dash-nav-label">Extensions</p>
+      <ul class="dash-nav">
+        {% for link in extra %}<li><a href="{{ url_for(link.endpoint) }}">{{ icon("plug") }} {{ link.label }}</a></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </nav>
+    <div class="dash-sidebar-footer">
+      <div class="dash-platform">{% include 'partials/brand.html' %}</div>
+      <a href="{{ url_for('public.home') }}">{{ icon("external") }} View the site</a>
+      {% if can("submit") %}<a href="{{ url_for('write.index') }}">{{ icon("pen") }} My writing</a>{% endif %}
+      <a href="{{ url_for('account.profile') }}">{{ ui.avatar(current_user, "sm") }} {{ current_user.display_name }}</a>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        {{ forms.csrf() }}
+        <button type="submit">{{ icon("logout") }} Sign out</button>
+      </form>
+    </div>
+  </aside>
+  <div class="dash-scrim" aria-hidden="true"></div>
+
+  <div class="dash-main">
+    <div class="dash-topbar">
+      <button class="button button-small nav-button" type="button" data-dash-nav-toggle aria-controls="cd-dash-nav" aria-expanded="false">{{ icon("menu") }} Menu</button>
+      <strong>{{ site.name }}</strong>
+    </div>
+    <main id="cd-main" class="dash-content" tabindex="-1">
+      {% with in_dashboard = true %}{% include "partials/flashes.html" %}{% endwith %}
+      <header class="page-header">
+        <div>
+          {% block eyebrow %}{% endblock %}
+          <h1>{% block heading %}{{ self.page_title() }}{% endblock %}</h1>
+          {% block lead %}{% endblock %}
+        </div>
+        <div class="page-actions">{% block actions %}{% endblock %}</div>
+      </header>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

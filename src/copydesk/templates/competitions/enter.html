@@ -1,0 +1,16 @@
+{% extends "competitions/base.html" %}
+{% block competition_title %}Your entry · {{ competition.title }}{% endblock %}
+{% block content %}
+<div class="container container-narrow">
+  <header class="page-intro"><p class="eyebrow"><a href="{{ url_for('competitions.detail', competition_id=competition.id) }}">{{ competition.title }}</a></p><h1>{{ 'Edit your entry' if entry else 'Enter competition' }}</h1><p class="lead">Share your writing or describe a project and add its link.</p></header>
+  <p class="alert alert-info">Entries are reviewed before they appear publicly. Approved entries and your display name become public when judging starts. You can edit or withdraw until submissions close.</p>
+  {{ forms.error_summary(errors) }}
+  <form method="post" class="form section" data-warn-unsaved>
+    {{ forms.csrf() }}
+    {{ forms.input('title', 'Entry title', values.get('title', entry.title if entry else ''), required=True, errors=errors, attrs='maxlength="200"') }}
+    {{ forms.textarea('body', 'Your writing or project description', values.get('body', entry.body if entry else ''), attrs='required maxlength="100000"', errors=errors, rows=18, help='Markdown is supported. Describe what you made and how it meets the competition rules.') }}
+    {{ forms.input('project_url', 'Project or repository link', values.get('project_url', entry.project_url if entry else ''), type='url', optional=True, errors=errors, placeholder='https://github.com/…', attrs='maxlength="2048"') }}
+    <div class="cluster"><button class="button button-primary" type="submit">Submit for approval</button><a class="button" href="{{ url_for('competitions.detail', competition_id=competition.id) }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

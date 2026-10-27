@@ -1,0 +1,77 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}{{ article.display_title }} · My writing · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <p class="eyebrow"><a href="{{ url_for('write.index') }}">My writing</a></p>
+    <h1>{{ article.display_title }}</h1>
+    {% if article.subtitle %}<p class="lead">{{ article.subtitle }}</p>{% endif %}
+    {{ ui.workflow_steps(article) }}
+  </header>
+
+  <div class="status-card tone-{{ status_info.tone }}">
+    <div>{{ ui.status(article.status) }}</div>
+    <p>{{ status_info.for_writer }}</p>
+    <div class="cluster">
+      {% if can_edit %}
+      <a class="button{% if article.status in ('draft', 'changes_requested') %} button-primary{% endif %}" href="{{ url_for('write.edit', article_id=article.id) }}">{{ icon("edit") }} {{ "Make changes" if article.status == "changes_requested" else "Edit" }}</a>
+      {% endif %}
+      {% for move in transitions %}
+      <form method="post" action="{{ url_for('write.action', article_id=article.id) }}"{% if move.confirm %} data-confirm="{{ move.confirm }}"{% endif %}>
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="{{ move.action }}">
+        <button class="button{% if move.style == 'primary' and not can_edit %} button-primary{% endif %}" type="submit">{{ move.label }}</button>
+      </form>
+      {% endfor %}
+      {% if article.status == "published" %}
+      <a class="button button-primary" href="{{ url_for('public.article', slug=article.slug) }}">{{ icon("external") }} Read it on the site</a>
+      {% else %}
+      <a class="button button-ghost" href="{{ url_for('public.article', slug=article.slug) }}">{{ icon("eye") }} Preview</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="section" id="conversation" aria-labelledby="conversation-heading">
+    <h2 id="conversation-heading">Conversation with the editors</h2>
+    {% if events %}
+    <ol class="timeline">
+      {% for event in events %}{{ ui.timeline_item(event) }}{% endfor %}
+    </ol>
+    {% else %}
+    <p class="muted">Nothing here yet. When an editor leaves feedback it appears here, and we'll email you too.</p>
+    {% endif %}
+    {% if article.status != "draft" %}
+    <form class="form section" method="post" action="{{ url_for('write.comment', article_id=article.id) }}">
+      {{ forms.csrf() }}
+      {{ forms.textarea("body", "Write to the editors", "", rows=3, required=True,
+                        help="Questions, context, or a reply to their feedback. Markdown works.") }}
+      <div class="form-actions"><button class="button" type="submit">{{ icon("send") }} Send</button></div>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="section" aria-labelledby="piece-heading">
+    <div class="section-heading">
+      <h2 id="piece-heading">Your piece</h2>
+      <a href="{{ url_for('write.history', article_id=article.id) }}">{{ icon("history") }} Version history</a>
+    </div>
+    <p class="meta">
+      <span>{{ pluralize(article.word_count, "word") }}</span>
+      {% if article.section %}<span>{{ article.section.name }}</span>{% endif %}
+      {% if article.authors|length > 1 %}<span>Written with {{ article.authors[1:]|map(attribute="display_name")|join(", ") }}</span>{% endif %}
+      {% if article.submitted_at %}<span>Submitted {{ ui.ago(article.submitted_at) }}</span>{% endif %}
+    </p>
+    {% if article.author_note %}
+    <div class="card"><p class="small muted">Your note to the editors</p>{{ article.author_note|markdown }}</div>
+    {% endif %}
+    <details class="card section">
+      <summary><strong>Read what you submitted</strong></summary>
+      <div class="prose section">{{ article.body|markdown }}</div>
+    </details>
+  </section>
+</div>
+{% endblock %}

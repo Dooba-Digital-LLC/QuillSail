@@ -1,0 +1,48 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}{{ "New page" if creating else page.title }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.pages') }}">Pages</a></p>{% endblock %}
+{% block actions %}
+  {% if not creating %}<a class="button" href="{{ url_for('public.page', slug=page.slug) }}">{{ icon("eye") }} View</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+{{ forms.error_summary(errors) }}
+<form method="post" class="grid-main-side" data-warn-unsaved>
+  {{ forms.csrf() }}
+  <div class="panel">
+    <div class="panel-body form">
+      {{ forms.input("title", "Title", form.get("title", page.title), errors=errors, required=True) }}
+      {{ forms.textarea("body", "Content", form.get("body", page.body), rows=22, cls="code-input",
+                        help="Markdown: ## for headings, **bold**, [links](https://…), - lists.") }}
+    </div>
+  </div>
+  <aside class="stack">
+    <section class="panel">
+      <div class="panel-header"><h2>Settings</h2></div>
+      <div class="panel-body form">
+        {{ forms.input("slug", "Web address", form.get("slug", page.slug), errors=errors, optional=creating,
+                       help="The page lives at " ~ external_url("public.home") ~ "<address>. Leave blank to use the title.") }}
+        {{ forms.checkbox("is_published", "Visible to readers", page.is_published if not form else form.get("is_published")) }}
+        {{ forms.checkbox("show_in_nav", "Show in the site menu", page.show_in_nav if not form else form.get("show_in_nav")) }}
+        {{ forms.input("nav_position", "Menu order", form.get("nav_position", page.nav_position), type="number", optional=True,
+                       help="Lower numbers come first.") }}
+        <button class="button button-primary" type="submit">{{ "Create page" if creating else "Save page" }}</button>
+      </div>
+    </section>
+    {% if not creating %}
+    <section class="panel">
+      <div class="panel-body">
+        <button class="link-button danger" type="submit" name="action" value="delete" form="delete-page">{{ icon("trash") }} Delete this page</button>
+      </div>
+    </section>
+    {% endif %}
+  </aside>
+</form>
+{% if not creating %}
+<form id="delete-page" method="post" data-confirm="Delete “{{ page.title }}”? Links to it will stop working.">
+  {{ forms.csrf() }}
+  <input type="hidden" name="action" value="delete">
+</form>
+{% endif %}
+{% endblock %}

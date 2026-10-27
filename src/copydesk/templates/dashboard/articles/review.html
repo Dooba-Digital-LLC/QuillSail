@@ -1,0 +1,218 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}{{ article.display_title }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.articles') }}">Articles</a></p>{% endblock %}
+{% block lead %}<p class="lead cluster">{{ ui.status(article.status) }} <span>{{ status_info.for_editor }}</span></p>{% endblock %}
+{% block actions %}
+  {% if can_edit %}<a class="button" href="{{ url_for('write.edit', article_id=article.id) }}">{{ icon("edit") }} Edit the text</a>{% endif %}
+  <a class="button button-ghost" href="{{ url_for('public.article', slug=article.slug) }}">{{ icon("eye") }} {{ "View on the site" if article.is_published else "Preview the page" }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid-main-side">
+  <div class="stack">
+    <section class="panel" aria-labelledby="piece-heading">
+      <div class="panel-header">
+        <h2 id="piece-heading">The piece</h2>
+        <span class="small muted">
+          {{ pluralize(article.word_count, "word") }} ·
+          <a href="{{ url_for('write.history', article_id=article.id) }}">{{ pluralize(revision_count, "saved version") }}</a>
+        </span>
+      </div>
+      <div class="panel-body stack">
+        {% if article.source_url %}<p class="blog-source">Offered from a blog{% if article.source_author %} by {{ article.source_author }}{% endif %}. <a href="{{ article.source_url }}" target="_blank" rel="noopener noreferrer ugc">Review the original post {{ icon('external') }}</a></p>{% endif %}
+        <div class="stack">
+          {% for author in article.authors %}
+          <div class="cluster">
+            {{ ui.avatar(author, "sm") }}
+            {{ ui.person(author) }}
+            <span class="small muted">{{ author.email }}</span>
+            {% for membership in author.active_memberships if membership.group.is_audience %}
+              {% set fields = membership.public_fields() %}
+              {% if fields %}<span class="small muted">({% for label, value in fields %}{{ label }}: {{ value }}{% if not loop.last %}; {% endif %}{% endfor %})</span>{% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if article.author_note %}
+        <div class="alert">
+          {{ icon("message") }}
+          <div class="alert-body"><p><strong>Note from the writer</strong></p>{{ article.author_note|markdown }}</div>
+        </div>
+        {% endif %}
+
+        <article>
+          {% if article.section %}<p class="eyebrow">{{ article.section.name }}</p>{% endif %}
+          <h2 class="review-title">{{ article.display_title }}</h2>
+          {% if article.subtitle %}<p class="lead">{{ article.subtitle }}</p>{% endif %}
+          {% if article.cover_image %}
+          <figure class="article-cover">
+            <img src="{{ upload_url(article.cover_image) }}" alt="{{ article.cover_alt }}">
+            <figcaption>Alt text: {{ article.cover_alt or "missing" }}</figcaption>
+          </figure>
+          {% endif %}
+          <div class="prose">{{ article.body|markdown }}</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="conversation" aria-labelledby="conversation-heading">
+      <div class="panel-header">
+        <h2 id="conversation-heading">Conversation</h2>
+        <span class="small muted">Comments go to the writer. Internal notes stay between editors.</span>
+      </div>
+      <div class="panel-body">
+        {% if events %}
+        <ol class="timeline">
+          {% for event in events %}{{ ui.timeline_item(event) }}{% endfor %}
+        </ol>
+        {% else %}
+        <p class="muted">No comments yet.</p>
+        {% endif %}
+        <form class="form section" method="post" action="{{ url_for('dash.article_comment', article_id=article.id) }}">
+          {{ forms.csrf() }}
+          {{ forms.textarea("body", "Add a comment", "", rows=4, required=True, help="Markdown works. Be specific and kind.") }}
+          <fieldset class="fieldset">
+            <legend>Who should see it?</legend>
+            <div class="cluster">
+              <label class="check"><input type="radio" name="visibility" value="writer" checked> <span>The writer and editors</span></label>
+              <label class="check"><input type="radio" name="visibility" value="internal"> <span>Editors only (internal note)</span></label>
+            </div>
+          </fieldset>
+          <div class="form-actions"><button class="button" type="submit">{{ icon("send") }} Add comment</button></div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack" aria-label="Actions and settings">
+    <section class="panel">
+      <div class="panel-header"><h2>Decision</h2></div>
+      <div class="panel-body stack">
+        {% for move in transitions %}
+          {% set button_class = "button-primary" if move.style == "primary" else ("button-danger" if move.style == "danger" else "") %}
+          {% if move.message == "none" %}
+          <form method="post" action="{{ url_for('dash.article_transition', article_id=article.id) }}"{% if move.confirm %} data-confirm="{{ move.confirm }}"{% endif %}>
+            {{ forms.csrf() }}
+            <input type="hidden" name="action" value="{{ move.action }}">
+            <button class="button button-block {{ button_class }}" type="submit">{{ move.label }}</button>
+          </form>
+          {% else %}
+          <details class="decision">
+            <summary class="button button-block {{ button_class }}">{{ move.label }}…</summary>
+            <form class="form" method="post" action="{{ url_for('dash.article_transition', article_id=article.id) }}">
+              {{ forms.csrf() }}
+              <input type="hidden" name="action" value="{{ move.action }}">
+              <div class="field">
+                <label for="msg-{{ move.action }}">{{ move.message_label }}</label>
+                <textarea id="msg-{{ move.action }}" name="message" rows="4"{% if move.message == "required" %} required{% endif %}></textarea>
+              </div>
+              <button class="button {{ button_class or 'button-primary' }}" type="submit">{{ move.label }}</button>
+            </form>
+          </details>
+          {% endif %}
+        {% else %}
+          <p class="muted">Nothing to decide right now.</p>
+        {% endfor %}
+        {% for move in writer_transitions %}
+          <form method="post" action="{{ url_for('write.action', article_id=article.id) }}"{% if move.confirm %} data-confirm="{{ move.confirm }}"{% endif %}>
+            {{ forms.csrf() }}
+            <input type="hidden" name="action" value="{{ move.action }}">
+            <button class="button button-block" type="submit">{{ move.label }} (as a writer)</button>
+          </form>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h2>Assigned editor</h2></div>
+      <div class="panel-body">
+        <form class="form" method="post" action="{{ url_for('dash.article_assign', article_id=article.id) }}">
+          {{ forms.csrf() }}
+          <div class="field">
+            <label class="visually-hidden" for="f-editor">Assigned editor</label>
+            <select id="f-editor" name="editor_id">
+              <option value="">Nobody</option>
+              {% for editor in editors %}
+              <option value="{{ editor.id }}"{% if editor.id == article.assigned_editor_id %} selected{% endif %}>{{ editor.display_name }}{% if editor.id == current_user.id %} (you){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="button button-small" type="submit">Save</button>
+        </form>
+      </div>
+    </section>
+
+    {% if can("publish") %}
+    <section class="panel">
+      <div class="panel-header"><h2>Publishing settings</h2></div>
+      <div class="panel-body">
+        <form class="form" method="post" action="{{ url_for('dash.article_settings', article_id=article.id) }}">
+          {{ forms.csrf() }}
+          {% set section_options = [("", "No section")] %}
+          {% for section in sections %}{% set _ = section_options.append((section.id, section.name)) %}{% endfor %}
+          {{ forms.select("section_id", "Section", section_options, article.section_id or "") }}
+          {{ forms.input("slug", "Web address", article.slug, help="The last part of " ~ external_url("public.article", slug=article.slug)) }}
+          {{ forms.textarea("excerpt", "Summary", article.excerpt, rows=3, optional=True,
+                            help="Shown in article lists and emails. Leave blank to use the first paragraph.") }}
+          <fieldset class="fieldset">
+            <legend>Who can read it</legend>
+            <label class="check"><input type="radio" name="visibility" value="public"{% if article.visibility == "public" %} checked{% endif %}> <span>Everyone</span></label>
+            <label class="check"><input type="radio" name="visibility" value="members"{% if article.visibility == "members" %} checked{% endif %}> <span>Signed-in members</span></label>
+            <label class="check"><input type="radio" name="visibility" value="groups"{% if article.visibility == "groups" %} checked{% endif %}> <span>Only some groups</span></label>
+            <div class="pill-choices" data-show-if="visibility:groups">
+              {% set chosen = article.visibility_groups|map(attribute="id")|list %}
+              {% for group in audience_groups %}
+              <label class="pill-choice"><input type="checkbox" name="visibility_groups" value="{{ group.id }}"{% if group.id in chosen %} checked{% endif %}><span>{{ group.name }}</span></label>
+              {% endfor %}
+            </div>
+          </fieldset>
+          {{ forms.checkbox("featured", "Feature on the home page", article.featured) }}
+          <button class="button" type="submit">Save settings</button>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if open_issues or appears_in %}
+    <section class="panel">
+      <div class="panel-header"><h2>Newsletter</h2></div>
+      <div class="panel-body stack">
+        {% if appears_in %}<p class="small">In issue {% for number in appears_in %}#{{ number }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+        {% if open_issues %}
+        <form method="post" action="{{ url_for('dash.article_add_to_issue', article_id=article.id) }}" class="stack">
+          {{ forms.csrf() }}
+          <div class="field">
+            <label for="f-issue">Add to an issue</label>
+            <select id="f-issue" name="issue_id">
+              {% for issue in open_issues %}<option value="{{ issue.id }}">#{{ issue.number }} {{ issue.display_title }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="button button-small" type="submit">{{ icon("plus") }} Add to issue</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="panel">
+      <div class="panel-header"><h2>Details</h2></div>
+      <div class="panel-body stack">
+        <dl class="definition-list small">
+          <dt>Started</dt><dd>{{ article.created_at|datetime }}</dd>
+          {% if article.submitted_at %}<dt>Submitted</dt><dd>{{ article.submitted_at|datetime }}</dd>{% endif %}
+          {% if article.published_at %}<dt>Published</dt><dd>{{ article.published_at|datetime }}</dd>{% endif %}
+          <dt>Tags</dt><dd>{{ article.tags|map(attribute="name")|join(", ") or "None" }}</dd>
+        </dl>
+        {% if can("edit_any") and article.status not in ("published", "accepted") %}
+        <form method="post" action="{{ url_for('dash.article_delete', article_id=article.id) }}" data-confirm="Delete this article and its history for good? This can't be undone.">
+          {{ forms.csrf() }}
+          <button class="link-button danger" type="submit">{{ icon("trash") }} Delete this article</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

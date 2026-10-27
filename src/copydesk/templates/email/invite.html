@@ -1,0 +1,11 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}{{ inviter.display_name }} created an account for you at {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">You're invited to {{ site.name }}</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+<p style="{{ es.p }}">{{ inviter.display_name }} created an account for you. Choose a password to get started.</p>
+{{ m.button(url, "Choose my password") }}
+<p style="{{ es.small }}">The link works for a week. Your username is <strong>{{ user.username }}</strong> and you sign in with this email address.</p>
+{{ m.link_fallback(url) }}
+{% endblock %}

@@ -1,0 +1,40 @@
+/* All designer rules are scoped to public pages. Custom themes may override them. */
+.publication .logo-dark{display:none}.publication .brand{gap:12px}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .publication .logo-light{display:none}:root:not([data-theme=light]) .publication .logo-dark{display:block}}
+:root[data-theme=dark] .publication .logo-light{display:none}:root[data-theme=dark] .publication .logo-dark{display:block}
+.publication.designed{background:var(--bg);color:var(--text);font-family:var(--font-article)}
+.publication.designed .site-header,.publication.designed .site-footer{background:var(--surface);color:var(--text)}
+.publication.designed .brand-logo{height:var(--logo-height);max-height:none;max-width:min(420px,55vw);width:auto;object-fit:contain}
+.publication.designed .brand,.publication.designed .footer-brand{font-family:var(--font-display)}
+.publication.designed h1,.publication.designed h2,.publication.designed h3{font-family:var(--font-display)}
+.publication.designed .prose{font-family:var(--font-article);font-size:var(--design-size);line-height:var(--design-leading)}
+.publication.designed .prose p,.publication.designed .prose li{line-height:var(--design-leading)}
+.publication.designed .issue-body{max-width:var(--measure);width:100%}
+.publication.designed .issue-block{padding:var(--design-space) 0;margin-top:var(--design-space)}
+.publication.designed .issue-block h2{font-size:clamp(1.35rem,2.3vw,2rem);line-height:1.18}
+.publication.designed .issue-header{padding-block:calc(var(--design-space)*1.5);max-width:100%}
+.publication.designed .issue-header h1{max-width:22ch;margin-inline:auto;font-size:clamp(2.2rem,5vw,4.3rem);line-height:1.07;letter-spacing:-.035em}
+.publication.masthead-center .header-inner{flex-wrap:wrap;justify-content:center;padding-block:24px;gap:18px}
+.publication.masthead-center .brand{flex-basis:100%;justify-content:center;font-size:clamp(1.8rem,4vw,3.5rem);text-align:center}
+.publication.masthead-center .site-nav{margin-inline:0}.publication.masthead-center .header-actions{margin-left:0}
+.publication.layout-cards .issue-block{padding:var(--design-space);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.publication.layout-columns .issue-body{max-width:var(--container)}
+.publication.layout-columns .issue-body>.prose{max-width:var(--measure);margin-inline:auto}
+.publication.layout-columns .issue-story-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:calc(var(--design-space)*1.5)}
+.publication.layout-columns .issue-block{min-width:0}.publication.layout-columns .issue-block .prose{font-size:calc(var(--design-size) - 1px)}
+.publication.layout-columns .issue-block-heading{grid-column:1/-1}
+.publication.design-broadsheet .site-header{border-block:4px double var(--text)}
+.publication.design-broadsheet .brand{font-weight:900;letter-spacing:-.05em}.publication.design-broadsheet .issue-header{border-bottom:2px solid var(--text)}
+.publication.design-broadsheet .issue-header h1{font-weight:800}.publication.design-broadsheet .eyebrow{color:var(--text);letter-spacing:.1em}
+.publication.design-broadsheet .issue-block{border-top:1px solid var(--text)}
+.publication.design-broadsheet .issue-block-heading{border-top:3px double var(--text)}
+.publication.design-brief .issue-header h1{font-weight:850;letter-spacing:-.045em}.publication.design-brief .issue-body{margin-inline:auto}
+.publication.design-brief .issue-block{border-top:0;border-left:3px solid var(--accent);padding:0 0 0 20px;margin-bottom:32px}
+.publication.design-brief .issue-block h2{font-weight:800}.publication.design-brief .eyebrow{color:var(--accent)}
+.publication.design-reference .issue-body{background:var(--surface);border:1px solid var(--border);padding:clamp(18px,4vw,48px)}
+.publication.design-reference .issue-header h1{font-weight:400;letter-spacing:0}.publication.design-reference .issue-block h2{font-weight:400;border-bottom:1px solid var(--border);padding-bottom:8px}
+.publication.design-reference .issue-block{border:0;padding-block:12px}.publication.design-reference .brand{font-weight:400}
+.publication.design-reference .prose a{text-decoration:underline;text-decoration-thickness:1px}.publication.design-reference .eyebrow{text-transform:none;letter-spacing:0}
+.publication.design-canvas .site-header{margin:16px;border:1px solid var(--border);border-radius:var(--radius)}
+.publication.design-canvas .issue-header h1{color:var(--accent)}.publication.design-canvas .card-callout{border-radius:var(--radius);background:var(--surface)}
+@media(max-width:720px){.publication.layout-columns .issue-story-list{grid-template-columns:1fr}.publication.masthead-center .header-inner{padding-block:16px}.publication.masthead-center .brand{flex-basis:auto;margin-right:auto;font-size:1.4rem}.publication.masthead-center .site-nav{width:100%}.publication.masthead-center .header-actions{margin-left:auto}.publication.designed .brand-logo{max-width:45vw;height:auto;max-height:var(--logo-height)}.publication.designed .issue-header h1{font-size:clamp(2rem,9vw,3.2rem)}.publication.layout-cards .issue-block{padding:20px}}

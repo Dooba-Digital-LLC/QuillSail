@@ -1,0 +1,50 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Sections{% endblock %}
+{% block lead %}<p class="lead">Sections organise articles, like the parts of a newspaper. Writers pick one when they submit.</p>{% endblock %}
+
+{% block content %}
+<div class="grid-main-side">
+  <div class="stack">
+    {% for section in sections %}
+    <details class="panel">
+      <summary class="panel-header">
+        <h2>{{ section.name }}</h2>
+        <span class="small muted">{{ pluralize(counts.get(section.id, 0), "published article") }}{% if not section.accepts_submissions %} · not offered to writers{% endif %}</span>
+      </summary>
+      <form class="panel-body form" method="post">
+        {{ forms.csrf() }}
+        <input type="hidden" name="section_id" value="{{ section.id }}">
+        <div class="field-row">
+          <div class="field"><label for="sn-{{ section.id }}">Name</label><input id="sn-{{ section.id }}" type="text" name="name" value="{{ section.name }}" required></div>
+          <div class="field"><label for="ss-{{ section.id }}">Web address</label><input id="ss-{{ section.id }}" type="text" name="slug" value="{{ section.slug }}"></div>
+          <div class="field"><label for="sp-{{ section.id }}">Order</label><input id="sp-{{ section.id }}" type="number" name="position" value="{{ section.position }}"></div>
+        </div>
+        <div class="field"><label for="sd-{{ section.id }}">Description <span class="optional">(optional)</span></label><textarea id="sd-{{ section.id }}" name="description" rows="2">{{ section.description }}</textarea></div>
+        <label class="check"><input type="checkbox" name="accepts_submissions" value="1"{% if section.accepts_submissions %} checked{% endif %}> <span>Writers can choose this section</span></label>
+        <div class="form-actions">
+          <button class="button button-primary button-small" type="submit" name="action" value="save">Save</button>
+          <button class="button button-danger button-small" type="submit" name="action" value="delete" data-confirm="Delete the {{ section.name }} section? Its articles stay, without a section.">Delete</button>
+          <a class="small" href="{{ url_for('public.section', slug=section.slug) }}">View on the site</a>
+        </div>
+      </form>
+    </details>
+    {% else %}
+    <p class="muted">No sections yet.</p>
+    {% endfor %}
+  </div>
+
+  <aside>
+    <form class="panel" method="post">
+      <div class="panel-header"><h2>Add a section</h2></div>
+      <div class="panel-body form">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="add">
+        {{ forms.input("name", "Name", "", required=True, errors=errors) }}
+        {{ forms.textarea("description", "Description", "", rows=2, optional=True) }}
+        <button class="button" type="submit">{{ icon("plus") }} Add section</button>
+      </div>
+    </form>
+  </aside>
+</div>
+{% endblock %}

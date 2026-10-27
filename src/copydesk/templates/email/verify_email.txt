@@ -1,0 +1,8 @@
+Hi {{ user.display_name }},
+
+Thanks for joining {{ site.name }}. Open this link to confirm your email address. Then you can start writing:
+
+{{ url }}
+
+The link works for three days. If you didn't create an account, you can safely ignore this email.
+{% include "email/_signature.txt" %}

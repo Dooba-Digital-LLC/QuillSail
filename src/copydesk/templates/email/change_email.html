@@ -1,0 +1,12 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}Confirm that you want to use this address for {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Confirm your new email address</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+<p style="{{ es.p }}">You asked to change the email address on your {{ site.name }} account to <strong>{{ new_email }}</strong>. Click the button to confirm.</p>
+{{ m.button(url, "Use this email address") }}
+<p style="{{ es.small }}">The link works for two days. If you didn't ask for this, ignore this email and nothing will change.</p>
+{{ m.link_fallback(url) }}
+{% endblock %}
+{% block footer %}This email was sent because someone asked to use this address for an account at {{ site.name }}.{% endblock %}

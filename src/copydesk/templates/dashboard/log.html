@@ -1,0 +1,54 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Activity log{% endblock %}
+{% block lead %}<p class="lead">A permanent record of changes: decisions on articles, issues sent, group changes, settings and more.</p>{% endblock %}
+
+{% block content %}
+<form class="toolbar" method="get">
+  <div class="field">
+    <label for="f-area">Show</label>
+    <select id="f-area" name="area" data-autosubmit>
+      {% for key, label in areas %}<option value="{{ key }}"{% if key == area %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-who">By username</label>
+    <input id="f-who" type="search" name="who" value="{{ who }}" placeholder="e.g. jane-doe">
+  </div>
+  <button class="button" type="submit">Apply</button>
+</form>
+
+{% if page.items %}
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th scope="col">When</th><th scope="col">What happened</th><th scope="col">Details</th></tr></thead>
+    <tbody>
+      {% for entry in page.items %}
+      <tr>
+        <td class="nowrap"><time datetime="{{ entry.created_at|isodate }}">{{ entry.created_at|datetime }}</time></td>
+        <td>
+          <strong>{{ entry.actor.display_name if entry.actor else "QuillSail" }}</strong>
+          {{ describe(entry) }}
+          {% if entry.target_type == "article" and entry.target_id %}<a href="{{ url_for('dash.article', article_id=entry.target_id) }}">{{ entry.target_label }}</a>
+          {% elif entry.target_type == "issue" and entry.target_id %}<a href="{{ url_for('dash.issue_report', issue_id=entry.target_id) }}">{{ entry.target_label }}</a>
+          {% elif entry.target_type == "user" and entry.target_id %}<a href="{{ url_for('dash.member', user_id=entry.target_id) }}">{{ entry.target_label }}</a>
+          {% else %}{{ entry.target_label }}{% endif %}
+        </td>
+        <td class="small muted">
+          {% if entry.details.get("from") and entry.details.get("to") %}{{ STATUSES[entry.details["from"]].label if entry.details["from"] in STATUSES else entry.details["from"] }} → {{ STATUSES[entry.details["to"]].label if entry.details["to"] in STATUSES else entry.details["to"] }}
+          {% elif entry.details.get("user") %}{{ entry.details.get("user") }}{% if entry.details.get("reason") %}: {{ entry.details.get("reason") }}{% endif %}
+          {% elif entry.details.get("summary") %}“{{ entry.details.get("summary") }}”
+          {% elif entry.details.get("sent") is not none %}{{ entry.details.get("sent") }} sent, {{ entry.details.get("failed", 0) }} failed
+          {% elif entry.details.get("added") is not none %}{{ entry.details.get("added") }} added, {{ entry.details.get("existing") }} already there
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{{ ui.pagination(page, "dash.log", area=area or None, who=who or None) }}
+{% else %}
+{{ ui.empty("Nothing logged yet", icon_name="activity") }}
+{% endif %}
+{% endblock %}

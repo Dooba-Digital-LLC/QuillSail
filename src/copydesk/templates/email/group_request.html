@@ -1,0 +1,11 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}{{ membership.user.display_name }} asked to join {{ membership.group.name }}.{% endblock %}
+{% block content %}
+<p style="{{ es.label }}">Request to join a group</p>
+<h1 style="{{ es.h1 }}">{{ membership.user.display_name }} wants to join {{ membership.group.name }}</h1>
+<p style="{{ es.p }}">{{ membership.user.email }}</p>
+{% for spec in membership.group.fields %}{% if membership.data.get(spec.key) %}<p style="{{ es.p }}margin-bottom:4px;"><strong>{{ spec.label }}:</strong> {{ membership.data.get(spec.key) }}</p>{% endif %}{% endfor %}
+{% if membership.note %}<div style="{{ es.quote }}">{{ membership.note }}</div>{% endif %}
+{{ m.button(url, "Approve or turn down") }}
+{% endblock %}

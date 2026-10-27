@@ -1,0 +1,135 @@
+{% extends "layout/base.html" %}
+{% import "macros/ui.html" as ui with context %}
+
+{% block body_class %}publication{% if design.enabled %} designed design-{{ design.style }} layout-{{ design.issue_layout }} density-{{ design.density }} masthead-{{ design.masthead }}{% endif %}{% endblock %}
+{% block custom_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/publication.css', v=version) }}">
+<style nonce="{{ csp_nonce() }}">{{ design_tokens }}</style>
+{% if design_preview and setting('appearance.custom_css') %}
+<style nonce="{{ csp_nonce() }}">{{ setting('appearance.custom_css')|replace('<', '\\3c ')|safe }}</style>
+{% elif setting('appearance.custom_css') %}
+<link rel="stylesheet" href="{{ url_for('public.custom_css', v=setting('appearance.custom_css')|length) }}">
+{% endif %}
+{% endblock %}
+
+{% block body %}
+<header class="site-header">
+  <div class="container header-inner" data-nav>
+    <a class="brand" href="{{ url_for('public.home') }}">
+      {% if appearance_image() and design.brand_display != 'name' %}
+        <img class="brand-logo{% if appearance_image('logo_dark') %} logo-light{% endif %}" src="{{ appearance_image() }}" alt="{{ site.name if design.brand_display != 'both' else '' }}">
+        {% if appearance_image('logo_dark') %}<img class="brand-logo logo-dark" src="{{ appearance_image('logo_dark') }}" alt="{{ site.name if design.brand_display != 'both' else '' }}">{% endif %}
+        {% if design.brand_display == 'both' %}<span>{{ site.name }}</span>{% endif %}
+      {% else %}{{ site.name }}
+      {% endif %}
+    </a>
+
+    <button class="button button-small button-ghost nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="cd-nav-menu">
+      {{ icon("menu") }} Menu
+    </button>
+
+    <nav class="site-nav" aria-label="Main">
+      <ul class="nav-list" id="cd-nav-menu">
+        {% for key, label, href in nav_items() %}
+        <li><a href="{{ href }}"{% if active_nav is defined and active_nav == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      {% if current_user.is_authenticated %}
+        <details class="menu">
+          <summary aria-label="Your account">{{ ui.avatar(current_user, "sm") }}</summary>
+          <div class="menu-panel">
+            <div class="menu-heading">
+              <strong>{{ current_user.display_name }}</strong>
+              <span class="small muted">{{ current_user.email }}</span>
+            </div>
+            {% if can("submit") %}
+            <a href="{{ url_for('write.index') }}">{{ icon("pen") }} {{ 'My posts' if blog_mode else 'My writing' }}</a>
+            {% endif %}
+            <a href="{{ url_for('public.person', username=current_user.username) }}">{{ icon("user") }} My profile</a>
+            <a href="{{ url_for('account.profile') }}">{{ icon("sliders") }} Account settings</a>
+            {% if can("review") or can("manage_issues") or can("manage_subscribers") or can("manage_users") or can("manage_settings") or can("manage_pages") or can("manage_groups") or can("view_log") or can("manage_competitions") %}
+            <a href="{{ url_for('dash.overview') }}">{{ icon("layers") }} Dashboard</a>
+            {% endif %}
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit">{{ icon("logout") }} Sign out</button>
+            </form>
+          </div>
+        </details>
+      {% else %}
+        <a class="signin" href="{{ url_for('auth.login', next=request.full_path if request.path != '/' else None) }}">Sign in</a>
+      {% endif %}
+      {% if newsletter_enabled %}<a class="button button-primary button-small" href="{{ url_for('subscribe.subscribe') }}">Subscribe</a>{% endif %}
+    </div>
+  </div>
+  {{ slot('header_end') }}
+</header>
+
+{% if current_user.is_authenticated and not current_user.is_verified %}
+<div class="notice-bar" role="status">
+  <div class="container">
+    <span>{{ icon("mail") }} <strong>Confirm your email address</strong> to start writing. We sent a link to {{ current_user.email }}.</span>
+    <form method="post" action="{{ url_for('auth.resend_verification') }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="link-button" type="submit">Send it again</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% include "partials/flashes.html" %}
+
+<main id="cd-main" class="site-main" tabindex="-1">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <p class="footer-brand">{{ site.name }}</p>
+        {% if site.tagline %}<p>{{ site.tagline }}</p>{% endif %}
+        {% if site.organization %}
+        <p>Published by
+          {% if site.organization_url %}<a href="{{ site.organization_url }}">{{ site.organization }}</a>{% else %}{{ site.organization }}{% endif %}.
+        </p>
+        {% endif %}
+      </div>
+      <div>
+        <h2>Read</h2>
+        <ul>
+          {% if newsletter_enabled %}<li><a href="{{ url_for('public.issues') }}">All issues</a></li>{% endif %}
+          <li><a href="{{ url_for('public.articles') }}">{{ 'All posts' if blog_mode else 'All articles' }}</a></li>
+          <li><a href="{{ url_for('public.search') }}">Search</a></li>
+          <li><a href="{{ url_for('public.feed') }}">RSS feed</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Take part</h2>
+        <ul>
+          <li><a href="{{ url_for('competitions.index') }}">Competitions</a></li>
+          {% if newsletter_enabled %}<li><a href="{{ url_for('subscribe.subscribe') }}">Subscribe by email</a></li>{% endif %}
+          {% if setting('submissions.enabled') %}<li><a href="{{ url_for('write.index') }}">Write for us</a></li>{% endif %}
+          {% if not current_user.is_authenticated %}<li><a href="{{ url_for('auth.join') }}">Create an account</a></li>{% endif %}
+          {% if site.contact_email %}<li><a href="mailto:{{ site.contact_email }}">Contact the editors</a></li>{% endif %}
+        </ul>
+      </div>
+    </div>
+    {% if site.footer %}
+    <div class="small">{{ site.footer|markdown }}</div>
+    {% endif %}
+    {{ slot('footer') }}
+    <div class="footer-bottom">
+      <span>&copy; {{ now().year }} {{ site.organization or site.name }}</span>
+      <span class="cluster">
+        <a href="{{ url_for('public.page', slug='privacy') }}">Privacy</a>
+        <span class="powered-by"><span>Powered by <span class="quillsail-brand">QuillSail</span></span><img class="quillsail-mark" src="{{ url_for('static', filename='brand/quillsail.svg', v=version) }}" width="29" height="24" alt=""></span>
+        <button class="theme-toggle" type="button" data-theme-toggle hidden>{{ icon("sun") }} <span data-theme-label>Theme: automatic</span></button>
+      </span>
+    </div>
+  </div>
+</footer>
+{% endblock %}

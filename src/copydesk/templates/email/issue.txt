@@ -1,0 +1,39 @@
+{% if test %}[TEST EMAIL. Subscribers haven't received this.]
+
+{% endif %}{{ site.name }} · Issue #{{ issue.number }}
+{{ issue.display_title }}
+{{ "=" * (issue.display_title|length) }}
+
+View in your browser: {{ web_url }}
+{% if intro_text %}
+
+{{ intro_text }}
+{% endif %}
+{% for item in items %}
+
+{% if item.kind == "heading" %}
+## {{ item.title|upper }}
+{% elif item.kind == "article" %}
+{% if item.section %}[{{ item.section }}] {% endif %}{{ item.title }}
+By {{ item.byline }}{% if item.reading_minutes %} · {{ item.reading_minutes }} min read{% endif %}
+{% if item.article and item.article.visibility == 'public' and item.article.source_url %}
+Originally published{% if item.article.source_author %} by {{ item.article.source_author }}{% endif %}: {{ item.article.source_url }}
+{% endif %}
+
+{% if item.display == "full" and item.text %}{{ item.text }}{% else %}{{ item.summary }}{% endif %}
+
+Read it: {{ item.url }}
+{% else %}
+{% if item.title %}{{ item.title }}
+{{ "-" * (item.title|length) }}
+{% endif %}{{ item.text }}
+{% endif %}
+{% endfor %}
+
+--
+You're getting this because you subscribed to {{ site.name }}.
+Choose what you get: {{ manage_url }}
+Unsubscribe: {{ unsubscribe_url }}
+{% if setting("newsletter.postal_address") %}
+{{ setting("newsletter.postal_address") }}
+{% endif %}

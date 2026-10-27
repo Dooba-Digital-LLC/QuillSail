@@ -1,0 +1,86 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Articles{% endblock %}
+{% block lead %}<p class="lead">Submissions waiting for review are listed oldest first. Drafts stay private to their writers until they're submitted.</p>{% endblock %}
+{% block actions %}
+  {% if can("submit") %}
+  <form method="post" action="{{ url_for('write.new') }}">{{ forms.csrf() }}<button class="button" type="submit">{{ icon("pen") }} Write an article</button></form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<nav aria-label="Filter by status">
+  <ul class="tabs">
+    {% for key, label, _statuses in tabs %}
+    <li><a href="{{ url_for('dash.articles', tab=key) }}"{% if key == tab %} aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ tab_counts[key] }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<form class="toolbar" method="get" role="search">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div class="field">
+    <label for="f-q">Search</label>
+    <input id="f-q" type="search" name="q" value="{{ q }}" placeholder="Title or writer">
+  </div>
+  <div class="field">
+    <label for="f-section">Section</label>
+    <select id="f-section" name="section" data-autosubmit>
+      <option value="">All sections</option>
+      {% for section in sections %}<option value="{{ section.id }}"{% if section.id == section_id %} selected{% endif %}>{{ section.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-assigned">Assigned to</label>
+    <select id="f-assigned" name="assigned" data-autosubmit>
+      <option value="">Anyone</option>
+      <option value="me"{% if assigned == "me" %} selected{% endif %}>Me</option>
+      <option value="nobody"{% if assigned == "nobody" %} selected{% endif %}>Nobody yet</option>
+    </select>
+  </div>
+  <button class="button" type="submit">Apply</button>
+</form>
+
+{% if page.items %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Article</th>
+        <th scope="col">Writer</th>
+        <th scope="col">Status</th>
+        <th scope="col">Section</th>
+        <th scope="col">Editor</th>
+        <th scope="col">{{ {"review": "Submitted", "published": "Published"}.get(tab, "Updated") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in page.items %}
+      <tr>
+        <td class="primary-cell">
+          <a href="{{ url_for('dash.article', article_id=item.id) }}">{{ item.display_title }}</a>
+          <span class="sub">{{ pluralize(item.word_count, "word") }}{% if item.visibility != "public" %} · {{ ui.lock_chip(item) }}{% endif %}</span>
+        </td>
+        <td>
+          {% for author in item.authors %}
+          {{ author.display_name }}{% for m in author.badge_memberships %} {{ ui.badge(m.group) }}{% endfor %}{% if not loop.last %}<br>{% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ ui.status(item.status) }}</td>
+        <td>{{ item.section.name if item.section else "" }}</td>
+        <td>{{ item.assigned_editor.display_name if item.assigned_editor else "" }}</td>
+        <td class="nowrap">{{ ui.ago(item.submitted_at if tab == "review" else (item.published_at if tab == "published" else item.updated_at)) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{{ ui.pagination(page, "dash.articles", tab=tab, q=q or None, section=section_id, assigned=assigned) }}
+{% else %}
+  {% if tab == "review" and not q %}
+  {{ ui.empty("Nothing waiting for review", "When writers submit pieces they'll appear here, and editors who want them get an email too.", icon_name="inbox") }}
+  {% else %}
+  {{ ui.empty("No articles here", "Try another tab or clear the filters.", icon_name="file") }}
+  {% endif %}
+{% endif %}
+{% endblock %}

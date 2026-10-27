@@ -1,0 +1,57 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Groups and permissions{% endblock %}
+{% block lead %}<p class="lead">Reader groups describe who people are (students, staff, alumni…). Roles decide what people can do. Both can carry permissions.</p>{% endblock %}
+{% block actions %}
+  <a class="button" href="{{ url_for('dash.permission_matrix') }}">{{ icon("shield") }} Who can do what</a>
+{% endblock %}
+
+{% macro group_table(rows) %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th scope="col">Group</th><th scope="col">How people join</th><th scope="col" class="numeric">Members</th><th scope="col" class="numeric">Waiting</th></tr>
+    </thead>
+    <tbody>
+      {% for group in rows %}
+      {% set c = counts.get(group.id, {}) %}
+      <tr>
+        <td class="primary-cell">
+          <span class="cluster">
+            {% if group.show_badge %}{{ ui.badge(group) }}{% endif %}
+            <a href="{{ url_for('dash.group', group_id=group.id) }}">{{ group.name }}</a>
+          </span>
+          <span class="sub">{{ group.description }}</span>
+        </td>
+        <td class="small">
+          {% if group.is_implicit %}Automatic{% if group.slug == "members" %} (confirmed accounts){% endif %}
+          {% else %}{{ policy_text(group) }}{% endif %}
+        </td>
+        <td class="numeric">{{ "—" if group.is_implicit else c.get("active", 0)|number }}</td>
+        <td class="numeric">{% if c.get("pending") %}<a href="{{ url_for('dash.requests') }}">{{ c.get("pending") }}</a>{% else %}0{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% block content %}
+<section class="section">
+  <div class="section-heading">
+    <h2>Reader groups</h2>
+    <a class="button button-small" href="{{ url_for('dash.group_new', kind='audience') }}">{{ icon("plus") }} New reader group</a>
+  </div>
+  <p class="help">These show up on sign-up forms and as badges next to writers' names. Issues and items can be sent to just some of them, and articles can be limited to them.</p>
+  {% if audience %}{{ group_table(audience) }}{% else %}<p class="muted">No reader groups yet.</p>{% endif %}
+</section>
+
+<section class="section">
+  <div class="section-heading">
+    <h2>Roles</h2>
+    <a class="button button-small" href="{{ url_for('dash.group_new', kind='role') }}">{{ icon("plus") }} New role</a>
+  </div>
+  <p class="help">“Everyone” and “Members” apply automatically. Add people to the other roles from their member page.</p>
+  {{ group_table(roles) }}
+</section>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}{{ "New group" if creating else group.name }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.groups') }}">Groups and permissions</a></p>{% endblock %}
+{% block lead %}
+<p class="lead">
+  {% if group.is_implicit %}Everyone {{ "visiting the site" if group.slug == "everyone" else "with a confirmed account" }} is automatically in this group.
+  {% elif group.is_audience %}A reader group: it describes who people are.
+  {% else %}A role: it decides what people can do.{% endif %}
+  {% if not creating and not group.is_implicit %} {{ pluralize(member_count, "member") }}.{% endif %}
+</p>
+{% endblock %}
+
+{% macro field_row(i, spec) %}
+<div class="field-def" data-repeater-row>
+  <div class="field">
+    <label for="fl-{{ i }}">Label</label>
+    <input id="fl-{{ i }}" type="text" name="fields-{{ i }}-label" value="{{ spec.get('label', '') }}" placeholder="e.g. Graduation year">
+  </div>
+  <div class="field">
+    <label for="fk-{{ i }}">Key <span class="optional">(optional)</span></label>
+    <input id="fk-{{ i }}" type="text" name="fields-{{ i }}-key" value="{{ spec.get('key', '') }}" placeholder="graduation_year">
+  </div>
+  <div class="field">
+    <label for="ft-{{ i }}">Type</label>
+    <select id="ft-{{ i }}" name="fields-{{ i }}-type">
+      {% for value, label in field_types %}<option value="{{ value }}"{% if spec.get("type", "text") == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field"><button type="button" class="link-button danger" data-repeater-remove hidden>Remove</button></div>
+  <div class="field wide">
+    <label for="fo-{{ i }}">Options <span class="optional">(only for “Choice from a list”)</span></label>
+    <input id="fo-{{ i }}" type="text" name="fields-{{ i }}-options" value="{{ (spec.get('options') or [])|join(', ') }}" placeholder="Separate options with commas">
+  </div>
+  <div class="cluster wide">
+    <label class="check"><input type="checkbox" name="fields-{{ i }}-required" value="1"{% if spec.get("required") %} checked{% endif %}> <span>Required</span></label>
+    <label class="check"><input type="checkbox" name="fields-{{ i }}-public" value="1"{% if spec.get("public", true) %} checked{% endif %}> <span>Shown on profiles</span></label>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+{{ forms.error_summary(errors) }}
+<form method="post" class="stack" data-warn-unsaved>
+  {{ forms.csrf() }}
+  <section class="panel">
+    <div class="panel-header"><h2>Name and description</h2></div>
+    <div class="panel-body form">
+      <div class="field-row">
+        {{ forms.input("name", "Name", form.get("name", group.name), errors=errors, required=True, help="Plural, as in “Students”.") }}
+        {{ forms.input("member_label", "What one member is called", form.get("member_label", group.member_label), optional=True,
+                       help="Singular, as in “Student”. Used on badges.") }}
+      </div>
+      {% if creating or not group.is_system %}
+      {{ forms.input("slug", "Short name", form.get("slug", group.slug), errors=errors, optional=creating,
+                     help="Lowercase letters, numbers and hyphens. Used in links, CSV imports and the API. Leave blank to make one from the name.") }}
+      {% else %}
+      <p class="help">Short name: <code>{{ group.slug }}</code> (built-in groups keep theirs).</p>
+      {% endif %}
+      {{ forms.textarea("description", "Description", form.get("description", group.description), rows=2, optional=True,
+                        help="Shown when people choose their groups.") }}
+      {% if not group.is_system %}
+      {{ forms.checkbox("is_audience", "This is a reader group", group.is_audience,
+                        help="Reader groups appear on sign-up forms and bylines, and can be used to target issues and articles. Untick for a behind-the-scenes role, such as “Section editors”.") }}
+      {% endif %}
+      {{ forms.input("position", "Order", form.get("position", group.position), type="number", optional=True, help="Lower numbers come first in lists.") }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><h2>Badge</h2></div>
+    <div class="panel-body form">
+      <fieldset class="fieldset">
+        <legend>Color</legend>
+        <div class="cluster">
+          {% for color in colors %}
+          <label class="check"><input type="radio" name="color" value="{{ color }}"{% if group.color == color %} checked{% endif %}> <span class="badge badge-{{ color }}">{{ group.label or "Sample" }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {{ forms.checkbox("show_badge", "Show this badge next to members' names on their writing", group.show_badge) }}
+      {{ forms.input("byline_template", "Extra detail on bylines", form.get("byline_template", group.byline_template), errors=errors, optional=True,
+                     placeholder="Class of {graduation_year}",
+                     help="Shown after the badge, filled in from the custom fields below. Leave blank for just the badge.") }}
+    </div>
+  </section>
+
+  {% if not group.is_implicit %}
+  <section class="panel">
+    <div class="panel-header"><h2>Joining</h2></div>
+    <div class="panel-body form">
+      {% if group.is_admin_group %}
+      <p>Administrators are added by another administrator. Self-service joining and email domain rules are disabled for this group.</p>
+      {% else %}
+      {{ forms.radio_cards("join_policy", "How do people get into this group?", [
+          ("open", "They choose it themselves", "No checks. Good for groups like “Interested in events”."),
+          ("approval", "They ask, and someone approves", "People who manage members get an email for each request."),
+          ("closed", "Only administrators add people", "Doesn't appear on sign-up forms."),
+        ], group.join_policy) }}
+      {{ forms.textarea("auto_join_domains", "Join automatically with these email domains", (group.auto_join_domains or [])|join("\n"), rows=2, optional=True,
+                        help="One per line, such as university.edu. Anyone who confirms an address at one of these domains (or a subdomain) joins straight away.") }}
+      {% endif %}
+      {% if group.is_audience %}
+      {{ forms.checkbox("on_signup_form", "Offer this group on the newsletter sign-up form", group.on_signup_form,
+                        help="Subscribers can say they belong to it, so you can send them items meant for this group. This doesn't give them any permissions.") }}
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="panel-header"><h2>Custom fields</h2><span class="small muted">Extra details members of this group fill in, like a major or graduation year.</span></div>
+    <div class="panel-body">
+      {% if errors.get("fields") %}<p class="error-text" id="f-fields">{{ errors.fields }}</p>{% endif %}
+      <div class="fields-editor" data-repeater>
+        <div class="stack" data-repeater-list>
+          {% for spec in group.fields or [] %}{{ field_row(loop.index0, spec) }}{% endfor %}
+          {{ field_row((group.fields or [])|length, {}) }}
+        </div>
+        <template data-repeater-template>{{ field_row("__INDEX__", {}) }}</template>
+        <p class="help">Rows with no label are ignored.</p>
+        <button type="button" class="button button-small" data-repeater-add hidden>{{ icon("plus") }} Add another field</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><h2>Permissions</h2><a class="small" href="{{ url_for('dash.permission_matrix') }}">See every group's permissions</a></div>
+    <div class="panel-body">
+      {% if group.slug == "admins" %}
+      <p>Administrators always have every permission, so the site can never be locked out.</p>
+      {% else %}
+        {% if group.slug == "everyone" %}<p class="help">Everyone, including people who aren't signed in, gets these. Untick “Read the publication” to make the whole site private.</p>
+        {% elif group.slug == "members" %}<p class="help">Everyone with a confirmed account gets these. To let only some groups submit writing, untick “Write and submit” here and tick it on those groups.</p>
+        {% else %}<p class="help">Members of this group get these on top of everything “Everyone” and “Members” can do.</p>{% endif %}
+        {% for area, items in areas.items() %}
+        <div class="perm-group">
+          <h3>{{ area }}</h3>
+          {% for perm in items %}
+          <label class="check">
+            <input type="checkbox" name="permissions" value="{{ perm.key }}"{% if perm.key in (group.permissions or []) %} checked{% endif %}{% if perm.key not in mine %} disabled{% endif %}>
+            <span class="check-label">
+              <strong>{{ perm.label }}</strong>
+              <span class="help">{{ perm.description }}{% if perm.key not in mine %} You don't have this permission yourself, so you can't change it.{% endif %}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button class="button button-primary" type="submit">{{ "Create group" if creating else "Save group" }}</button>
+    <a class="button button-ghost" href="{{ url_for('dash.groups') }}">Cancel</a>
+  </div>
+</form>
+
+{% if not creating and not group.is_system %}
+<form class="section" method="post" action="{{ url_for('dash.group_delete', group_id=group.id) }}" data-confirm="Delete the {{ group.name }} group? Its members keep their accounts.">
+  {{ forms.csrf() }}
+  <button class="link-button danger" type="submit">{{ icon("trash") }} Delete this group</button>
+</form>
+{% endif %}
+{% endblock %}

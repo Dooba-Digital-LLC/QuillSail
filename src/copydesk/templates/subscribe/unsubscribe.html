@@ -1,0 +1,22 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Unsubscribe · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="center-message">
+  <div class="big-icon">{{ icon("mail") }}</div>
+  {% if subscriber.status == "unsubscribed" %}
+  <h1>You're already unsubscribed</h1>
+  <p class="lead"><strong>{{ subscriber.email }}</strong> won't get any more issues of {{ site.name }}.</p>
+  <a class="button" href="{{ url_for('subscribe.manage', token=subscriber.token) }}">Changed your mind?</a>
+  {% else %}
+  <h1>Unsubscribe from {{ site.name }}?</h1>
+  <p class="lead">We'll stop sending issues to <strong>{{ subscriber.email }}</strong>.</p>
+  <form method="post">
+    <button class="button button-primary" type="submit">Yes, unsubscribe me</button>
+  </form>
+  <p class="muted section">Or <a href="{{ url_for('subscribe.manage', token=subscriber.token) }}">choose what you get</a> instead.</p>
+  {% endif %}
+</div>
+{% endblock %}

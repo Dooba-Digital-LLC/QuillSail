@@ -1,0 +1,154 @@
+{#
+  Form building blocks. Every field gets a visible label, optional help text,
+  an error message tied to the input with aria-describedby, and an id of
+  "f-<name>" so the error summary can link straight to it.
+#}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro error_summary(errors) %}
+{% if errors %}
+<div class="error-summary" role="alert" tabindex="-1">
+  <h2>{{ "There's a problem" if errors|length == 1 else "There are " ~ errors|length ~ " problems" }}</h2>
+  <ul>
+    {% for name, message in errors.items() %}
+    <li><a href="#f-{{ name }}">{{ message }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro _aria(name, help, errors) -%}
+{%- set ids = [] -%}
+{%- if help %}{% set _ = ids.append("f-" ~ name ~ "-help") %}{% endif -%}
+{%- if errors and errors.get(name) %}{% set _ = ids.append("f-" ~ name ~ "-error") %}{% endif -%}
+{%- if ids %} aria-describedby="{{ ids|join(' ') }}"{% endif -%}
+{%- if errors and errors.get(name) %} aria-invalid="true"{% endif -%}
+{%- endmacro %}
+
+{% macro _label(name, label, help, errors, show_optional) %}
+<label for="f-{{ name }}">{{ label }}{% if show_optional %} <span class="optional">(optional)</span>{% endif %}</label>
+{% if help %}<p class="help" id="f-{{ name }}-help">{{ help }}</p>{% endif %}
+{% if errors and errors.get(name) %}<p class="error-text" id="f-{{ name }}-error"><span class="visually-hidden">Error:</span> {{ errors[name] }}</p>{% endif %}
+{% endmacro %}
+
+{% macro input(name, label, value="", type="text", errors=None, help="", required=False, optional=False, placeholder="", autocomplete="", attrs="", cls="") %}
+<div class="field{% if errors and errors.get(name) %} has-error{% endif %} {{ cls }}">
+  {{ _label(name, label, help, errors, optional) }}
+  <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}"
+    {%- if required %} required{% endif %}
+    {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+    {%- if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}
+    {{- _aria(name, help, errors) }} {{ attrs|safe }}>
+</div>
+{% endmacro %}
+
+{% macro textarea(name, label, value="", errors=None, help="", required=False, optional=False, rows=5, placeholder="", attrs="", cls="") %}
+<div class="field{% if errors and errors.get(name) %} has-error{% endif %}">
+  {{ _label(name, label, help, errors, optional) }}
+  <textarea id="f-{{ name }}" name="{{ name }}" rows="{{ rows }}"{% if cls %} class="{{ cls }}"{% endif %}
+    {%- if required %} required{% endif %}
+    {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+    {{- _aria(name, help, errors) }} {{ attrs|safe }}>{{ value if value is not none else '' }}</textarea>
+</div>
+{% endmacro %}
+
+{% macro select(name, label, options, selected="", errors=None, help="", required=False, optional=False, attrs="") %}
+<div class="field{% if errors and errors.get(name) %} has-error{% endif %}">
+  {{ _label(name, label, help, errors, optional) }}
+  <select id="f-{{ name }}" name="{{ name }}"{% if required %} required{% endif %}{{ _aria(name, help, errors) }} {{ attrs|safe }}>
+    {% for value, text in options %}
+    <option value="{{ value }}"{% if value|string == selected|string %} selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+{% macro checkbox(name, label, checked=False, help="", value="1", attrs="") %}
+<div class="field">
+  <label class="check" for="f-{{ name }}">
+    <input type="checkbox" id="f-{{ name }}" name="{{ name }}" value="{{ value }}"{% if checked %} checked{% endif %} {{ attrs|safe }}>
+    <span class="check-label"><strong>{{ label }}</strong>{% if help %}<span class="help">{{ help }}</span>{% endif %}</span>
+  </label>
+</div>
+{% endmacro %}
+
+{#
+  options: list of (value, label, description) tuples.
+#}
+{% macro radio_cards(name, legend, options, selected="", errors=None, help="") %}
+<fieldset class="fieldset{% if errors and errors.get(name) %} has-error{% endif %}" id="f-{{ name }}">
+  <legend>{{ legend }}</legend>
+  {% if help %}<p class="help">{{ help }}</p>{% endif %}
+  {% if errors and errors.get(name) %}<p class="error-text">{{ errors[name] }}</p>{% endif %}
+  <div class="choice-grid">
+    {% for value, text, description in options %}
+    <label class="choice-card">
+      <input type="radio" name="{{ name }}" value="{{ value }}"{% if value|string == selected|string %} checked{% endif %}>
+      <span class="check-label"><strong>{{ text }}</strong>{% if description %}<span class="help">{{ description }}</span>{% endif %}</span>
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro check_cards(name, legend, options, selected=(), errors=None, help="", optional=False) %}
+<fieldset class="fieldset{% if errors and errors.get(name) %} has-error{% endif %}" id="f-{{ name }}">
+  <legend>{{ legend }}{% if optional %} <span class="optional">(optional)</span>{% endif %}</legend>
+  {% if help %}<p class="help">{{ help }}</p>{% endif %}
+  {% if errors and errors.get(name) %}<p class="error-text">{{ errors[name] }}</p>{% endif %}
+  <div class="choice-grid">
+    {% for value, text, description in options %}
+    <label class="choice-card">
+      <input type="checkbox" name="{{ name }}" value="{{ value }}"{% if value|string in selected|map('string')|list %} checked{% endif %}>
+      <span class="check-label"><strong>{{ text }}</strong>{% if description %}<span class="help">{{ description }}</span>{% endif %}</span>
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro pills(name, legend, options, selected=(), help="") %}
+<fieldset class="fieldset subscribe-groups" id="f-{{ name }}">
+  <legend>{{ legend }}</legend>
+  {% if help %}<p class="help">{{ help }}</p>{% endif %}
+  <div class="pill-choices">
+    {% for value, text in options %}
+    <label class="pill-choice">
+      <input type="checkbox" name="{{ name }}" value="{{ value }}"{% if value|string in selected|map('string')|list %} checked{% endif %}>
+      <span>{{ text }}</span>
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro honeypot() %}
+<div class="honeypot" aria-hidden="true">
+  <label for="f-website">Leave this field empty</label>
+  <input id="f-website" type="text" name="website" tabindex="-1" autocomplete="off">
+</div>
+{% endmacro %}
+
+{#
+  The custom fields a group asks its members for (a major, a graduation
+  year...). `values` maps field keys to current values.
+#}
+{% macro group_fields(group, values, errors=None, prefix="field") %}
+<div class="field-row">
+  {% for spec in group.fields %}
+  {% set name = prefix ~ "-" ~ group.slug ~ "-" ~ spec.key %}
+  {% set value = (values or {}).get(spec.key, "") %}
+  {% set help = "Shown on your profile." if spec.public else "Only editors see this." %}
+  {% if spec.type == "select" %}
+    {% set options = [("", "Choose…")] %}
+    {% for option in spec.options or [] %}{% set _ = options.append((option, option)) %}{% endfor %}
+    {{ select(name, spec.label, options, value, errors=errors, help=help, optional=not spec.required) }}
+  {% else %}
+    {{ input(name, spec.label, value, type={"number": "number", "url": "url"}.get(spec.type, "text"),
+             errors=errors, help=help, optional=not spec.required) }}
+  {% endif %}
+  {% endfor %}
+</div>
+{% endmacro %}

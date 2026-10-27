@@ -1,0 +1,32 @@
+{% extends "layout/base.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Set up QuillSail{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block body %}
+<main id="cd-main" class="auth-page">
+  <div class="auth-card wide">
+    <div class="setup-brand">{% include 'partials/brand.html' %}<span class="small muted">{{ version }}</span></div>
+    <h1>Let's set up your publication</h1>
+    <p class="lead">Create the first administrator account. You'll set everything else up from the dashboard.</p>
+
+    {{ forms.error_summary(errors) }}
+
+    <form class="form" method="post" novalidate>
+      {{ forms.csrf() }}
+      {{ forms.input("code", "Setup code", form.get("code"), errors=errors, required=True, autocomplete="off",
+                     help="So nobody else can claim your site first. It's in the server log, and in data/setup-code.txt next to your copydesk.toml.") }}
+      {{ forms.input("site_name", "Publication name", form.get("site_name"), errors=errors, required=True,
+                     placeholder="The Tech Stack") }}
+      {{ forms.select('site_mode', 'Publication type', [('newsletter', 'Newsletter'), ('blog', 'Blog'), ('hybrid', 'Blog + newsletter')], form.get('site_mode', 'newsletter'), errors=errors, help='You can change this later in Settings → General.') }}
+      <hr>
+      {{ forms.input("display_name", "Your name", form.get("display_name"), errors=errors, required=True, autocomplete="name") }}
+      {{ forms.input("email", "Your email address", form.get("email"), type="email", errors=errors, required=True, autocomplete="email") }}
+      {{ forms.input("password", "Choose a password", "", type="password", errors=errors, required=True, autocomplete="new-password",
+                     help="At least 10 characters. A few random words work well.") }}
+      <button class="button button-primary button-block" type="submit">Create my account and finish</button>
+    </form>
+  </div>
+</main>
+{% endblock %}

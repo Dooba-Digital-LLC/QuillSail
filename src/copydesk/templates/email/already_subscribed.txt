@@ -1,0 +1,5 @@
+Someone (probably you) tried to sign this address up for {{ site.name }}, but it's already on the list. Nothing has changed.
+
+Manage your subscription: {{ manage_url }}
+Unsubscribe: {{ unsubscribe_url }}
+{% include "email/_signature.txt" %}

@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "copydesk"
+dynamic = ["version"]
+description = "Self-hosted blogs and newsletters with reader submissions, editorial review, community groups and email delivery."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "The QuillSail contributors" }]
+keywords = [
+    "blog",
+    "newsletter",
+    "cms",
+    "publishing",
+    "email",
+    "submissions",
+    "editorial",
+    "self-hosted",
+    "flask",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: Education",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Email :: Mailing List Servers",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content :: News/Diary",
+    "Topic :: Internet :: WWW/HTTP :: Site Management",
+]
+dependencies = [
+    "Flask>=3.1",
+    "SQLAlchemy>=2.0.30",
+    "alembic>=1.13",
+    "markdown-it-py[linkify]>=3.0",
+    "mdit-py-plugins>=0.4",
+    "Pygments>=2.17",
+    "nh3>=0.2.17",
+    "Pillow>=10.3",
+    "Authlib>=1.3.2",
+    "requests>=2.32",
+    "cryptography>=43",
+    "python-dotenv>=1.0",
+    "premailer>=3.10",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+mysql = ["PyMySQL>=1.1"]
+server = ["gunicorn>=22"]
+dev = ["pytest>=8", "ruff>=0.5", "responses>=0.25", "build>=1.2", "twine>=6", "PyYAML>=6"]
+integration = ["aiosmtpd>=1.4.6", "trustme>=1.2"]
+
+[project.scripts]
+copydesk = "copydesk.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "copydesk.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+copydesk = [
+    "config_template.toml",
+    "templates/**/*",
+    "static/**/*",
+    "themes/**/*",
+    "migrations/*",
+    "migrations/**/*",
+    "extensions/**/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["integration: tests against real local protocol services"]
+filterwarnings = ["error::DeprecationWarning:copydesk.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4"]
+ignore = ["E501", "B008", "SIM108"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/copydesk/migrations/*" = ["E", "W", "I"]

@@ -1,0 +1,37 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Who can do what{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.groups') }}">Groups and permissions</a></p>{% endblock %}
+{% block lead %}<p class="lead">Every permission, and the groups that grant it. People get every permission from every group they're in.</p>{% endblock %}
+
+{% block content %}
+<div class="table-wrap">
+  <table class="table table-matrix">
+    <thead>
+      <tr>
+        <th scope="col">Permission</th>
+        {% for group in groups %}<th scope="col"><a href="{{ url_for('dash.group', group_id=group.id) }}">{{ group.name }}</a></th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for area, items in areas.items() %}
+      <tr><th scope="rowgroup" colspan="{{ groups|length + 1 }}">{{ area }}</th></tr>
+      {% for perm in items %}
+      <tr>
+        <td><strong>{{ perm.label }}</strong><br><span class="small muted">{{ perm.description }}</span></td>
+        {% for group in groups %}
+        <td>
+          {% if group.slug == "admins" or perm.key in (group.permissions or []) %}
+          <span class="yes">{{ icon("check", "Yes") }}</span>
+          {% else %}
+          <span class="no" aria-label="No">·</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

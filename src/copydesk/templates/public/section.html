@@ -1,0 +1,23 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ section.name }} · {{ site.name }}{% endblock %}
+{% block description %}{{ section.description or site.description }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <p class="eyebrow"><a href="{{ url_for('public.articles') }}">Articles</a></p>
+    <h1>{{ section.name }}</h1>
+    {% if section.description %}<p class="lead">{{ section.description }}</p>{% endif %}
+  </header>
+
+  {% if page.items %}
+  <ul class="article-list">
+    {% for item in page.items %}{{ ui.article_item(item, show_section=False) }}{% endfor %}
+  </ul>
+  {{ ui.pagination(page, "public.section", "Newer", "Older", slug=section.slug) }}
+  {% else %}
+  {{ ui.empty("Nothing here yet", "Articles in " ~ section.name ~ " will appear here.", icon_name="file") }}
+  {% endif %}
+</div>
+{% endblock %}

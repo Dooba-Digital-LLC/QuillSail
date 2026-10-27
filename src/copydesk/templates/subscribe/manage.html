@@ -1,0 +1,60 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Your subscription · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card wide">
+    <p class="eyebrow">{{ site.name }}</p>
+    <h1>Your subscription</h1>
+    <p class="lead">For <strong>{{ subscriber.email }}</strong>.</p>
+
+    {% if subscriber.status == "active" %}
+    <div class="status-card tone-success"><p><strong>Subscribed.</strong> You get every issue by email.</p></div>
+    {% elif subscriber.status == "pending" %}
+    <div class="status-card tone-warning"><p><strong>Not confirmed yet.</strong> Click the link in the confirmation email to start getting issues.</p></div>
+    {% else %}
+    <div class="status-card"><p><strong>Not subscribed.</strong> You won't get any issues.</p></div>
+    <form method="post" class="section">
+      <input type="hidden" name="action" value="resubscribe">
+      <button class="button button-primary" type="submit">{{ icon("mail") }} Subscribe again</button>
+    </form>
+    {% endif %}
+
+    {% if subscriber.status in ("active", "pending") %}
+    <form class="form section" method="post">
+      <input type="hidden" name="action" value="save">
+      <div class="field">
+        <label for="f-name">Name <span class="optional">(optional)</span></label>
+        <input id="f-name" type="text" name="name" value="{{ subscriber.name }}" autocomplete="name">
+      </div>
+      {% if groups %}
+      <fieldset class="fieldset subscribe-groups">
+        <legend>Send me what's meant for… <span class="optional">(optional)</span></legend>
+        <p class="help">Some issues include sections just for particular groups.</p>
+        <div class="pill-choices">
+          {% set selected = subscriber.groups|map(attribute="slug")|list %}
+          {% for group in groups %}
+          <label class="pill-choice">
+            <input type="checkbox" name="groups" value="{{ group.slug }}"{% if group.slug in selected %} checked{% endif %}>
+            <span>{{ group.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <div class="form-actions">
+        <button class="button button-primary" type="submit">Save preferences</button>
+      </div>
+    </form>
+
+    <form method="post" class="auth-alt" data-confirm="Stop getting {{ site.name }} by email?">
+      <input type="hidden" name="action" value="unsubscribe">
+      <p>Don't want these emails anymore?</p>
+      <button class="button button-danger" type="submit">Unsubscribe</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

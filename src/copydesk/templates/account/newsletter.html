@@ -1,0 +1,52 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Newsletter{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <h1>Newsletter</h1>
+    <p class="lead">Choose whether {{ site.name }} lands in your inbox.</p>
+  </div>
+</header>
+
+{% set active = subscriber is not none and subscriber.status == "active" %}
+{% set pending = subscriber is not none and subscriber.status == "pending" %}
+
+<div class="status-card {{ 'tone-success' if active else ('tone-warning' if pending else '') }}">
+  {% if active %}
+  <p><strong>You're subscribed</strong> as {{ subscriber.email }}.</p>
+  {% elif pending %}
+  <p><strong>Almost there.</strong> Your subscription starts once you confirm your email address.</p>
+  {% else %}
+  <p><strong>You're not subscribed.</strong> Subscribe to get each new issue by email.</p>
+  {% endif %}
+</div>
+
+<form class="form form-narrow section" method="post">
+  {{ forms.csrf() }}
+  {% if audience %}
+  <fieldset class="fieldset subscribe-groups">
+    <legend>Send me what's meant for… <span class="optional">(optional)</span></legend>
+    <p class="help">Some issues include sections just for particular groups.</p>
+    <div class="pill-choices">
+      {% set selected = subscriber.groups|map(attribute="slug")|list if subscriber else current_user.audience_memberships|map(attribute="group.slug")|list %}
+      {% for group in audience %}
+      <label class="pill-choice">
+        <input type="checkbox" name="groups" value="{{ group.slug }}"{% if group.slug in selected %} checked{% endif %}>
+        <span>{{ group.label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+  <div class="form-actions">
+    {% if active or pending %}
+    <button class="button button-primary" type="submit" name="action" value="update">Save preferences</button>
+    <button class="button button-danger" type="submit" name="action" value="unsubscribe" data-confirm="Stop getting {{ site.name }} by email?">Unsubscribe</button>
+    {% else %}
+    <button class="button button-primary" type="submit" name="action" value="subscribe">{{ icon("mail") }} Subscribe</button>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

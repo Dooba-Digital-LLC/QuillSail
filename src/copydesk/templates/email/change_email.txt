@@ -1,0 +1,8 @@
+Hi {{ user.display_name }},
+
+You asked to change the email address on your {{ site.name }} account to {{ new_email }}. Open this link to confirm:
+
+{{ url }}
+
+The link works for two days. If you didn't ask for this, ignore this email and nothing will change.
+{% include "email/_signature.txt" %}

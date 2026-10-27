@@ -1,0 +1,10 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}Private preview link{% endblock %}
+{% block content %}
+<section class="panel"><div class="panel-body stack">
+  <p>Share this link with the people reviewing <strong>{{ issue.display_title }}</strong>. It does not publish the issue or email subscribers.</p>
+  {{ forms.input('share_url', 'Private preview link', share_url, attrs='readonly') }}
+  <p class="small muted">Copy the complete address, including the secret key. For privacy, the key is shown only now. You can generate a replacement or revoke access from the issue preview.</p>
+  <div class="button-row"><a class="button button-primary" href="{{ share_url }}">Open private preview</a><a class="button" href="{{ url_for('dash.issue_preview', issue_id=issue.id) }}">Back to issue preview</a></div>
+</div></section>
+{% endblock %}

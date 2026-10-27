@@ -1,0 +1,49 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Subscribe · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card wide">
+    <p class="eyebrow">{{ site.name }}</p>
+    <h1>{{ setting("newsletter.signup_heading") }}</h1>
+    {% if site.description %}<p class="lead">{{ site.description }}</p>{% endif %}
+
+    {% if error %}<div class="flashes">{{ ui.alert("error", error) }}</div>{% endif %}
+
+    <form class="form" method="post" action="{{ url_for('subscribe.subscribe') }}">
+      {% if current_user.is_authenticated %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+      <div class="honeypot" aria-hidden="true">
+        <label for="f-website">Leave this field empty</label>
+        <input id="f-website" type="text" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="f-email">Email address</label>
+        <input id="f-email" type="email" name="email" required autocomplete="email" autofocus
+               value="{{ email or (current_user.email if current_user.is_authenticated else '') }}">
+      </div>
+      <div class="field">
+        <label for="f-name">Name <span class="optional">(optional)</span></label>
+        <input id="f-name" type="text" name="name" autocomplete="name"
+               value="{{ request.form.get('name', current_user.display_name if current_user.is_authenticated else '') }}">
+      </div>
+      {% if groups %}
+      <fieldset class="fieldset subscribe-groups">
+        <legend>I'm a… <span class="optional">(optional, pick any)</span></legend>
+        <p class="help">Some issues include sections just for particular groups.</p>
+        <div class="pill-choices">
+          {% for group in groups %}
+          <label class="pill-choice">
+            <input type="checkbox" name="groups" value="{{ group.slug }}"{% if group.slug in request.form.getlist('groups') %} checked{% endif %}>
+            <span>{{ group.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <button class="button button-primary button-block" type="submit">{{ icon("mail") }} Subscribe</button>
+      <p class="small muted">{{ setting("newsletter.signup_text") }} We'll send you an email to confirm. <a href="{{ url_for('public.page', slug='privacy') }}">How we use your information.</a></p>
+    </form>
+  </div>
+</div>
+{% endblock %}

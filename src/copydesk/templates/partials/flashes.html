@@ -1,0 +1,13 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="{{ 'flashes' if in_dashboard else 'container flashes' }}" role="status" aria-live="polite">
+  {% for category, message in messages %}
+  {% set kind = {"success": "success", "error": "error", "warning": "warning"}.get(category, "info") %}
+  <div class="alert alert-{{ kind }}">
+    {{ icon({"success": "check-circle", "error": "alert", "warning": "warning"}.get(kind, "info")) }}
+    <div class="alert-body">{{ message }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}

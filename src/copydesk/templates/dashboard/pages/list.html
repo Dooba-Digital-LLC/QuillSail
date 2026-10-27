@@ -1,0 +1,30 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Pages{% endblock %}
+{% block lead %}<p class="lead">Pages that aren't articles: About, writing guidelines, a privacy notice, a code of conduct.</p>{% endblock %}
+{% block actions %}<a class="button button-primary" href="{{ url_for('dash.page_new') }}">{{ icon("plus") }} New page</a>{% endblock %}
+
+{% block content %}
+{% if pages %}
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th scope="col">Page</th><th scope="col">In the menu</th><th scope="col">Visible</th><th scope="col">Last edited</th></tr></thead>
+    <tbody>
+      {% for page in pages %}
+      <tr>
+        <td class="primary-cell">
+          <a href="{{ url_for('dash.page_edit', page_id=page.id) }}">{{ page.title }}</a>
+          <span class="sub">{{ external_url("public.page", slug=page.slug) }}{% if special.get(page.slug) %} · {{ special[page.slug] }}{% endif %}</span>
+        </td>
+        <td>{{ "Yes" if page.show_in_nav else "No" }}</td>
+        <td>{{ "Published" if page.is_published else "Hidden" }}</td>
+        <td class="nowrap">{{ ui.ago(page.updated_at) }}{% if page.updated_by %} by {{ page.updated_by.display_name }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+{{ ui.empty("No pages yet", "Add an About page so readers know who's behind the publication.", url_for("dash.page_new"), "New page", "book") }}
+{% endif %}
+{% endblock %}

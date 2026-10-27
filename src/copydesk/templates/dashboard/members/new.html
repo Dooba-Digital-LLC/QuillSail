@@ -1,0 +1,31 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Invite someone{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.members') }}">Members</a></p>{% endblock %}
+{% block lead %}<p class="lead">We'll create their account and email them a link to choose a password. The link works for a week.</p>{% endblock %}
+
+{% block content %}
+{{ forms.error_summary(errors) }}
+<form class="panel form-narrow" method="post">
+  <div class="panel-body form">
+    {{ forms.csrf() }}
+    {{ forms.input("display_name", "Name", form.get("display_name"), errors=errors, required=True) }}
+    {{ forms.input("email", "Email address", form.get("email"), type="email", errors=errors, required=True) }}
+    {% if groups %}
+    <fieldset class="fieldset">
+      <legend>Groups <span class="optional">(optional)</span></legend>
+      <p class="help">Only groups you're allowed to hand out are listed.</p>
+      <div class="pill-choices">
+        {% for group in groups %}
+        <label class="pill-choice"><input type="checkbox" name="groups" value="{{ group.id }}"{% if group.id|string in form.getlist("groups") %} checked{% endif %}><span>{{ group.name }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
+    <div class="form-actions">
+      <button class="button button-primary" type="submit">{{ icon("send") }} Create account and send invite</button>
+      <a class="button button-ghost" href="{{ url_for('dash.members') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

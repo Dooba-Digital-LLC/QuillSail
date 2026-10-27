@@ -1,0 +1,4 @@
+{{ actor.display_name if actor else "Someone" }} made you the editor for "{{ article.display_title }}" by {{ article.authors|map(attribute="display_name")|join(" and ") }}.
+
+Open it: {{ url }}
+{% include "email/_signature.txt" %}

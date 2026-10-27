@@ -1,0 +1,22 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Notifications{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <h1>Notifications</h1>
+    <p class="lead">Choose which emails we send you. Emails about your account, like password resets, always go out.</p>
+  </div>
+</header>
+
+<form class="form form-narrow" method="post">
+  {{ forms.csrf() }}
+  {% for key, label, help, _perm in options %}
+  {{ forms.checkbox(key, label, current_user.pref(key), help=help) }}
+  {% endfor %}
+  <div class="form-actions">
+    <button class="button button-primary" type="submit">Save</button>
+  </div>
+</form>
+{% endblock %}

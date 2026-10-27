@@ -1,0 +1,8 @@
+{% extends "email/layout.html" %}
+{% from "email/macros.html" import button with context %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Confirm your business inquiry</h1>
+<p style="{{ es.p }}">Hi {{ inquiry.contact_name }}, please confirm that you submitted “{{ inquiry.title }}” for {{ inquiry.organization }} to {{ site.name }}.</p>
+<p style="{{ es.p }}">{{ button(url, 'Review and confirm my inquiry') }}</p>
+<p style="{{ es.small }}">This link expires in three days. Your contact details stay with staff unless you explicitly allowed editors to publish your email. This does not subscribe you to the newsletter. If you did not submit the request, ignore this message.</p>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Choose a new password · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Choose a new password</h1>
+    <p class="lead">For {{ user.email }}.</p>
+    {% if error %}<div class="flashes">{{ ui.alert("error", error) }}</div>{% endif %}
+    <form class="form" method="post">
+      {{ forms.csrf() }}
+      {{ forms.input("password", "New password", "", type="password", required=True, autocomplete="new-password",
+                     help="At least 10 characters. A few random words work well.", attrs="autofocus") }}
+      {{ forms.input("confirm", "Type it again", "", type="password", required=True, autocomplete="new-password") }}
+      <button class="button button-primary button-block" type="submit">Change password and sign in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Overview{% endblock %}
+{% block heading %}Hello, {{ (current_user.display_name.split() or ["there"])[0] }}{% endblock %}
+{% block lead %}<p class="lead">Here's what's happening at {{ site.name }}.</p>{% endblock %}
+{% block actions %}
+  {% if newsletter_enabled and can("manage_issues") %}
+  <form method="post" action="{{ url_for('dash.issue_new') }}">{{ forms.csrf() }}<button class="button button-primary" type="submit">{{ icon("plus") }} New issue</button></form>
+  {% endif %}
+  {% if can("submit") %}
+    <form method="post" action="{{ url_for('write.new') }}">{{ forms.csrf() }}<button class="button" type="submit">{{ icon("pen") }} {{ 'New post' if blog_mode else 'Write something' }}</button></form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% for kind, message in warnings or [] %}
+<div class="flashes">{{ ui.alert(kind, message) }}</div>
+{% endfor %}
+
+{% if checklist %}
+<section class="panel">
+  <div class="panel-header"><h2>Getting started</h2><span class="small muted">This list disappears once everything is done.</span></div>
+  <div class="panel-body">
+    <ul class="checklist">
+      {% for done, label, endpoint in checklist %}
+      <li>
+        {% if done %}<span class="ok">{{ icon("check-circle", "Done") }}</span> <s class="muted">{{ label }}</s>
+        {% else %}<span class="warn">{{ icon("alert", "To do") }}</span> <a href="{{ url_for(endpoint) }}">{{ label }}</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<div class="stats">
+  {% if status_counts is defined %}
+  <a class="stat" href="{{ url_for('dash.articles', tab='review') }}">
+    <span class="stat-label">Waiting for review</span>
+    <span class="stat-value">{{ ((status_counts.get("submitted", 0)) + (status_counts.get("in_review", 0)))|number }}</span>
+    <span class="stat-note">{{ status_counts.get("changes_requested", 0) }} with writers for changes</span>
+  </a>
+  <a class="stat" href="{{ url_for('dash.articles', tab='accepted') }}">
+    <span class="stat-label">Accepted, not yet published</span>
+    <span class="stat-value">{{ status_counts.get("accepted", 0)|number }}</span>
+    <span class="stat-note">Ready for the next issue</span>
+  </a>
+  {% endif %}
+  {% if subscriber_count is defined %}
+  <a class="stat" href="{{ url_for('dash.subscribers') }}">
+    <span class="stat-label">Subscribers</span>
+    <span class="stat-value">{{ subscriber_count|number }}</span>
+    <span class="stat-note">{{ new_subscribers|number }} new in the last 30 days</span>
+  </a>
+  {% endif %}
+  {% if member_count is defined %}
+  <a class="stat" href="{{ url_for('dash.members') }}">
+    <span class="stat-label">Members</span>
+    <span class="stat-value">{{ member_count|number }}</span>
+    <span class="stat-note">{{ pluralize(requests|length, "group request") }} waiting</span>
+  </a>
+  {% endif %}
+</div>
+
+{{ slot("dashboard_overview", user=current_user) }}
+
+<div class="grid-2">
+  {% if waiting is defined %}
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Oldest submissions first</h2>
+      <a href="{{ url_for('dash.articles', tab='review') }}">See all</a>
+    </div>
+    {% if waiting %}
+    <ul class="panel-list">
+      {% for article in waiting %}
+      <li>
+        <div>
+          <a class="title" href="{{ url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a>
+          <div class="small muted">{{ article.authors|map(attribute="display_name")|join(", ") }} · submitted {{ ui.ago(article.submitted_at) }}</div>
+        </div>
+        {{ ui.status(article.status) }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="panel-body"><p class="muted">Nothing waiting. Nice work.</p></div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if last_issue is defined %}
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Issues</h2>
+      <a href="{{ url_for('dash.issues') }}">See all</a>
+    </div>
+    <div class="panel-body stack">
+      {% if last_issue %}
+      <div>
+        <p class="eyebrow">Last sent</p>
+        <p><a href="{{ url_for('dash.issue_report', issue_id=last_issue.id) }}"><strong>#{{ last_issue.number }} {{ last_issue.display_title }}</strong></a></p>
+        <p class="small muted">
+          {% if last_issue.status == "sending" %}Sending now: {{ last_stats.sent|number }} of {{ last_stats.total|number }} sent.
+          {% else %}Sent {{ ui.ago(last_issue.sent_at) }} to {{ last_stats.sent|number }} people{% if last_stats.failed %}, {{ last_stats.failed }} failed{% endif %}.{% endif %}
+        </p>
+      </div>
+      {% endif %}
+      {% if upcoming %}
+      <div>
+        <p class="eyebrow">Coming up</p>
+        <ul class="panel-list">
+          {% for issue in upcoming %}
+          <li>
+            <a class="title" href="{{ url_for('dash.issue', issue_id=issue.id) }}">#{{ issue.number }} {{ issue.display_title }}</a>
+            {% if issue.status == "scheduled" %}<span class="status status-info">Sends {{ issue.scheduled_at|datetime }}</span>{% else %}{{ ui.issue_status(issue) }}{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% elif not last_issue %}
+      <p class="muted">No issues yet. Start one, then add accepted articles and a short introduction.</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if mine %}
+  <section class="panel">
+    <div class="panel-header"><h2>Assigned to you</h2></div>
+    <ul class="panel-list">
+      {% for article in mine %}
+      <li>
+        <a class="title" href="{{ url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a>
+        {{ ui.status(article.status) }}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if requests %}
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Requests to join groups</h2>
+      <a href="{{ url_for('dash.requests') }}">Review all</a>
+    </div>
+    <ul class="panel-list">
+      {% for membership in requests %}
+      <li>
+        <div>
+          <strong>{{ membership.user.display_name }}</strong> wants to join {{ ui.badge(membership.group) }}
+          <div class="small muted">{{ membership.user.email }} · {{ ui.ago(membership.created_at) }}</div>
+        </div>
+        <a class="button button-small" href="{{ url_for('dash.requests') }}">Review</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

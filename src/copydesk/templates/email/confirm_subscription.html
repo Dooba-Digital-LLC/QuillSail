@@ -1,0 +1,12 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}One click and you're subscribed to {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Confirm your subscription</h1>
+<p style="{{ es.p }}">{% if subscriber.name %}Hi {{ subscriber.name }},{% else %}Hi,{% endif %}</p>
+<p style="{{ es.p }}">Click the button to start getting {{ site.name }} in your inbox.</p>
+{{ m.button(url, "Yes, subscribe me") }}
+<p style="{{ es.small }}">If you didn't sign up, ignore this email. You won't be subscribed unless you click.</p>
+{{ m.link_fallback(url) }}
+{% endblock %}
+{% block footer %}This email was sent because this address was entered on the {{ site.name }} sign-up form.{% endblock %}

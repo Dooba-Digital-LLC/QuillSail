@@ -1,0 +1,243 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Issue #{{ issue.number }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.issues') }}">Issues</a></p>{% endblock %}
+{% block heading %}Issue #{{ issue.number }}{% if issue.title %}: {{ issue.title }}{% endif %}{% endblock %}
+{% block lead %}
+<p class="lead cluster">
+  {{ ui.issue_status(issue) }}
+  {% if issue.status == "scheduled" %}<span>Goes out {{ issue.scheduled_at|datetime }}</span>{% endif %}
+  <span>Will go to {{ pluralize(recipient_count, "subscriber") }} right now</span>
+</p>
+{% endblock %}
+{% block actions %}
+  <a class="button" href="{{ url_for('dash.issue_preview', issue_id=issue.id) }}">{{ icon("eye") }} Preview and test</a>
+  {% if can("send_issues") %}
+    {% if issue.status == "scheduled" %}
+    <form method="post" action="{{ url_for('dash.issue_unschedule', issue_id=issue.id) }}">{{ forms.csrf() }}<button class="button" type="submit">Unschedule</button></form>
+    {% endif %}
+    <a class="button button-primary" href="{{ url_for('dash.issue_send', issue_id=issue.id) }}">{{ icon("send") }} Send or schedule</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if problems %}
+<div class="flashes">{{ ui.alert("warning", Markup("<strong>Before this can go out:</strong> ") ~ problems|join(" ")) }}</div>
+{% endif %}
+{{ forms.error_summary(errors) }}
+
+<div class="grid-main-side">
+  <div class="stack">
+    <section class="panel" aria-labelledby="about-heading">
+      <div class="panel-header"><h2 id="about-heading">About this issue</h2></div>
+      <form class="panel-body form" method="post" data-warn-unsaved>
+        {{ forms.csrf() }}
+        {% set f = form or {} %}
+        <div class="field-row">
+          {{ forms.input("number", "Issue number", f.get("number", issue.number), type="number", errors=errors, required=True, attrs='min="1"') }}
+          {{ forms.input("title", "Title", f.get("title", issue.title), optional=True, help="Shown in the archive and the default subject line.") }}
+        </div>
+        {{ forms.input("subject", "Email subject", f.get("subject", issue.subject), optional=True,
+                       placeholder=default_subject, help="Leave blank to use: " ~ default_subject) }}
+        {{ forms.input("preheader", "Preview text", f.get("preheader", issue.preheader), optional=True,
+                       help="The short line many inboxes show after the subject. Make it count.") }}
+        {{ forms.textarea("intro", "Introduction", f.get("intro", issue.intro), rows=8, optional=True,
+                          help="A note from the editors at the top of the issue. Markdown works.") }}
+
+        <fieldset class="fieldset" id="f-audience_groups">
+          <legend>Who gets this issue?</legend>
+          {% if errors.get("audience_groups") %}<p class="error-text">{{ errors.audience_groups }}</p>{% endif %}
+          {% set mode = f.get("audience_mode", issue.audience_mode) %}
+          <label class="check"><input type="radio" name="audience_mode" value="all"{% if mode == "all" %} checked{% endif %}> <span class="check-label"><strong>Every subscriber</strong></span></label>
+          <label class="check"><input type="radio" name="audience_mode" value="groups"{% if mode == "groups" %} checked{% endif %}{% if not audience_groups %} disabled{% endif %}> <span class="check-label"><strong>Only some groups</strong><span class="help">For example, an alumni-only edition.</span></span></label>
+          {% if audience_groups %}
+          <div class="pill-choices" data-show-if="audience_mode:groups">
+            {% set chosen = issue.audience_groups|map(attribute="id")|list %}
+            {% for group in audience_groups %}
+            <label class="pill-choice"><input type="checkbox" name="audience_groups" value="{{ group.id }}"{% if group.id in chosen %} checked{% endif %}><span>{{ group.name }}</span></label>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <p class="help">You can also limit individual items to certain groups below.</p>
+        </fieldset>
+
+        {{ forms.checkbox("publish_articles", "Publish accepted articles when this issue goes out", issue.publish_articles,
+                          help="Accepted articles in this issue go live on the website at the same moment, and their writers are emailed.") }}
+        <div class="form-actions"><button class="button button-primary" type="submit">Save</button></div>
+      </form>
+    </section>
+
+    <section class="panel" id="items" aria-labelledby="items-heading">
+      <div class="panel-header">
+        <h2 id="items-heading">What's in it</h2>
+        <span class="small muted" data-composer-status aria-live="polite">Drag items to reorder them, or use the arrows.</span>
+      </div>
+      <div class="panel-body">
+        {% if issue.items %}
+        <ol class="composer-items" data-composer data-reorder-url="{{ url_for('dash.issue_reorder', issue_id=issue.id) }}">
+          {% for entry in issue.items %}
+          <li class="composer-item kind-{{ entry.kind }}" id="item-{{ entry.id }}" data-item-id="{{ entry.id }}">
+            <button type="button" class="drag-handle" aria-label="Reorder: drag, or focus and press the up and down arrows">{{ icon("grip") }}</button>
+            <div>
+              {% if entry.kind == "article" and entry.article %}
+                {% set article = entry.article %}
+                <p class="eyebrow">Article{% if article.section %} · {{ article.section.name }}{% endif %}</p>
+                <h3><a href="{{ url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a></h3>
+                <p class="small muted cluster">
+                  <span>{{ article.authors|map(attribute="display_name")|join(", ") }}</span>
+                  {{ ui.status(article.status) }}
+                  <span>Shows {{ "the full text" if entry.display == "full" else "a summary and a link" }}</span>
+                </p>
+              {% elif entry.kind == "heading" %}
+                <p class="eyebrow">Section heading</p>
+                <h3>{{ entry.title }}</h3>
+              {% else %}
+                <p class="eyebrow">Text block</p>
+                <h3>{{ entry.title or "Text block" }}</h3>
+                {% if entry.body %}<p class="small muted">{{ entry.body|excerpt(160) }}</p>
+                {% else %}<p class="small">{{ icon("alert") }} Empty. Open it to write something.</p>{% endif %}
+              {% endif %}
+              {% if entry.audience_groups %}
+              <p class="cluster small">{{ icon("users") }} Only for {% for group in entry.audience_groups %}{{ ui.badge(group) }}{% endfor %}</p>
+              {% endif %}
+
+              <details{% if entry.kind == "text" and not entry.body %} open{% endif %}>
+                <summary>Edit this item</summary>
+                <form class="item-form" method="post" action="{{ url_for('dash.issue_item_update', issue_id=issue.id, item_id=entry.id) }}">
+                  {{ forms.csrf() }}
+                  {% if entry.kind == "article" %}
+                    <fieldset class="fieldset">
+                      <legend>In the email, show</legend>
+                      <label class="check"><input type="radio" name="display" value="summary"{% if entry.display != "full" %} checked{% endif %}> <span>A summary and a “read more” link</span></label>
+                      <label class="check"><input type="radio" name="display" value="full"{% if entry.display == "full" %} checked{% endif %}> <span>The full article</span></label>
+                      {% if entry.article and entry.article.visibility != "public" %}<p class="help">{{ icon("lock") }} This article isn't public, so emails always show a summary.</p>{% endif %}
+                    </fieldset>
+                    <div class="field">
+                      <label for="item-body-{{ entry.id }}">Custom summary <span class="optional">(optional)</span></label>
+                      <p class="help">Replaces the article's summary in this issue only.</p>
+                      <textarea id="item-body-{{ entry.id }}" name="body" rows="3">{{ entry.body }}</textarea>
+                    </div>
+                  {% elif entry.kind == "heading" %}
+                    <div class="field">
+                      <label for="item-title-{{ entry.id }}">Heading text</label>
+                      <input id="item-title-{{ entry.id }}" type="text" name="title" value="{{ entry.title }}" required>
+                    </div>
+                  {% else %}
+                    <div class="field">
+                      <label for="item-title-{{ entry.id }}">Title <span class="optional">(optional)</span></label>
+                      <input id="item-title-{{ entry.id }}" type="text" name="title" value="{{ entry.title }}">
+                    </div>
+                    <div class="field">
+                      <label for="item-body-{{ entry.id }}">Text</label>
+                      <p class="help">Announcements, events, links, a sign-off… Markdown works.</p>
+                      <textarea id="item-body-{{ entry.id }}" name="body" rows="7">{{ entry.body }}</textarea>
+                    </div>
+                  {% endif %}
+                  {% if audience_groups %}
+                  <fieldset class="fieldset">
+                    <legend>Who should see this item?</legend>
+                    <p class="help">Leave them all unticked to include it for everyone.</p>
+                    <div class="pill-choices">
+                      {% for group in audience_groups %}
+                      <label class="pill-choice"><input type="checkbox" name="item_groups" value="{{ group.id }}"{% if group in entry.audience_groups %} checked{% endif %}><span>{{ group.name }}</span></label>
+                      {% endfor %}
+                    </div>
+                  </fieldset>
+                  {% endif %}
+                  <div class="form-actions">
+                    <button class="button button-small button-primary" type="submit" name="action" value="save">Save item</button>
+                  </div>
+                </form>
+              </details>
+            </div>
+            <form class="item-buttons" method="post" action="{{ url_for('dash.issue_item_update', issue_id=issue.id, item_id=entry.id) }}">
+              {{ forms.csrf() }}
+              <button class="icon-button" type="submit" name="action" value="up" aria-label="Move up"{% if loop.first %} disabled{% endif %}>{{ icon("up") }}</button>
+              <button class="icon-button" type="submit" name="action" value="down" aria-label="Move down"{% if loop.last %} disabled{% endif %}>{{ icon("down") }}</button>
+              <button class="icon-button danger" type="submit" name="action" value="remove" aria-label="Remove from this issue" data-confirm="Remove this from the issue? (Articles themselves aren't deleted.)">{{ icon("x") }}</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        {{ ui.empty("Nothing in this issue yet", "Add accepted articles, section headings and text blocks using the panels on the right.", icon_name="layers") }}
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack" aria-label="Add to this issue">
+    <section class="panel">
+      <div class="panel-header"><h2>Add articles</h2></div>
+      {% if candidates %}
+      <ul class="panel-list">
+        {% for article in candidates[:30] %}
+        <li>
+          <div>
+            <a class="title" href="{{ url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a>
+            <div class="small muted">
+              {{ article.authors|map(attribute="display_name")|join(", ") }} · {{ STATUSES[article.status].label }}
+              {% if candidate_issues.get(article.id) %} · in #{{ candidate_issues[article.id]|join(", #") }}{% endif %}
+            </div>
+          </div>
+          <form method="post" action="{{ url_for('dash.issue_item_add', issue_id=issue.id) }}">
+            {{ forms.csrf() }}
+            <input type="hidden" name="kind" value="article">
+            <input type="hidden" name="article_id" value="{{ article.id }}">
+            <button class="button button-small" type="submit" aria-label="Add “{{ article.display_title }}”">{{ icon("plus") }} Add</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="panel-body"><p class="muted">No accepted articles are waiting. Accept submissions under <a href="{{ url_for('dash.articles') }}">Articles</a>.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h2>Add a heading or text</h2></div>
+      <div class="panel-body stack">
+        <form class="stack" method="post" action="{{ url_for('dash.issue_item_add', issue_id=issue.id) }}">
+          {{ forms.csrf() }}
+          <input type="hidden" name="kind" value="heading">
+          <div class="field">
+            <label for="f-new-heading">Section heading</label>
+            <p class="help">Groups the items below it, like “Club news” or “For alumni”.</p>
+            <input id="f-new-heading" type="text" name="title" required>
+          </div>
+          <button class="button button-small" type="submit">{{ icon("plus") }} Add heading</button>
+        </form>
+        <form method="post" action="{{ url_for('dash.issue_item_add', issue_id=issue.id) }}">
+          {{ forms.csrf() }}
+          <input type="hidden" name="kind" value="text">
+          <button class="button button-small" type="submit">{{ icon("plus") }} Add a text block</button>
+          <p class="help">For announcements, events, links or a sign-off.</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h2>Other actions</h2></div>
+      <div class="panel-body stack">
+        {% if issue.is_public %}
+        <p class="small">{{ icon("globe") }} On the website: <a href="{{ url_for('public.issue', number=issue.number) }}">view it</a></p>
+        {% else %}
+        <form method="post" action="{{ url_for('dash.issue_publish', issue_id=issue.id) }}" data-confirm="Put this issue on the website without emailing anyone?">
+          {{ forms.csrf() }}
+          <button class="button button-small" type="submit">{{ icon("globe") }} Publish on the website only</button>
+          <p class="help">Handy for adding past issues to the archive.</p>
+        </form>
+        <form method="post" action="{{ url_for('dash.issue_delete', issue_id=issue.id) }}" data-confirm="Delete issue #{{ issue.number }}? Its articles aren't affected.">
+          {{ forms.csrf() }}
+          <button class="link-button danger" type="submit">{{ icon("trash") }} Delete this issue</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/composer.js', v=version) }}" defer></script>
+{% endblock %}

@@ -1,0 +1,163 @@
+{# Reusable pieces of interface. Import with: {% import "macros/ui.html" as ui with context %} #}
+
+{% macro avatar(user, size="md") -%}
+{%- if user.avatar -%}
+<img class="avatar avatar-{{ size }}" src="{{ upload_url(user.avatar) }}" alt="" loading="lazy">
+{%- else -%}
+<span class="avatar avatar-{{ size }}" aria-hidden="true">{{ user.initials }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro badge(group) -%}
+<span class="badge badge-{{ group.color }}">{{ group.label }}</span>
+{%- endmacro %}
+
+{% macro status(key) -%}
+{%- set s = STATUSES[key] -%}
+<span class="status status-{{ s.tone }}">{{ s.label }}</span>
+{%- endmacro %}
+
+{% macro issue_status(issue) -%}
+{%- set tones = {"draft": "", "scheduled": "status-info", "sending": "status-warning", "sent": "status-success"} -%}
+<span class="status {{ tones.get(issue.status, '') }}">{{ issue.status|capitalize }}</span>
+{%- endmacro %}
+
+{% macro person(user, link=True, badges=True) -%}
+<span class="byline-person">
+  {%- if link and not user.is_deleted -%}
+  <a href="{{ url_for('public.person', username=user.username) }}">{{ user.display_name }}</a>
+  {%- else -%}
+  <span class="name">{{ user.display_name }}</span>
+  {%- endif -%}
+  {%- if badges -%}
+  {%- for m in user.badge_memberships %} {{ badge(m.group) }}{% set detail = m.byline_detail() %}{% if detail %} <span class="detail">{{ detail }}</span>{% endif %}{% endfor -%}
+  {%- endif -%}
+</span>
+{%- endmacro %}
+
+{% macro byline(article, avatars=True, date=True, badges=True) %}
+<div class="byline">
+  {% if avatars %}
+  <span class="avatar-stack">{% for author in article.authors[:3] %}{{ avatar(author, "sm") }}{% endfor %}</span>
+  {% endif %}
+  <span class="byline-authors">
+    {% for author in article.authors %}{{ person(author, badges=badges) }}{% if not loop.last %} <span class="sep">and</span> {% endif %}{% endfor %}
+  </span>
+  {% if date and article.published_at %}
+  <span class="sep" aria-hidden="true">·</span>
+  <time datetime="{{ article.published_at|isodate }}">{{ article.published_at|date }}</time>
+  {% endif %}
+  {% if article.word_count %}
+  <span class="sep" aria-hidden="true">·</span>
+  <span>{{ ((article.word_count / 230)|round(0, 'ceil'))|int or 1 }} min read</span>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro summary_text(article) -%}
+{{ article.summary }}
+{%- endmacro %}
+
+{% macro article_item(article, show_section=True) %}
+<li class="article-item{% if article.cover_image %} has-image{% endif %}">
+  <div>
+    {% if show_section and article.section %}
+    <p class="eyebrow"><a href="{{ url_for('public.section', slug=article.section.slug) }}">{{ article.section.name }}</a></p>
+    {% endif %}
+    <h3><a href="{{ url_for('public.article', slug=article.slug) }}">{{ article.display_title }}</a></h3>
+    <p class="summary">{{ summary_text(article) }}</p>
+    {{ byline(article, avatars=False) }}
+  </div>
+  {% if article.cover_image %}
+  <a class="article-thumb" href="{{ url_for('public.article', slug=article.slug) }}" tabindex="-1" aria-hidden="true">
+    <img src="{{ upload_url(article.cover_image) }}" alt="" loading="lazy">
+  </a>
+  {% endif %}
+</li>
+{% endmacro %}
+
+{% macro pagination(p, endpoint, prev_label="Previous", next_label="Next") %}
+{% if p.pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if p.has_prev %}
+  <a class="button button-small" href="{{ url_for(endpoint, page=p.page - 1, **kwargs) }}" rel="prev">{{ icon("arrow-left") }} {{ prev_label }}</a>
+  {% else %}<span></span>{% endif %}
+  <span>Page {{ p.page }} of {{ p.pages }}</span>
+  {% if p.has_next %}
+  <a class="button button-small" href="{{ url_for(endpoint, page=p.page + 1, **kwargs) }}" rel="next">{{ next_label }} {{ icon("arrow-right") }}</a>
+  {% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% endmacro %}
+
+{% macro empty(title, text="", action_url=None, action_label=None, icon_name="inbox") %}
+<div class="empty">
+  <p>{{ icon(icon_name, cls="icon big") }}</p>
+  <h2>{{ title }}</h2>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+  {% if action_url %}<a class="button button-primary" href="{{ action_url }}">{{ action_label }}</a>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro ago(value) -%}
+{%- if value -%}
+<time datetime="{{ value|isodate }}" title="{{ value|datetime }}">{{ value|time_ago }}</time>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro when(value, style="medium") -%}
+{%- if value -%}
+<time datetime="{{ value|isodate }}">{{ value|date(style) }}</time>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro alert(kind, body) %}
+<div class="alert alert-{{ kind }}">
+  {{ icon({"success": "check-circle", "error": "alert", "warning": "warning"}.get(kind, "info")) }}
+  <div class="alert-body">{{ body }}</div>
+</div>
+{% endmacro %}
+
+{% macro lock_chip(article) -%}
+{%- if article.visibility == "members" -%}
+<span class="chip">{{ icon("lock") }} Members only</span>
+{%- elif article.visibility == "groups" -%}
+<span class="chip">{{ icon("lock") }} For {{ article.visibility_groups|map(attribute="name")|join(", ") }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro timeline_item(event) %}
+<li class="timeline-item{% if event.internal %} is-internal{% endif %}{% if event.kind != 'comment' and not event.body %} is-event{% endif %}">
+  {% if event.user %}{{ avatar(event.user, "sm") }}{% else %}<span class="avatar avatar-sm" aria-hidden="true">{{ icon("activity") }}</span>{% endif %}
+  <div class="timeline-bubble">
+    <div class="timeline-meta">
+      <strong>{{ event.user.display_name if event.user else "QuillSail" }}</strong>
+      {% if event.kind == "status" %}
+      <span>moved this to</span> {{ status(event.to_status) }}
+      {% elif event.kind == "assign" %}
+      <span>{{ event.body }}</span>
+      {% endif %}
+      {% if event.internal and event.kind == "comment" %}<span class="chip">{{ icon("lock") }} Editors only</span>{% endif %}
+      <span aria-hidden="true">·</span> {{ ago(event.created_at) }}
+    </div>
+    {% if event.body and event.kind in ("comment", "status") %}
+    <div class="prose">{{ event.body|markdown }}</div>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}
+
+{% macro workflow_steps(article) %}
+{% set order = ["draft", "submitted", "in_review", "accepted", "published"] %}
+{% set current = "in_review" if article.status == "changes_requested" else article.status %}
+{% if current in order %}
+{% set index = order.index(current) %}
+<ol class="steps" aria-label="Progress">
+  {% for key in order %}
+  <li class="{{ 'done' if loop.index0 < index else ('current' if loop.index0 == index else '') }}">
+    {% if loop.index0 < index %}{{ icon("check") }}{% endif %}{{ STATUSES[key].label }}{% if loop.index0 == index %}<span class="visually-hidden"> (current step)</span>{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,9 @@
+Hi {{ inquiry.contact_name }},
+
+Please confirm that you submitted “{{ inquiry.title }}” for {{ inquiry.organization }} to {{ site.name }}:
+
+{{ url }}
+
+This link expires in three days. Open it and choose Confirm my inquiry.
+Your contact details stay with staff unless you explicitly allowed editors to publish your email.
+This does not subscribe you to the newsletter. If you did not submit the request, ignore this message.

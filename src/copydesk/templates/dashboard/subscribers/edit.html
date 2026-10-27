@@ -1,0 +1,86 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}{{ subscriber.email }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.subscribers') }}">Subscribers</a></p>{% endblock %}
+{% block lead %}<p class="lead">{{ labels.get(subscriber.status, subscriber.status) }}{% if subscriber.user %} · has an account: <a href="{{ url_for('dash.member', user_id=subscriber.user.id) }}">{{ subscriber.user.display_name }}</a>{% endif %}</p>{% endblock %}
+
+{% block content %}
+<div class="grid-main-side">
+  <div class="stack">
+    <form class="panel" method="post">
+      <div class="panel-header"><h2>Details</h2></div>
+      <div class="panel-body form">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="save">
+        {{ forms.input("name", "Name", subscriber.name, optional=True) }}
+        {% if groups %}
+        <fieldset class="fieldset">
+          <legend>Groups <span class="optional">(optional)</span></legend>
+          <p class="help">The groups this person chose. Issues and items meant for a group go to its members.{% if subscriber.user %} Their account's confirmed groups count too.{% endif %}</p>
+          <div class="pill-choices">
+            {% set chosen = subscriber.groups|map(attribute="id")|list %}
+            {% for group in groups %}
+            <label class="pill-choice"><input type="checkbox" name="groups" value="{{ group.id }}"{% if group.id in chosen %} checked{% endif %}><span>{{ group.name }}</span></label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        {% endif %}
+        <div class="form-actions"><button class="button button-primary" type="submit">Save</button></div>
+      </div>
+    </form>
+
+    <section class="panel">
+      <div class="panel-header"><h2>Recent issues</h2></div>
+      {% if deliveries %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th scope="col">Issue</th><th scope="col">Result</th><th scope="col">When</th></tr></thead>
+          <tbody>
+            {% for delivery, issue in deliveries %}
+            <tr>
+              <td><a href="{{ url_for('dash.issue_report', issue_id=issue.id) }}">#{{ issue.number }} {{ issue.display_title }}</a></td>
+              <td>{{ delivery.status|capitalize }}{% if delivery.error %} <span class="small muted">({{ delivery.error }})</span>{% endif %}</td>
+              <td class="nowrap">{{ ui.when(delivery.sent_at or delivery.created_at) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="panel-body"><p class="muted">No issues have been sent to this address yet.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="panel">
+      <div class="panel-header"><h2>Status</h2></div>
+      <div class="panel-body stack">
+        <dl class="definition-list small">
+          <dt>Signed up</dt><dd>{{ subscriber.created_at|datetime }}</dd>
+          {% if subscriber.confirmed_at %}<dt>Confirmed</dt><dd>{{ subscriber.confirmed_at|datetime }}</dd>{% endif %}
+          {% if subscriber.unsubscribed_at %}<dt>Unsubscribed</dt><dd>{{ subscriber.unsubscribed_at|datetime }}</dd>{% endif %}
+          {% if subscriber.last_sent_at %}<dt>Last email</dt><dd>{{ subscriber.last_sent_at|datetime }}</dd>{% endif %}
+          {% if subscriber.bounce_count %}<dt>Failed deliveries</dt><dd>{{ subscriber.bounce_count }}</dd>{% endif %}
+        </dl>
+        <form method="post">
+          {{ forms.csrf() }}
+          {% if subscriber.status == "active" %}
+          <button class="button button-block" type="submit" name="action" value="unsubscribe" data-confirm="Unsubscribe {{ subscriber.email }}?">Unsubscribe them</button>
+          {% else %}
+          <button class="button button-block" type="submit" name="action" value="resubscribe" data-confirm="Only do this if {{ subscriber.email }} asked to be subscribed again. Continue?">Subscribe them again</button>
+          {% endif %}
+        </form>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-header"><h2>Remove</h2></div>
+      <form class="panel-body stack" method="post" data-confirm="Delete {{ subscriber.email }} and their delivery history for good?">
+        {{ forms.csrf() }}
+        <p class="small muted">Deleting removes every record of this address. To simply stop emails, unsubscribe them instead.</p>
+        <button class="button button-danger button-block" type="submit" name="action" value="delete">{{ icon("trash") }} Delete</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

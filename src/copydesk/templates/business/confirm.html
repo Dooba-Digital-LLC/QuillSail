@@ -1,0 +1,9 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+{% block title %}Confirm your inquiry · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex, nofollow, noarchive">{% endblock %}
+{% block content %}<div class="container container-narrow"><section class="card-callout">
+<h1>Confirm your business inquiry</h1><p>Confirm that you submitted <strong>{{ inquiry.title }}</strong> for <strong>{{ inquiry.organization }}</strong>. The editors will receive your request for private review.</p>
+<form method="post">{{ forms.csrf() }}<button class="button button-primary" type="submit">Confirm my inquiry</button></form>
+<p class="small muted">If you did not submit this request, close this page. No account or newsletter subscription has been created.</p>
+</section></div>{% endblock %}

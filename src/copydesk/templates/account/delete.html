@@ -1,0 +1,25 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Delete your account{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow"><a href="{{ url_for('account.privacy') }}">Your data</a></p>
+    <h1>Delete your account</h1>
+  </div>
+</header>
+
+<div class="danger-zone stack form-narrow">
+  <p><strong>This can't be undone.</strong> We'll remove your profile, groups, newsletter subscription and any drafts. Published articles stay up, credited to “Former contributor”.</p>
+  {% if error %}{{ ui.alert("error", error) }}{% endif %}
+  <form class="form" method="post">
+    {{ forms.csrf() }}
+    {{ forms.input("password", "Enter your password to confirm", "", type="password", required=True, autocomplete="current-password") }}
+    <div class="form-actions">
+      <button class="button button-danger-solid" type="submit">Delete my account</button>
+      <a class="button button-ghost" href="{{ url_for('account.privacy') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

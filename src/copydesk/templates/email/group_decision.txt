@@ -1,0 +1,11 @@
+Hi {{ user.display_name }},
+
+{% if approved %}Your request to join {{ group.name }} was approved.{% if group.show_badge %} The {{ group.label }} badge now appears next to your name on anything you publish.{% endif %}
+{% else %}An editor reviewed your request to join {{ group.name }} and couldn't approve it this time.
+{% if reason %}
+{{ reason }}
+{% endif %}
+If you think that's a mistake, reply to this email or contact the editors.
+{% endif %}
+Your groups: {{ url }}
+{% include "email/_signature.txt" %}

@@ -1,0 +1,17 @@
+{% extends "layout/dashboard.html" %}
+{% block page_title %}Business outreach{% endblock %}
+{% block lead %}<p class="lead">Workforce opportunities, projects, and partnership conversations from local businesses.</p>{% endblock %}
+{% block actions %}<a class="button" href="{{ url_for('business.contact') }}">View the business form {{ icon('external') }}</a>{% endblock %}
+{% block content %}
+<section class="panel"><div class="panel-body stack">
+  <h2>How businesses reach you</h2>
+  <p>Share <a href="{{ external_url('business.contact') }}">{{ external_url('business.contact') }}</a> in newsletters or with Workforce Development contacts. Businesses submit their needs and confirm their email; staff review, reply, and decide what belongs in an issue.</p>
+  <p><strong>Intake is {{ 'open' if enabled else 'paused' }}.</strong> The form {{ 'appears in the public navigation.' if enabled else 'is currently visible only to staff who manage business outreach.' }}</p>
+  {% if can('manage_settings') %}<form method="post">{{ forms.csrf() }}{{ forms.checkbox('enabled','Accept business inquiries',checked=enabled) }}<button class="button button-small" type="submit">Save intake setting</button></form>{% endif %}
+</div></section>
+<form method="get" class="input-row">{{ forms.select('status','Filter by status',[('','All requests'),('unverified','Awaiting email confirmation')] + statuses,status) }}<button class="button" type="submit">Filter</button></form>
+{% if page.items %}<div class="table-wrap"><table class="table"><thead><tr><th>Organization / request</th><th>Type</th><th>Status</th><th>Received</th></tr></thead><tbody>
+{% for item in page.items %}<tr><td><a href="{{ url_for('dash.business_inquiry',inquiry_id=item.id) }}"><strong>{{ item.organization }}</strong><br>{{ item.title }}</a></td><td>{{ kinds.get(item.kind,item.kind) }}</td><td>{{ dict(statuses).get(item.status,'Awaiting email confirmation') }}</td><td>{{ item.created_at|date }}</td></tr>{% endfor %}
+</tbody></table></div>{{ ui.pagination(page, 'dash.businesses', status=status) }}
+{% else %}{{ ui.empty('No business inquiries here yet','Share the business form to invite opportunities and workforce conversations.',icon_name='users') }}{% endif %}
+{% endblock %}

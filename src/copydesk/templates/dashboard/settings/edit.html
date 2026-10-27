@@ -1,0 +1,108 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Settings{% endblock %}
+{% block lead %}<p class="lead">{{ intro }}</p>{% endblock %}
+
+{% macro setting_field(d) %}
+  {% set value = form.get(d.key) if form is not none and d.type != "bool" else setting(d.key) %}
+  {% if d.type == "bool" %}
+    {{ forms.checkbox(d.key, d.label, form.get(d.key) if form is not none else value, help=d.help) }}
+  {% elif d.type == "choice" %}
+    {{ forms.select(d.key, d.label, d.get_choices(), value, errors=errors, help=d.help) }}
+  {% elif d.type in ("textarea", "markdown") %}
+    {{ forms.textarea(d.key, d.label, value, errors=errors, help=d.help ~ (" Markdown works." if d.type == "markdown" else ""),
+                      rows=6 if d.type == "markdown" else 3, optional=not d.required) }}
+  {% elif d.type == "code" %}
+    {{ forms.textarea(d.key, d.label, value, errors=errors, help=d.help, rows=10, cls="code-input", optional=True) }}
+  {% elif d.type == "lines" %}
+    {{ forms.textarea(d.key, d.label, (value if value is string else (value or [])|join("\n")), errors=errors, help=d.help, rows=3,
+                      placeholder=d.placeholder, optional=True) }}
+  {% elif d.type == "color" %}
+    <div class="field{% if errors.get(d.key) %} has-error{% endif %}">
+      <label for="f-{{ d.key }}">{{ d.label }}</label>
+      {% if d.help %}<p class="help">{{ d.help }}</p>{% endif %}
+      {% if errors.get(d.key) %}<p class="error-text">{{ errors[d.key] }}</p>{% endif %}
+      <div class="input-row">
+        <input type="color" value="{{ value }}" aria-label="Pick a color" data-mirror="#f-{{ d.key|replace('.', '\\.') }}">
+        <input id="f-{{ d.key }}" type="text" name="{{ d.key }}" value="{{ value }}" pattern="#[0-9a-fA-F]{6}" class="code-input">
+      </div>
+      <p class="small">Links and buttons will use <span class="badge" id="accent-sample">{{ accent.accent }}</span> on light backgrounds and {{ accent.accent_dark }} in dark mode, adjusted for readability.</p>
+    </div>
+  {% elif d.type == "int" %}
+    {{ forms.input(d.key, d.label, value, type="number", errors=errors, help=d.help, attrs='min="0"') }}
+  {% else %}
+    {{ forms.input(d.key, d.label, value, type={"email": "email", "url": "url"}.get(d.type, "text"), errors=errors,
+                   help=d.help, placeholder=d.placeholder, optional=not d.required) }}
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<nav aria-label="Settings sections">
+  <ul class="tabs">
+    {% for key, label in tabs %}
+    <li><a href="{{ url_for('dash.settings', tab=key) }}"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{{ forms.error_summary(errors) }}
+
+<form method="post" enctype="multipart/form-data" class="stack" data-warn-unsaved>
+  {{ forms.csrf() }}
+
+  {% if tab == "extensions" %}
+    {% if not extensions %}
+    {{ ui.empty("No extensions are turned on", "Extensions add features like Discord or Slack announcements. Turn them on in the [extensions] part of copydesk.toml, then restart QuillSail.", icon_name="plug") }}
+    {% endif %}
+    {% for name, extension in extensions.items() %}
+    <section class="panel">
+      <div class="panel-header">
+        <h2>{{ extension.title }} <span class="small muted">{{ extension.version }}</span></h2>
+        {% if extension.url %}<a class="small" href="{{ extension.url }}">Documentation</a>{% endif %}
+      </div>
+      <div class="panel-body form">
+        {% if extension.description %}<p class="help">{{ extension.description }}</p>{% endif %}
+        {% for d in grouped.get(extension.title, []) %}{{ setting_field(d) }}{% else %}<p class="small muted">This extension has no settings here. It may be configured in copydesk.toml.</p>{% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  {% else %}
+  <section class="panel">
+    <div class="panel-body form form-narrow">
+      {% for d in definitions %}{{ setting_field(d) }}{% endfor %}
+
+      {% if tab == "appearance" %}
+      <div class="field{% if errors.get('appearance.logo') %} has-error{% endif %}">
+        <label for="f-logo">Logo <span class="optional">(optional)</span></label>
+        <p class="help">Shown in the site header instead of the publication's name. A wide image about 80 pixels tall works best. PNG with a transparent background is ideal.</p>
+        {% if errors.get("appearance.logo") %}<p class="error-text">{{ errors["appearance.logo"] }}</p>{% endif %}
+        {% if setting("appearance.logo") %}
+        <p><img class="brand-logo" src="{{ upload_url(setting('appearance.logo')) }}" alt="Current logo"></p>
+        {{ forms.checkbox("remove_logo", "Remove the logo") }}
+        {% endif %}
+        <input id="f-logo" type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/gif">
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if definitions or tab != "extensions" %}
+  <div class="form-actions">
+    <button class="button button-primary" type="submit">Save settings</button>
+  </div>
+  {% endif %}
+</form>
+
+{% if tab == "newsletter" %}
+<section class="panel section">
+  <div class="panel-header"><h2>Sign-up form for another website</h2></div>
+  <div class="panel-body stack">
+    <p class="help">Paste this into any web page (your club's main site, for example) to collect sign-ups here. People still confirm by email.</p>
+    <textarea id="embed-code" class="code-input" rows="7" readonly>{{ embed_code }}</textarea>
+    <p><button class="button button-small" type="button" data-copy="#embed-code" hidden>{{ icon("copy") }} Copy</button></p>
+    <p class="help">Building something custom? There's also a JSON API: <code>POST {{ external_url("api.subscribe") }}</code>. See docs/api.md.</p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

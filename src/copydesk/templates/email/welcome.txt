@@ -1,0 +1,10 @@
+Welcome to {{ site.name }}
+
+{{ body }}
+
+Read past issues: {{ external_url('public.issues') }}
+{% if setting("submissions.enabled") %}Write for us: {{ external_url('write.index') }}
+{% endif %}
+--
+Manage your subscription: {{ manage_url }}
+Unsubscribe: {{ unsubscribe_url }}

@@ -1,0 +1,10 @@
+Hi {{ user.display_name }},
+
+Thanks for sending "{{ article.display_title }}" to {{ site.name }}. Here's what happens next:
+
+1. An editor reads it.
+2. They might ask for some changes. That's normal, and you'll get an email if they do.
+3. Once it's accepted, it goes on the site and often into the newsletter.
+
+Follow your piece: {{ url }}
+{% include "email/_signature.txt" %}

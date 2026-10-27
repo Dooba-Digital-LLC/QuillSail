@@ -1,0 +1,55 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Issues{% endblock %}
+{% block lead %}<p class="lead">Each issue collects articles and notes into one email, and appears in the archive on the website.</p>{% endblock %}
+{% block actions %}
+<form method="post" action="{{ url_for('dash.issue_new') }}">{{ forms.csrf() }}<button class="button button-primary" type="submit">{{ icon("plus") }} New issue</button></form>
+{% endblock %}
+
+{% block content %}
+{% if page.items %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Issue</th>
+        <th scope="col">Status</th>
+        <th scope="col">Goes to</th>
+        <th scope="col" class="numeric">Sent</th>
+        <th scope="col">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for issue in page.items %}
+      <tr>
+        <td class="primary-cell">
+          <a href="{{ url_for('dash.issue', issue_id=issue.id) if issue.is_editable else url_for('dash.issue_report', issue_id=issue.id) }}">#{{ issue.number }} {{ issue.title or "Untitled" }}</a>
+          <span class="sub">{{ pluralize(issue.items|length, "item") }}{% if issue.is_public %} · on the website{% endif %}</span>
+        </td>
+        <td>
+          {{ ui.issue_status(issue) }}
+          {% if issue.status == "scheduled" %}<span class="sub small muted">{{ issue.scheduled_at|datetime }}</span>{% endif %}
+        </td>
+        <td>
+          {% if issue.audience_mode == "groups" %}
+            {% for group in issue.audience_groups %}{{ ui.badge(group) }} {% endfor %}
+          {% else %}Everyone{% endif %}
+        </td>
+        <td class="numeric">
+          {% if issue.id in stats %}
+            {{ stats[issue.id].sent|number }}{% if stats[issue.id].failed %} <span class="small" title="failed">({{ stats[issue.id].failed }} failed)</span>{% endif %}
+          {% endif %}
+        </td>
+        <td class="nowrap">
+          {% if issue.sent_at %}{{ issue.sent_at|date }}{% elif issue.published_at %}{{ issue.published_at|date }}{% else %}<span class="muted">Edited {{ ui.ago(issue.updated_at) }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{{ ui.pagination(page, "dash.issues") }}
+{% else %}
+{{ ui.empty("No issues yet", "Create your first issue, then add accepted articles, a short introduction and anything else you want readers to know.", icon_name="send") }}
+{% endif %}
+{% endblock %}

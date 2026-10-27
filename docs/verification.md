@@ -1,0 +1,60 @@
+# Verification record
+
+QuillSail is beta software. These are development checks, not an independent security audit. Private deployment addresses, access details and operations records are excluded from the public repository.
+
+## Application validation
+
+| Version | SQLite | PostgreSQL | Scope |
+| --- | --- | --- | --- |
+| 1.5.0 | 234 passed, 2 skipped | Not rerun | Publication design presets, permission/CSRF checks, isolated unsaved previews, logo variants/transparency/aspect ratio, design import/export boundaries, offline CSS inlining and existing workflows |
+| 1.3.0 | 153 passed, 2 skipped | 154 passed, 1 skipped | Blog/newsletter modes, direct publishing permissions, same-site post reuse, attributed external submissions, no remote source fetching, editorial review, subscriptions, competitions, backup/restore |
+| 1.2.0 | 134 passed, 2 skipped | 135 passed, 1 skipped | Competition hosting, moderation, assigned judges, concurrent reader voting, deadlines, ties and immutable results |
+| 1.1.0 | 122 passed, 2 skipped | 123 passed, 1 skipped | Encrypted sender settings, OAuth state/PKCE, mocked provider APIs, refresh and switching |
+
+The SQLite-only skip needs a disposable server database. The shared SMTP skip is an inapplicable TLS/authentication test on the plain loopback transport. A prior 1.0.0 validation also exercised MariaDB, Python 3.11–3.14, actual SMTP/TLS, and database backup/restore. Newer behavior was not independently rerun against MariaDB or every Python runtime; CI is configured to cover those combinations. The 1.5.0 check used Python 3.13 and SQLite, plus a clean wheel installation and browser checks of the editor, website/email previews and a narrow viewport. Received-email appearance in actual Gmail, Outlook and other clients still needs per-installation testing; browser email previews cannot establish client compatibility.
+
+A private Linux reference installation was checked behind a reverse proxy with Gunicorn and a separate worker. Checks covered HTTPS/subpath routing, assets, secure cookies, CSRF, private drafts and revision history, issue composition/previews, competition draft isolation, host settings, and migration upgrades. Existing SMTP authenticated and a previously requested test message was confirmed in its recipient's inbox. These observations do not establish deliverability for other installations.
+
+The Google authorization flow reached the provider's real sign-in page after app configuration. Account consent, token exchange and actual Gmail delivery remain unverified. Microsoft app registration is deferred. Automated Gmail/Outlook send and refresh tests mock provider HTTP responses; they are not live provider-delivery tests.
+
+[Machine-readable application results](verification-results.json) retain test counts and sanitized deployment checks.
+
+## Reproduce
+
+```sh
+python -m pip install -e '.[dev,integration]'
+pytest
+ruff check src tests scripts deploy
+python -m build
+python -m twine check --strict dist/*
+python scripts/check_public_files.py
+python scripts/check_public_files.py --archive dist/*.whl
+python scripts/check_public_files.py --archive dist/*.tar.gz
+python scripts/package_smoke.py dist/*.whl
+```
+
+The default suite uses disposable SQLite databases and synthetic accounts. Real loopback SMTP/TLS tests need the integration dependencies. To use a database server, also install the relevant driver and set `COPYDESK_TEST_DATABASE_URL` with a role permitted to create and drop test databases. Fixtures create randomly named `copydesk_test_*` databases and remove only those databases. Use a dedicated test server.
+
+```sh
+pip install -e '.[dev,integration,postgres]'
+COPYDESK_TEST_DATABASE_URL='postgresql+psycopg://test_user:TEST_PASSWORD@127.0.0.1:5432/postgres' pytest
+```
+
+With Docker available, build an isolated image and run the container checks:
+
+```sh
+docker build -t copydesk:ci .
+bash scripts/container_smoke.sh
+```
+
+The smoke script uses a separate Compose project and temporary volume, checks startup, web/worker health, non-root execution, path prefixes and persistence, then removes its own test resources. Never point it at an existing publication.
+
+## Public repository preparation
+
+Local preparation on October 26, 2026 passed **156 tests, 2 skipped** on Python 3.13/SQLite, including first-run bootstrap, private configuration permissions, stable secrets and refusal to start with an unmigrated database. The container entrypoint was additionally exercised outside Docker with real Gunicorn and worker processes, HTTP subpath routing, browser administrator setup, blog rendering and both health checks. A clean virtual environment installed the built wheel and passed migrations, setup, static-asset and subpath checks. Wheel/sdist metadata and public-file boundary checks passed. Staged files were also compared against known local deployment credentials and provider registration values without exposing those values.
+
+The repository includes Python/database CI, package validation and a Docker smoke job. Release automation validates the version tag, attaches the wheel/sdist and publishes a versioned GitHub Container Registry image when a maintainer publishes a GitHub release. These workflows have not been dispatched to GitHub as part of local preparation. Docker is not installed in the preparation environment, so an actual image build/container run remains to be verified by CI or a Docker-equipped host.
+
+## Limits
+
+Long-term operations, a full capacity benchmark, Oracle MySQL, other database/runtime combinations, externally delivered webhooks, and provider-specific account policies remain outside the verified scope. Restore and inbox checks should be repeated for each deployment. No independent security audit has been performed.

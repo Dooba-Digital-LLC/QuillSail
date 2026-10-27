@@ -1,0 +1,23 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}{% block page_title %}Account{% endblock %} · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="side-layout">
+    <nav aria-label="Account settings">
+      <p class="eyebrow">Account settings</p>
+      <ul class="side-nav">
+        {% for key, label, icon_name in account_nav %}
+        <li><a href="{{ url_for('account.' ~ key) }}"{% if key == account_active %} aria-current="page"{% endif %}>{{ icon(icon_name) }} {{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+    <div>
+      {% block account %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

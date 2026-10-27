@@ -1,0 +1,83 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Issue #{{ issue.number }}: {{ issue.display_title }} · {{ site.name }}{% endblock %}
+{% block description %}{{ issue.intro|excerpt(200) if issue.intro else site.description }}{% endblock %}
+
+{% block meta %}
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ site.name }} #{{ issue.number }}: {{ issue.display_title }}">
+<meta property="og:url" content="{{ external_url('public.issue', number=issue.number) }}">
+<link rel="canonical" href="{{ external_url('public.issue', number=issue.number) }}">
+{% if preview %}<meta name="robots" content="noindex">{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if preview %}
+<div class="container flashes">
+  {{ ui.alert("warning", Markup("<strong>Preview.</strong> This issue isn't on the website yet. You're seeing every item, including ones meant for specific groups.")) }}
+</div>
+{% endif %}
+
+<div class="container">
+  <header class="issue-header">
+    <p class="eyebrow">{{ site.name }} · Issue #{{ issue.number }}</p>
+    <h1>{{ issue.display_title }}</h1>
+    {% if issue.sent_at or issue.published_at %}<p class="muted">{{ ui.when(issue.sent_at or issue.published_at, "long") }}</p>{% endif %}
+  </header>
+
+  <div class="issue-body">
+    {% if issue.intro %}
+    <div class="prose">{{ issue.intro|markdown }}</div>
+    {% endif %}
+
+    <div class="issue-story-list">
+    {% for item in items %}
+      {% if item.kind == "heading" %}
+      <div class="issue-block-heading"><h2>{{ item.title }}</h2></div>
+      {% elif item.kind == "article" %}
+      <section class="issue-block">
+        {% if item.audience_labels %}<p class="audience-note">{{ icon("users") }} For {{ item.audience_labels|join(", ") }}</p>{% endif %}
+        {% if item.section %}<p class="eyebrow">{{ item.section }}</p>{% endif %}
+        <h2><a href="{{ url_for('public.article', slug=item.article.slug) }}">{{ item.title }}</a></h2>
+        {{ ui.byline(item.article, avatars=False, date=False) }}
+        {% if item.display == "full" and item.web_html %}
+        <div class="prose">{{ item.web_html }}</div>
+        {% else %}
+        <p class="muted">{{ item.summary }}</p>
+        <p><a href="{{ url_for('public.article', slug=item.article.slug) }}">Read the full article {{ icon("arrow-right") }}</a></p>
+        {% endif %}
+      </section>
+      {% else %}
+      <section class="issue-block">
+        {% if item.audience_labels %}<p class="audience-note">{{ icon("users") }} For {{ item.audience_labels|join(", ") }}</p>{% endif %}
+        {% if item.title %}<h2>{{ item.title }}</h2>{% endif %}
+        <div class="prose">{{ item.web_html }}</div>
+      </section>
+      {% endif %}
+    {% endfor %}
+    </div>
+
+    {% if hidden_count %}
+    <p class="muted small">
+      {{ icon("lock") }} {{ pluralize(hidden_count, "more item") }} in this issue {{ "was" if hidden_count == 1 else "were" }} sent only to particular reader groups.
+      {% if not current_user.is_authenticated %}<a href="{{ url_for('auth.login', next=request.path) }}">Sign in</a> to see what's for you.{% endif %}
+    </p>
+    {% endif %}
+
+    {{ slot("issue_after", issue=issue) }}
+
+    <nav class="pagination" aria-label="More issues">
+      {% if older %}<a class="button button-small" href="{{ url_for('public.issue', number=older.number) }}">{{ icon("arrow-left") }} Issue #{{ older.number }}</a>{% else %}<span></span>{% endif %}
+      <a href="{{ url_for('public.issues') }}">All issues</a>
+      {% if newer %}<a class="button button-small" href="{{ url_for('public.issue', number=newer.number) }}">Issue #{{ newer.number }} {{ icon("arrow-right") }}</a>{% else %}<span></span>{% endif %}
+    </nav>
+
+    {% if not preview %}
+    <section class="card-callout" aria-labelledby="issue-subscribe">
+      <h2 id="issue-subscribe">Get the next issue by email</h2>
+      {% with box_id = "issue" %}{% include "partials/subscribe_box.html" %}{% endwith %}
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

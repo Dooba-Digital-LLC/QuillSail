@@ -1,0 +1,22 @@
+[Unit]
+Description=QuillSail newsletter email worker
+After=network.target copydesk-web.service
+
+[Service]
+Type=simple
+User=copydesk
+Group=copydesk
+WorkingDirectory=/var/lib/copydesk
+Environment=COPYDESK_CONFIG=/var/lib/copydesk/copydesk.toml
+ExecStart=/opt/copydesk/current/venv/bin/copydesk worker
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/copydesk
+
+[Install]
+WantedBy=multi-user.target

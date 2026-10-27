@@ -1,0 +1,104 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ site.name }}{% if site.tagline %}: {{ site.tagline }}{% endif %}{% endblock %}
+
+{% block meta %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ site.name }}">
+<meta property="og:description" content="{{ site.description or site.tagline }}">
+<meta property="og:url" content="{{ external_url('public.home') }}">
+<link rel="canonical" href="{{ external_url('public.home') }}">
+{% endblock %}
+
+{% block content %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container">
+    {% if site.organization %}<p class="eyebrow org">{{ site.organization }}</p>{% endif %}
+    <h1 id="hero-title">{{ site.name }}</h1>
+    {% if site.tagline %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
+    {% include "partials/subscribe_box.html" %}
+    {% if subscriber_count >= 25 %}
+    <p class="small muted">Join {{ subscriber_count|number }} readers.</p>
+    {% endif %}
+  </div>
+</section>
+
+{{ slot("home_after_hero") }}
+
+<div class="container">
+  {% if setting("appearance.home_intro") %}
+  <section class="section">
+    <div class="prose">{{ setting("appearance.home_intro")|markdown }}</div>
+  </section>
+  {% endif %}
+
+  {% if latest_issue %}
+  <section class="section" aria-labelledby="latest-issue-heading">
+    <div class="section-heading">
+      <h2 id="latest-issue-heading">Latest issue</h2>
+      <a href="{{ url_for('public.issues') }}">All issues {{ icon("arrow-right") }}</a>
+    </div>
+    <article class="issue-card">
+      <p class="eyebrow">Issue #{{ latest_issue.number }} · {{ ui.when(latest_issue.sent_at or latest_issue.published_at, "long") }}</p>
+      <h3><a href="{{ url_for('public.issue', number=latest_issue.number) }}">{{ latest_issue.display_title }}</a></h3>
+      {% if latest_issue.intro %}<p class="muted">{{ latest_issue.intro|excerpt(260) }}</p>{% endif %}
+      {% set issue_articles = issue_articles_for_reader(latest_issue) %}
+      {% if issue_articles %}
+      <ol class="issue-toc" aria-label="In this issue">
+        {% for item in issue_articles[:6] %}
+        <li><a href="{{ url_for('public.article', slug=item.slug) }}">{{ item.display_title }}</a></li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+      <p><a class="button" href="{{ url_for('public.issue', number=latest_issue.number) }}">Read the issue {{ icon("arrow-right") }}</a></p>
+    </article>
+  </section>
+  {% endif %}
+
+  <section class="section" aria-labelledby="recent-heading">
+    <div class="section-heading">
+      <h2 id="recent-heading">Recent articles</h2>
+      {% if featured %}<a href="{{ url_for('public.articles') }}">All articles {{ icon("arrow-right") }}</a>{% endif %}
+    </div>
+    {% if featured %}
+    <article class="featured{% if featured.cover_image %} has-image{% endif %}">
+      <div>
+        {% if featured.section %}
+        <p class="eyebrow"><a href="{{ url_for('public.section', slug=featured.section.slug) }}">{{ featured.section.name }}</a></p>
+        {% endif %}
+        <h3><a href="{{ url_for('public.article', slug=featured.slug) }}">{{ featured.display_title }}</a></h3>
+        <p class="summary">{{ ui.summary_text(featured) }}</p>
+        {{ ui.byline(featured) }}
+        {{ ui.lock_chip(featured) }}
+      </div>
+      {% if featured.cover_image %}
+      <a class="featured-image" href="{{ url_for('public.article', slug=featured.slug) }}" tabindex="-1" aria-hidden="true">
+        <img src="{{ upload_url(featured.cover_image) }}" alt="">
+      </a>
+      {% endif %}
+    </article>
+    {% if recent %}
+    <ul class="article-list">
+      {% for item in recent %}{{ ui.article_item(item) }}{% endfor %}
+    </ul>
+    {% endif %}
+    {% else %}
+    {{ ui.empty("Nothing published yet",
+                "The first articles will show up here. Want to be one of the first writers?",
+                url_for("write.index") if setting("submissions.enabled") else None, "Start writing", "file") }}
+    {% endif %}
+  </section>
+
+  {% if setting("submissions.enabled") %}
+  <section class="section">
+    <div class="card-callout spread">
+      <div>
+        <h2>Write for {{ site.name }}</h2>
+        <p class="muted">{{ setting("submissions.intro")|excerpt(220) }}</p>
+      </div>
+      <a class="button button-primary" href="{{ url_for('write.index') }}">{{ icon("pen") }} Start writing</a>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

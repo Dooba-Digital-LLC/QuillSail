@@ -1,0 +1,12 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}One click to confirm your email address and start writing for {{ site.name }}.{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">Confirm your email address</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+<p style="{{ es.p }}">Thanks for joining {{ site.name }}. Click the button to confirm this is your email address. Then you can start writing.</p>
+{{ m.button(url, "Confirm my email address") }}
+<p style="{{ es.small }}">The link works for three days. If you didn't create an account, you can safely ignore this email.</p>
+{{ m.link_fallback(url) }}
+{% endblock %}
+{% block footer %}This email was sent because someone created an account at {{ site.name }} with this address.{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ 'Posts' if blog_mode else 'Articles' }} · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <h1>{{ 'Posts' if blog_mode else 'Articles' }}</h1>
+    <p class="lead">Everything published in {{ site.name }}, newest first.</p>
+    {% if sections %}
+    <nav aria-label="Sections">
+      <ul class="tag-list">
+        {% for section in sections %}
+        <li><a href="{{ url_for('public.section', slug=section.slug) }}">{{ section.name }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+    {% endif %}
+  </header>
+
+  {% if page.items %}
+  <ul class="article-list">
+    {% for item in page.items %}{{ ui.article_item(item) }}{% endfor %}
+  </ul>
+  {{ ui.pagination(page, "public.articles", "Newer", "Older") }}
+  {% else %}
+  {{ ui.empty("No posts yet" if blog_mode else "No articles yet", "Published posts will appear here." if blog_mode else "Published articles will appear here.", icon_name="file") }}
+  {% endif %}
+</div>
+{% endblock %}

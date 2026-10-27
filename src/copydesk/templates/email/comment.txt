@@ -1,0 +1,6 @@
+{{ event.user.display_name if event.user else "Someone" }} commented on "{{ article.display_title }}"{% if event.internal %} (internal note, editors only){% endif %}:
+
+{{ event.body }}
+
+Reply: {{ url }}
+{% include "email/_signature.txt" %}

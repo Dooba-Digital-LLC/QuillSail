@@ -1,0 +1,33 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+{% block title %}For businesses · {{ site.name }}{% endblock %}
+{% block content %}
+<div class="container container-narrow">
+  <header class="page-header"><div><p class="eyebrow">Business outreach</p><h1>Connect your business with students</h1><p class="lead">Share an opportunity, a practical project, or a workforce need. Our editors will review it and follow up with you.</p></div></header>
+  <p>Internships, jobs, student projects, mentorship, events, partnerships, and newsletter feedback are welcome. No account is needed. Your submission goes to a private staff inbox; it is not published automatically.</p>
+  {{ forms.error_summary(errors) }}
+  <form method="post" class="form stack">
+    {{ forms.csrf() }}{{ forms.honeypot() }}
+    <section class="panel"><div class="panel-header"><h2>Your organization</h2></div><div class="panel-body">
+      {{ forms.input('organization', 'Organization or business', form.get('organization',''), required=True, errors=errors, autocomplete='organization', attrs='maxlength="160"') }}
+      <div class="field-row">{{ forms.input('contact_name', 'Your name', form.get('contact_name',''), required=True, errors=errors, autocomplete='name', attrs='maxlength="100"') }}{{ forms.input('email', 'Contact email', form.get('email',''), type='email', required=True, errors=errors, autocomplete='email', help='We will email a confirmation link. Staff will use this address to follow up.') }}</div>
+      {{ forms.input('website_url', 'Organization website', form.get('website_url',''), type='url', optional=True, errors=errors, placeholder='https://') }}
+    </div></section>
+    <section class="panel"><div class="panel-header"><h2>What would you like to share?</h2></div><div class="panel-body">
+      {{ forms.select('kind', 'Type of request', [('', 'Choose…')] + kinds, form.get('kind',request.args.get('kind','')), required=True, errors=errors) }}
+      {{ forms.input('title', 'Opportunity or request title', form.get('title',''), required=True, errors=errors, attrs='maxlength="200"') }}
+      {{ forms.textarea('description', 'Tell us about the opportunity or workforce need', form.get('description',''), required=True, errors=errors, rows=7, help='Describe the work, who would benefit, support or training available, and what you would like students or the university to do.', attrs='maxlength="12000"') }}
+      {{ forms.input('skills', 'Skills or interests', form.get('skills',''), optional=True, errors=errors, placeholder='For example: data analysis, technical writing, web development', attrs='maxlength="500"') }}
+      <div class="field-row">{{ forms.input('location', 'Location or remote arrangements', form.get('location',''), optional=True, errors=errors, attrs='maxlength="200"') }}{{ forms.input('compensation', 'Pay, stipend, or other terms', form.get('compensation',''), optional=True, errors=errors, help='For paid roles, include a pay range. Clearly identify unpaid or volunteer activities.', attrs='maxlength="200"') }}</div>
+      <div class="field-row">{{ forms.input('deadline', 'Application or response deadline', form.get('deadline',''), type='date', optional=True, errors=errors) }}{{ forms.input('application_url', 'Application or information link', form.get('application_url',''), type='url', optional=True, errors=errors, placeholder='https://') }}</div>
+    </div></section>
+    <section class="panel"><div class="panel-body">
+      {{ forms.checkbox('share_contact', 'Editors may include my contact email if they publish this opportunity', checked=form.get('share_contact'), help='Optional. Otherwise your name and email stay in the private staff inbox.') }}
+      {{ forms.checkbox('consent', 'The editors may contact me about this request', checked=form.get('consent'), attrs='required') }}
+      {% if errors.get('consent') %}<p class="error-text">{{ errors.consent }}</p>{% endif %}
+      <p class="small muted">Email confirmation verifies access to the mailbox; it does not endorse an employer or guarantee placement. Editors decide what is suitable for publication.</p>
+      <button class="button button-primary" type="submit">Send for email confirmation</button>
+    </div></section>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Issues · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <h1>Issues</h1>
+    <p class="lead">Every issue of {{ site.name }}, newest first. Want them in your inbox? <a href="{{ url_for('subscribe.subscribe') }}">Subscribe</a>.</p>
+  </header>
+
+  {% if page.items %}
+  <ol class="issue-archive">
+    {% for issue in page.items %}
+    <li class="issue-row">
+      <div class="issue-number">No. {{ issue.number }}</div>
+      <div>
+        <h3><a href="{{ url_for('public.issue', number=issue.number) }}">{{ issue.display_title }}</a></h3>
+        <p class="meta">
+          {{ ui.when(issue.sent_at or issue.published_at, "long") }}
+          {% set count = issue.articles|length %}
+          {% if count %}<span>{{ pluralize(count, "article") }}</span>{% endif %}
+        </p>
+        {% if issue.intro %}<p class="muted">{{ issue.intro|excerpt(220) }}</p>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {{ ui.pagination(page, "public.issues", "Newer", "Older") }}
+  {% else %}
+  {{ ui.empty("No issues yet", "The first issue is on its way. Subscribe so you don't miss it.",
+              url_for("subscribe.subscribe"), "Subscribe", "mail") }}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+name = "broadsheet"
+title = "Broadsheet"
+description = "A classic newspaper look: warm paper, serif type and ruled sections."
+version = "1.0.0"
+author = "QuillSail contributors"
+parent = "default"
+stylesheets = ["broadsheet.css"]

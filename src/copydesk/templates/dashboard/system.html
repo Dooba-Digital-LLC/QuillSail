@@ -1,0 +1,127 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}System status{% endblock %}
+{% block lead %}<p class="lead">How QuillSail is running on your server. Most of this is set in <code>copydesk.toml</code>.</p>{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-header"><h2>Email</h2><a href="{{ url_for('dash.email_settings') }}">Manage connection</a></div>
+    <div class="panel-body stack">
+      {% if mail_problem %}{{ ui.alert("error", mail_problem) }}{% endif %}
+      <dl class="definition-list small">
+        <dt>Backend</dt><dd>{{ mail_config.backend }}{% if mail_config.backend not in ("smtp", "gmail", "outlook") %} <span class="status status-warning">Not sending real email</span>{% endif %}</dd>
+        {% if mail_config.backend == "smtp" %}
+        <dt>Server</dt><dd>{{ mail_config.host }}:{{ mail_config.port }} ({{ mail_config.security }})</dd>
+        <dt>Signs in as</dt><dd>{{ mail_config.username or "No sign-in" }}</dd>
+        {% endif %}
+        <dt>Sends from</dt><dd>{{ site.name }} &lt;{{ mail_config.from_email }}&gt;</dd>
+        <dt>Speed limit</dt><dd>{{ mail_config.rate_per_minute }} emails a minute</dd>
+      </dl>
+      <div class="cluster">
+        <form method="post" action="{{ url_for('dash.system_mail_check') }}">{{ forms.csrf() }}<button class="button button-small" type="submit">Check the connection</button></form>
+        <form method="post" action="{{ url_for('dash.settings_test_email') }}">{{ forms.csrf() }}<button class="button button-small" type="submit">{{ icon("mail") }} Send me a test email</button></form>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><h2>Background jobs</h2></div>
+    <div class="panel-body stack">
+      <p class="cluster">
+        {% if worker_ok %}<span class="status status-success">Worker running</span> <span class="small muted">last checked in {{ ui.ago(last_seen) }}</span>
+        {% elif last_seen %}<span class="status status-danger">Worker not running</span> <span class="small muted">last seen {{ ui.ago(last_seen) }}</span>
+        {% else %}<span class="status status-danger">No worker has run yet</span>{% endif %}
+      </p>
+      <p class="help">Emails are sent by a background worker. Start it with <code>copydesk worker</code> (see the systemd examples in the installation guide), run <code>copydesk jobs run</code> from cron, or set <code>run_in_web = true</code> under <code>[jobs]</code>.</p>
+      <dl class="definition-list small">
+        <dt>Waiting</dt><dd>{{ counts.get("queued", 0) }}</dd>
+        <dt>Running</dt><dd>{{ counts.get("running", 0) }}</dd>
+        <dt>Failed</dt><dd>{{ counts.get("failed", 0) }}</dd>
+        <dt>Finished (14 days)</dt><dd>{{ counts.get("done", 0) }}</dd>
+      </dl>
+      <form method="post" action="{{ url_for('dash.system_run_jobs') }}">{{ forms.csrf() }}<button class="button button-small" type="submit">{{ icon("refresh") }} Run waiting jobs now</button></form>
+    </div>
+  </section>
+</div>
+
+{% if failed %}
+<section class="panel section">
+  <div class="panel-header"><h2>Failed jobs</h2></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th scope="col">Job</th><th scope="col">Error</th><th scope="col">When</th><th scope="col" class="actions"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+        {% for job in failed %}
+        <tr>
+          <td class="nowrap">{{ job.kind }}{% if job.payload.get("to") %}<br><span class="small muted">to {{ job.payload.get("to") }}</span>{% endif %}</td>
+          <td><details><summary class="small">{{ job.last_error.strip().splitlines()[-1]|truncate(90) if job.last_error else "Unknown error" }}</summary><pre class="code-block">{{ job.last_error }}</pre></details></td>
+          <td class="nowrap">{{ ui.ago(job.finished_at) }}</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('dash.system_job', job_id=job.id) }}" class="cluster">
+              {{ forms.csrf() }}
+              <button class="button button-small" type="submit" name="action" value="retry">Retry</button>
+              <button class="button button-small button-danger" type="submit" name="action" value="delete">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if upcoming %}
+<section class="panel section">
+  <div class="panel-header"><h2>Waiting jobs</h2></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th scope="col">Job</th><th scope="col">Status</th><th scope="col">Runs</th><th scope="col" class="numeric">Tries</th></tr></thead>
+      <tbody>
+        {% for job in upcoming %}
+        <tr>
+          <td>{{ job.kind }}</td>
+          <td>{{ job.status }}</td>
+          <td class="nowrap">{{ ui.ago(job.run_at) }}</td>
+          <td class="numeric">{{ job.attempts }} of {{ job.max_attempts }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid-2 section">
+  <section class="panel">
+    <div class="panel-header"><h2>Extensions</h2></div>
+    <div class="panel-body">
+      {% if extensions %}
+      <ul class="checklist">
+        {% for name, ext in extensions.items() %}
+        <li>{{ icon("plug") }} <span><strong>{{ ext.title }}</strong> {{ ext.version }}{% if ext.description %}<br><span class="small muted">{{ ext.description }}</span>{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">None turned on. Add them under <code>[extensions]</code> in copydesk.toml.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><h2>About this install</h2></div>
+    <div class="panel-body">
+      <dl class="definition-list small">
+        <dt>QuillSail</dt><dd>{{ version }}</dd>
+        <dt>Python</dt><dd>{{ python }}</dd>
+        <dt>Database</dt><dd>{{ database }}</dd>
+        <dt>Site address</dt><dd>{{ config.base_url }}</dd>
+        <dt>Config file</dt><dd><code>{{ config.path or "none (environment variables)" }}</code></dd>
+        <dt>Uploads folder</dt><dd><code>{{ config.uploads_dir }}</code></dd>
+        <dt>Theme</dt><dd>{{ themes[active_theme].title if active_theme in themes else active_theme }} ({{ pluralize(themes|length, "theme") }} installed)</dd>
+      </dl>
+    </div>
+  </section>
+</div>
+{% endblock %}

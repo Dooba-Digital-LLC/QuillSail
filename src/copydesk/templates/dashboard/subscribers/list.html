@@ -1,0 +1,73 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Subscribers{% endblock %}
+{% block lead %}<p class="lead">Everyone on the newsletter list, with or without an account.</p>{% endblock %}
+{% block actions %}
+  <a class="button" href="{{ url_for('dash.subscriber_export', status=status, q=q or None, group=group_id) }}">{{ icon("download") }} Export CSV</a>
+  <a class="button" href="{{ url_for('dash.subscriber_import') }}">{{ icon("upload") }} Import</a>
+  <a class="button button-primary" href="{{ url_for('dash.subscriber_new') }}">{{ icon("plus") }} Add subscriber</a>
+{% endblock %}
+
+{% block content %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Subscribed</span><span class="stat-value">{{ counts.get("active", 0)|number }}</span></div>
+  {% for group in groups %}
+  <a class="stat" href="{{ url_for('dash.subscribers', status='active', group=group.id) }}">
+    <span class="stat-label">{{ group.name }}</span>
+    <span class="stat-value">{{ group_counts.get(group.id, 0)|number }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<nav aria-label="Filter by status">
+  <ul class="tabs">
+    {% for key, label in labels.items() %}
+    <li><a href="{{ url_for('dash.subscribers', status=key, q=q or None, group=group_id) }}"{% if key == status %} aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ counts.get(key, 0)|number }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<form class="toolbar" method="get" role="search">
+  <input type="hidden" name="status" value="{{ status }}">
+  <div class="field">
+    <label for="f-q">Search</label>
+    <input id="f-q" type="search" name="q" value="{{ q }}" placeholder="Email or name">
+  </div>
+  <div class="field">
+    <label for="f-group">Group</label>
+    <select id="f-group" name="group" data-autosubmit>
+      <option value="">Any group</option>
+      {% for group in groups %}<option value="{{ group.id }}"{% if group.id == group_id %} selected{% endif %}>{{ group.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="button" type="submit">Apply</button>
+</form>
+
+{% if page.items %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th scope="col">Email</th><th scope="col">Groups</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col">Since</th></tr>
+    </thead>
+    <tbody>
+      {% for sub in page.items %}
+      <tr>
+        <td class="primary-cell">
+          <a href="{{ url_for('dash.subscriber', subscriber_id=sub.id) }}">{{ sub.email }}</a>
+          {% if sub.name %}<span class="sub">{{ sub.name }}</span>{% endif %}
+        </td>
+        <td>{% for group in sub.groups %}{{ ui.badge(group) }} {% endfor %}</td>
+        <td>{{ labels.get(sub.status, sub.status) }}</td>
+        <td>{{ {"form": "Sign-up form", "account": "Account", "import": "Import", "admin": "Added by an editor", "api": "API"}.get(sub.source, sub.source) }}</td>
+        <td class="nowrap">{{ ui.when(sub.confirmed_at or sub.created_at) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="small muted">Showing {{ page.first_index|number }}–{{ page.last_index|number }} of {{ page.total|number }}.</p>
+{{ ui.pagination(page, "dash.subscribers", status=status, q=q or None, group=group_id) }}
+{% else %}
+{{ ui.empty("No subscribers here", "Share your sign-up page, " ~ external_url("subscribe.subscribe") ~ ", or import an existing list.", icon_name="mail") }}
+{% endif %}
+{% endblock %}

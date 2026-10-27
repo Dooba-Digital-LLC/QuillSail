@@ -1,0 +1,10 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}{{ event.user.display_name if event.user else "Someone" }} commented on “{{ article.display_title }}”.{% endblock %}
+{% block content %}
+<p style="{{ es.label }}">New comment</p>
+<h1 style="{{ es.h1 }}">{{ article.display_title }}</h1>
+<p style="{{ es.p }}"><strong>{{ event.user.display_name if event.user else "Someone" }}</strong> wrote{% if event.internal %} (internal note, editors only){% endif %}:</p>
+<div style="{{ es.quote }}">{{ email_markdown(event.body) }}</div>
+{{ m.button(url, "Reply") }}
+{% endblock %}

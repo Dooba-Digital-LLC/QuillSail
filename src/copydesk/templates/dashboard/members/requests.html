@@ -1,0 +1,53 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Requests to join groups{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.members') }}">Members</a></p>{% endblock %}
+{% block lead %}<p class="lead">People asking to join groups that need approval. They get an email either way.</p>{% endblock %}
+
+{% block content %}
+{% if pending %}
+<div class="stack">
+  {% for membership in pending %}
+  {% set member = membership.user %}
+  <article class="panel">
+    <div class="panel-header">
+      <div class="cluster">
+        {{ ui.avatar(member, "sm") }}
+        <strong><a href="{{ url_for('dash.member', user_id=member.id) }}">{{ member.display_name }}</a></strong>
+        <span>wants to join</span> {{ ui.badge(membership.group) }}
+      </div>
+      <span class="small muted">{{ ui.ago(membership.created_at) }}</span>
+    </div>
+    <div class="panel-body stack">
+      <dl class="definition-list small">
+        <dt>Email</dt><dd>{{ member.email }}{% if not member.is_verified %} (not confirmed){% endif %}</dd>
+        {% for spec in membership.group.fields %}
+        {% if membership.data.get(spec.key) %}<dt>{{ spec.label }}</dt><dd>{{ membership.data.get(spec.key) }}</dd>{% endif %}
+        {% endfor %}
+        {% if membership.note %}<dt>Their note</dt><dd>“{{ membership.note }}”</dd>{% endif %}
+        <dt>Other groups</dt><dd>{% for m in member.active_memberships %}{{ ui.badge(m.group) }} {% else %}None{% endfor %}</dd>
+      </dl>
+      <form method="post" action="{{ url_for('dash.request_decision', membership_id=membership.id) }}" class="stack">
+        {{ forms.csrf() }}
+        <div class="cluster">
+          <button class="button button-primary" type="submit" name="decision" value="approve">{{ icon("check") }} Approve</button>
+          <details class="decision">
+            <summary class="button">Turn down…</summary>
+            <div class="stack">
+              <div class="field">
+                <label for="reason-{{ membership.id }}">Why? <span class="optional">(optional, included in the email)</span></label>
+                <textarea id="reason-{{ membership.id }}" name="reason" rows="2"></textarea>
+              </div>
+              <button class="button button-danger" type="submit" name="decision" value="reject">Turn down request</button>
+            </div>
+          </details>
+        </div>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+{{ ui.empty("No requests waiting", "When someone asks to join a group that needs approval, it shows up here and people who manage members get an email.", icon_name="users") }}
+{% endif %}
+{% endblock %}

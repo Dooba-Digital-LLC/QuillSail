@@ -1,0 +1,87 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Preview of issue #{{ issue.number }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.issues') }}">Issues</a> / <a href="{{ url_for('dash.issue', issue_id=issue.id) if issue.is_editable else url_for('dash.issue_report', issue_id=issue.id) }}">Issue #{{ issue.number }}</a></p>{% endblock %}
+{% block lead %}<p class="lead">This is exactly what subscribers will get. Pick a group to see the version its members receive.</p>{% endblock %}
+{% block actions %}
+  {% if issue.is_editable %}
+  <a class="button" href="{{ url_for('dash.issue', issue_id=issue.id) }}">{{ icon("edit") }} Keep editing</a>
+  {% if can("send_issues") %}<a class="button button-primary" href="{{ url_for('dash.issue_send', issue_id=issue.id) }}">{{ icon("send") }} Send or schedule</a>{% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid-main-side">
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Email preview</h2>
+        <form method="get" class="input-row">
+          <label for="f-audience" class="small">Show the version for</label>
+          <select id="f-audience" name="audience" data-autosubmit>
+            <option value="all"{% if audience == "all" %} selected{% endif %}>Everything (all items)</option>
+            {% for group in audience_groups %}
+            <option value="{{ group.slug }}"{% if audience == group.slug %} selected{% endif %}>{{ group.name }}</option>
+            {% endfor %}
+            <option value="none"{% if audience == "none" %} selected{% endif %}>People in no group</option>
+          </select>
+          <noscript><button class="button button-small" type="submit">Show</button></noscript>
+        </form>
+      </div>
+      <div class="panel-body stack">
+        <dl class="definition-list small">
+          <dt>From</dt><dd>{{ site.name }}</dd>
+          <dt>Subject</dt><dd><strong>{{ subject }}</strong></dd>
+          {% if issue.preheader %}<dt>Preview text</dt><dd>{{ issue.preheader }}</dd>{% endif %}
+          <dt>Showing</dt><dd>{{ audience_label }}</dd>
+        </dl>
+        <iframe class="preview-frame" src="{{ url_for('dash.issue_email', issue_id=issue.id, audience=audience) }}" title="Email preview"></iframe>
+      </div>
+    </section>
+
+    <details class="panel">
+      <summary class="panel-header"><h2>Plain-text version</h2><span class="small muted">For email apps that don't show HTML</span></summary>
+      <div class="panel-body"><pre class="code-block">{{ text_version }}</pre></div>
+    </details>
+  </div>
+
+  <aside class="stack">
+    {% if issue.status == 'draft' and not issue.is_public %}
+    <section class="panel">
+      <div class="panel-header"><h2>Share a private preview</h2></div>
+      <div class="panel-body stack">
+        <p class="small">Anyone with the secret link can view this draft without an account. It stays out of public archives, search, and feeds. Group-only items and restricted articles are excluded.</p>
+        {% if shared_link %}<p class="small">Current address: <strong>{{ shared_link.slug }}</strong>. Expires {{ shared_link.expires_at|date('long') }}. Creating another link revokes the previous one.</p>{% endif %}
+        <form class="form" method="post" action="{{ url_for('dash.issue_share', issue_id=issue.id) }}">
+          {{ forms.csrf() }}
+          {{ forms.input('slug', 'Preview address', shared_link.slug if shared_link else '', optional=True, placeholder='example', help='Letters, numbers, and hyphens. Leave blank for a generated address.') }}
+          {{ forms.select('days', 'Link expires after', [('7','7 days'), ('30','30 days'), ('90','90 days')], '30') }}
+          <button class="button" type="submit">Create private link</button>
+        </form>
+        {% if shared_link %}<form method="post" action="{{ url_for('dash.issue_share', issue_id=issue.id) }}">{{ forms.csrf() }}<input type="hidden" name="action" value="revoke"><button class="button button-small" type="submit">Revoke link</button></form>{% endif %}
+      </div>
+    </section>
+    {% endif %}
+    <section class="panel">
+      <div class="panel-header"><h2>Send a test</h2></div>
+      <form class="panel-body form" method="post" action="{{ url_for('dash.issue_test', issue_id=issue.id, audience=audience) }}">
+        {{ forms.csrf() }}
+        {{ forms.textarea("addresses", "Send to", current_user.email, rows=2,
+                          help="One or more addresses, separated by commas. The test uses the version you're previewing.") }}
+        <button class="button" type="submit">{{ icon("mail") }} Send test</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-header"><h2>Before you send</h2></div>
+      <div class="panel-body">
+        <ul class="checklist small">
+          <li>{{ icon("check-circle", cls="icon ok") }} Read it once on your phone. Most people will.</li>
+          <li>{{ icon("check-circle", cls="icon ok") }} Click every link in the test email.</li>
+          <li>{% if subject|length > 70 %}{{ icon("warning", cls="icon warn") }} The subject is {{ subject|length }} characters, so phones will cut it off. Aim for under 60.{% else %}{{ icon("check-circle", cls="icon ok") }} The subject is a good length.{% endif %}</li>
+          <li>{% if issue.preheader %}{{ icon("check-circle", cls="icon ok") }} Preview text is set.{% else %}{{ icon("warning", cls="icon warn") }} Add preview text so inboxes don't show “View in browser”.{% endif %}</li>
+        </ul>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+{% block title %}Offer a blog post · {{ site.name }}{% endblock %}
+{% block content %}
+<div class="container container-narrow">
+  <header class="page-intro"><h1>Offer a blog post to {{ site.name }}</h1><p class="lead">Share an excerpt of a public post. The editors will review it as an article submission, with a link and credit to the original.</p></header>
+  {{ forms.error_summary(errors) }}
+  <form method="post" class="form" data-warn-unsaved>{{ forms.csrf() }}
+    {{ forms.input('source_url', 'Original public blog post URL', values.get('source_url', ''), type='url', required=True, errors=errors, attrs='maxlength="2048"') }}
+    {{ forms.input('title', 'Article title', values.get('title', ''), required=True, errors=errors, attrs='maxlength="200"') }}
+    {{ forms.input('source_author', 'Original author credit', values.get('source_author', current_user.display_name), required=True, errors=errors, attrs='maxlength="200"') }}
+    {{ forms.textarea('body', 'Excerpt or article to review', values.get('body', ''), errors=errors, rows=12, attrs='required maxlength="200000"', help='Paste at least 20 words. Markdown is supported. Include only content you want to submit to this publication.') }}
+    {% set choices = [('', 'Choose a section…')] %}{% for section in sections %}{% set _ = choices.append((section.id|string, section.name)) %}{% endfor %}
+    {{ forms.select('section_id', 'Section', choices, values.get('section_id', ''), errors=errors) }}
+    {{ forms.checkbox('permission', 'I wrote this post or have permission to submit it, and the original is public.', values.get('permission'), help='Submission does not guarantee publication.') }}
+    {% if errors.get('permission') %}<p class="error-text">{{ errors.permission }}</p>{% endif %}
+    <button class="button button-primary">{{ icon('send') }} Submit to the editors</button>
+  </form>
+</div>
+{% endblock %}

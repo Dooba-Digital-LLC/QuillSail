@@ -1,0 +1,5 @@
+# Replace this hostname with a domain whose DNS points at your server.
+# Run Caddy on the host; QuillSail's port is bound to host loopback.
+blog.example.com {
+    reverse_proxy 127.0.0.1:8080
+}

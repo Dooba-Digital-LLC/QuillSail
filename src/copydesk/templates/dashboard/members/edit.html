@@ -1,0 +1,157 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}{{ member.display_name }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.members') }}">Members</a></p>{% endblock %}
+{% block lead %}
+<p class="lead cluster">
+  <span>@{{ member.username }} · {{ member.email }}</span>
+  {% if member.is_deleted %}<span class="status status-danger">Deleted</span>
+  {% elif not member.is_active %}<span class="status status-danger">Blocked</span>
+  {% elif not member.is_verified %}<span class="status status-warning">Email not confirmed</span>
+  {% else %}<span class="status status-success">Active</span>{% endif %}
+</p>
+{% endblock %}
+{% block actions %}
+  {% if not member.is_deleted %}<a class="button" href="{{ url_for('public.person', username=member.username) }}">{{ icon("user") }} Public profile</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not member.is_active and member.blocked_reason %}
+<div class="flashes">{{ ui.alert("warning", "Blocked: " ~ member.blocked_reason) }}</div>
+{% endif %}
+
+<div class="grid-main-side">
+  <div class="stack">
+    <section class="panel" aria-labelledby="groups-heading">
+      <div class="panel-header"><h2 id="groups-heading">Groups</h2><span class="small muted">Groups decide what someone can do and how they appear.</span></div>
+      <ul class="panel-list">
+        {% for membership in member.memberships %}
+        {% set group = membership.group %}
+        <li>
+          <div>
+            <div class="cluster">
+              {{ ui.badge(group) }} <strong>{{ group.name }}</strong>
+              {% if membership.status == "pending" %}<span class="status status-warning">Asked to join</span>{% endif %}
+              <span class="small muted">{{ {"self": "joined themselves", "domain": "joined via their email domain", "admin": "added by an editor", "approval": "approved"}.get(membership.source, "") }}</span>
+            </div>
+            {% set fields = membership.public_fields() %}
+            {% if membership.data %}
+            <div class="small muted">{% for spec in group.fields %}{% if membership.data.get(spec.key) %}{{ spec.label }}: {{ membership.data.get(spec.key) }}{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</div>
+            {% endif %}
+            {% if membership.note %}<div class="small">“{{ membership.note }}”</div>{% endif %}
+          </div>
+          {% if can_assign(group) %}
+          <form method="post" class="cluster">
+            {{ forms.csrf() }}
+            <input type="hidden" name="membership_id" value="{{ membership.id }}">
+            {% if membership.status == "pending" %}
+            <button class="button button-small button-primary" type="submit" name="action" value="approve">Approve</button>
+            <button class="button button-small" type="submit" name="action" value="reject" data-confirm="Turn down this request? They'll be emailed.">Turn down</button>
+            {% else %}
+            <button class="button button-small button-danger" type="submit" name="action" value="remove_membership" data-confirm="Remove {{ member.display_name }} from {{ group.name }}?">Remove</button>
+            {% endif %}
+          </form>
+          {% endif %}
+        </li>
+        {% else %}
+        <li class="muted">Not in any groups.</li>
+        {% endfor %}
+      </ul>
+      {% if addable %}
+      <div class="panel-footer">
+        <form method="post" class="input-row">
+          {{ forms.csrf() }}
+          <input type="hidden" name="action" value="add_group">
+          <label class="visually-hidden" for="f-add-group">Add to group</label>
+          <select id="f-add-group" name="group_id">
+            {% for group in addable %}<option value="{{ group.id }}">{{ group.name }}</option>{% endfor %}
+          </select>
+          <button class="button button-small" type="submit">{{ icon("plus") }} Add to group</button>
+        </form>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h2>What they can do</h2><a class="small" href="{{ url_for('dash.permission_matrix') }}">All permissions</a></div>
+      <div class="panel-body">
+        {% if permissions %}
+        <div class="cluster">{% for key in permissions %}<span class="chip">{{ key }}</span>{% endfor %}</div>
+        {% else %}
+        <p class="muted">Nothing beyond reading the public site{% if not member.is_verified %}, because their email address isn't confirmed yet{% endif %}.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if articles %}
+    <section class="panel">
+      <div class="panel-header"><h2>Writing</h2></div>
+      <ul class="panel-list">
+        {% for article in articles %}
+        <li><a class="title" href="{{ url_for('dash.article', article_id=article.id) }}">{{ article.display_title }}</a>{{ ui.status(article.status) }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack">
+    {% if not member.is_deleted and can_manage_member %}
+    <form class="panel" method="post">
+      <div class="panel-header"><h2>Profile</h2></div>
+      <div class="panel-body form">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="save">
+        {{ forms.input("display_name", "Name", member.display_name, required=True) }}
+        {{ forms.input("username", "Username", member.username, required=True) }}
+        <button class="button button-small" type="submit">Save</button>
+      </div>
+    </form>
+    {% endif %}
+
+    <section class="panel">
+      <div class="panel-header"><h2>Account</h2></div>
+      <div class="panel-body stack">
+        <dl class="definition-list small">
+          <dt>Joined</dt><dd>{{ member.created_at|datetime }}</dd>
+          <dt>Last seen</dt><dd>{{ member.last_seen_at|datetime if member.last_seen_at else "Never" }}</dd>
+          <dt>Newsletter</dt><dd>{% if subscriber %}<a href="{{ url_for('dash.subscriber', subscriber_id=subscriber.id) }}">{{ subscriber.status|capitalize }}</a>{% else %}Not subscribed{% endif %}</dd>
+        </dl>
+        {% if not member.is_deleted and can_manage_member %}
+        <form method="post" class="stack">
+          {{ forms.csrf() }}
+          {% if not member.is_verified %}
+          <button class="button button-small button-block" type="submit" name="action" value="verify" data-confirm="Mark {{ member.email }} as confirmed without them clicking the link?">Mark email as confirmed</button>
+          {% endif %}
+          <button class="button button-small button-block" type="submit" name="action" value="reset">Email a password reset link</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if not is_self and not member.is_deleted and can_manage_member %}
+    <section class="panel">
+      <div class="panel-header"><h2>Block or delete</h2></div>
+      <div class="panel-body stack">
+        {% if member.is_active %}
+        <form method="post" class="form" data-confirm="Block {{ member.display_name }}? They'll be signed out and can't sign in.">
+          {{ forms.csrf() }}
+          <input type="hidden" name="action" value="block">
+          {{ forms.input("reason", "Reason", "", optional=True, help="Only editors see this.") }}
+          <button class="button button-danger button-small" type="submit">Block</button>
+        </form>
+        {% else %}
+        <form method="post">{{ forms.csrf() }}<button class="button button-small" type="submit" name="action" value="unblock">Unblock</button></form>
+        {% endif %}
+        {% if viewer_is_admin %}
+        <form method="post" data-confirm="Delete {{ member.display_name }}'s account? Their profile, groups, subscription and drafts are removed. This can't be undone.">
+          {{ forms.csrf() }}
+          <button class="link-button danger" type="submit" name="action" value="delete">{{ icon("trash") }} Delete account</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

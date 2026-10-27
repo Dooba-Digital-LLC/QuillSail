@@ -1,0 +1,36 @@
+{% extends "layout/public.html" %}
+{% block title %}{{ issue.display_title }} · Private preview · {{ site.name }}{% endblock %}
+{% block description %}Private newsletter preview shared for feedback.{% endblock %}
+{% block meta %}<meta name="robots" content="noindex, nofollow, noarchive">{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="flashes">{{ ui.alert('info', 'Private preview for feedback. This edition is not published or sent to subscribers.') }}</div>
+  <header class="issue-header">
+    <p class="eyebrow">{{ site.name }} · Preview edition</p>
+    <h1>{{ issue.display_title }}</h1>
+    <p><a href="{{ share_url }}&amp;format=email">View the email version {{ icon('arrow-right') }}</a></p>
+  </header>
+  <div class="issue-body">
+    {% if issue.intro %}<div class="prose">{{ issue.intro|markdown }}</div>{% endif %}
+    <div class="issue-story-list">
+    {% for item in items %}
+      {% if item.kind == 'heading' %}
+      <div class="issue-block-heading"><h2>{{ item.title }}</h2></div>
+      {% else %}
+      <section class="issue-block">
+        {% if item.section %}<p class="eyebrow">{{ item.section }}</p>{% endif %}
+        {% if item.title %}<h2>{{ item.title }}</h2>{% endif %}
+        {% if item.article %}
+          {{ ui.byline(item.article, avatars=False, date=False) }}
+          {% if not item.article.is_published %}<div class="prose">{{ item.article.body|markdown }}</div>
+          {% elif item.display == 'full' and item.web_html %}<div class="prose">{{ item.web_html }}</div>
+          {% else %}<p>{{ item.summary }}</p><p><a href="{{ item.url }}">Read the full article {{ icon('arrow-right') }}</a></p>{% endif %}
+        {% else %}<div class="prose">{{ item.web_html }}</div>{% endif %}
+      </section>
+      {% endif %}
+    {% endfor %}
+    </div>
+    <p class="muted small">Shared for review through {{ expires_at|date('long') }}. Please keep the full private link with the people you invite to review it.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "layout/public.html" %}
+
+{% block title %}Changes · {{ article.display_title }} · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% macro diff_block(rows) %}
+<div class="diff">
+  {% for row in rows %}
+    {% if row.kind == "skip" %}
+    <div class="diff-row skip"><span class="sign">⋯</span><span class="line">{{ pluralize(row.count, "unchanged line") }}</span></div>
+    {% else %}
+    <div class="diff-row {{ row.kind }}">
+      <span class="sign" aria-hidden="true">{{ {"add": "+", "del": "−"}.get(row.kind, "") }}</span>
+      <span class="line">{% if row.kind == "add" %}<span class="visually-hidden">Added: </span>{% elif row.kind == "del" %}<span class="visually-hidden">Removed: </span>{% endif %}{{ row.html }}</span>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <p class="eyebrow"><a href="{{ url_for('write.history', article_id=article.id) }}">Version history</a></p>
+    <h1>{{ "Changes saved" if previous else "First version" }} {{ revision.created_at|datetime }}</h1>
+    <p class="lead">
+      By {{ revision.user.display_name if revision.user else "someone" }}{% if revision.summary %}: “{{ revision.summary }}”{% endif %}.
+      {% if previous %}Compared with the version from {{ previous.created_at|datetime }}.{% endif %}
+    </p>
+    {% if can_edit and not is_latest %}
+    <form method="post" action="{{ url_for('write.restore', article_id=article.id, revision_id=revision.id) }}"
+          data-confirm="Make this version the current one? The current text stays in the history.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="button" type="submit">{{ icon("history") }} Restore this version</button>
+    </form>
+    {% endif %}
+  </header>
+
+  {% set changed = namespace(any=false) %}
+  {% for rows in (title_diff, subtitle_diff) %}{% for row in rows %}{% if row.kind in ("add", "del") %}{% set changed.any = true %}{% endif %}{% endfor %}{% endfor %}
+  {% if changed.any %}
+  <section class="section">
+    <h2 class="eyebrow">Title and subtitle</h2>
+    <div class="stack">
+      {{ diff_block(title_diff) }}
+      {% if subtitle_diff|selectattr("kind", "ne", "same")|list %}{{ diff_block(subtitle_diff) }}{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section">
+    <h2 class="eyebrow">Text</h2>
+    {% if body_diff|selectattr("kind", "in", ["add", "del"])|list %}
+    {{ diff_block(body_diff) }}
+    {% else %}
+    <p class="muted">The text didn't change in this version.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

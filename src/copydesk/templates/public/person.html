@@ -1,0 +1,44 @@
+{% extends "layout/public.html" %}
+
+{% block title %}{{ person.display_name }} · {{ site.name }}{% endblock %}
+{% block description %}{{ person.bio|excerpt(160) if person.bio else "Writing by " ~ person.display_name }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="profile-header">
+    {{ ui.avatar(person, "xl") }}
+    <div>
+      <h1>{{ person.display_name }}</h1>
+      <div class="cluster">
+        {% for membership in person.badge_memberships %}{{ ui.badge(membership.group) }}{% endfor %}
+      </div>
+      {% for membership in person.badge_memberships %}
+        {% set fields = membership.public_fields() %}
+        {% if fields %}
+        <ul class="profile-fields" aria-label="{{ membership.group.label }} details">
+          {% for label, value in fields %}<li><strong>{{ label }}:</strong> {{ value }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      {% endfor %}
+      {% if person.website %}<p class="small"><a href="{{ person.website }}" rel="nofollow ugc">{{ person.website|replace("https://", "")|replace("http://", "") }}</a></p>{% endif %}
+      {% if is_self %}<p class="small"><a href="{{ url_for('account.profile') }}">Edit your profile</a></p>{% endif %}
+    </div>
+  </header>
+
+  {% if person.bio %}
+  <div class="prose section">{{ person.bio|markdown }}</div>
+  {% endif %}
+
+  <section class="section" aria-labelledby="by-heading">
+    <h2 id="by-heading" class="eyebrow">Writing by {{ person.display_name }}</h2>
+    {% if page.items %}
+    <ul class="article-list">
+      {% for item in page.items %}{{ ui.article_item(item) }}{% endfor %}
+    </ul>
+    {{ ui.pagination(page, "public.person", "Newer", "Older", username=person.username) }}
+    {% else %}
+    <p class="muted">Nothing published yet.{% if is_self %} <a href="{{ url_for('write.index') }}">Start writing</a>.{% endif %}</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Groups{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <h1>Groups</h1>
+    <p class="lead">Groups say who you are (like a student or an alum) and what you can do here. Your groups appear next to your name when you publish.</p>
+  </div>
+</header>
+
+{{ forms.error_summary(errors) }}
+
+<section class="settings-section">
+  <h2>Your groups</h2>
+  {% if memberships %}
+  <div class="stack">
+    {% for membership in memberships %}
+    {% set group = membership.group %}
+    <article class="card">
+      <div class="spread">
+        <div class="cluster">
+          {{ ui.badge(group) }}
+          <strong>{{ group.name }}</strong>
+          {% if membership.status == "pending" %}<span class="status status-warning">Waiting for approval</span>{% endif %}
+        </div>
+        <form method="post" class="inline-form"
+              data-confirm="{{ 'Withdraw your request to join ' ~ group.name ~ '?' if membership.status == 'pending' else 'Leave ' ~ group.name ~ '?' }}">
+          {{ forms.csrf() }}
+          <input type="hidden" name="action" value="leave">
+          <input type="hidden" name="membership" value="{{ membership.id }}">
+          <button class="link-button danger" type="submit">{{ "Withdraw request" if membership.status == "pending" else "Leave" }}</button>
+        </form>
+      </div>
+      {% if group.description %}<p class="muted small">{{ group.description }}</p>{% endif %}
+      {% if membership.status == "pending" %}
+      <p class="small">An editor will review your request. We'll email you when they do.{% if not current_user.is_verified %} Your request goes to them once you confirm your email address.{% endif %}</p>
+      {% endif %}
+      {% if group.fields %}
+      <details{% if errors %} open{% endif %}>
+        <summary>Your {{ group.name }} details</summary>
+        <form class="form" method="post">
+          {{ forms.csrf() }}
+          <input type="hidden" name="action" value="update">
+          <input type="hidden" name="membership" value="{{ membership.id }}">
+          {{ forms.group_fields(group, membership.data, errors) }}
+          <div class="form-actions"><button class="button button-small" type="submit">Save details</button></div>
+        </form>
+      </details>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">You're not in any groups yet.</p>
+  {% endif %}
+</section>
+
+{% if available %}
+<section class="settings-section">
+  <h2>Join a group</h2>
+  <p class="help">Pick any that describe you.</p>
+  <div class="stack">
+    {% for group in available %}
+    <article class="card">
+      <form class="form" method="post">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="request">
+        <input type="hidden" name="group" value="{{ group.slug }}">
+        <div>
+          <h3 class="card-title">{{ group.name }}</h3>
+          {% if group.description %}<p class="muted">{{ group.description }}</p>{% endif %}
+          <p class="small">{{ icon("info") }} {{ groups_api.policy_text(group) }}</p>
+        </div>
+        {% if group.fields %}{{ forms.group_fields(group, {}, errors) }}{% endif %}
+        {% if group.join_policy == "approval" %}
+        {{ forms.textarea("note-" ~ group.slug, "Anything the editors should know?", "", rows=2, optional=True,
+                          help="For example, your department or graduation year, to help them confirm it.") }}
+        {% endif %}
+        <div class="form-actions">
+          <button class="button" type="submit">{{ "Join " ~ group.name if group.join_policy == "open" else "Ask to join " ~ group.name }}</button>
+        </div>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

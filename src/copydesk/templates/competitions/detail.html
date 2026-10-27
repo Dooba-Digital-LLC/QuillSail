@@ -1,0 +1,61 @@
+{% extends "competitions/base.html" %}
+{% block competition_title %}{{ competition.title }}{% endblock %}
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro stack">
+    <p class="eyebrow"><a href="{{ url_for('competitions.index') }}">Competitions</a></p>
+    <div class="cluster"><span class="status status-info">{{ competition_phases[phase] }}</span><span class="small muted">{{ competition_modes[competition.mode] }}</span></div>
+    <h1>{{ competition.title }}</h1>
+    <div class="cluster">
+      {% if phase == 'submissions' %}<a class="button button-primary" href="{{ url_for('competitions.enter', competition_id=competition.id) }}">{{ 'Edit your entry' if own_entry else 'Enter competition' }} {{ icon('arrow-right') }}</a>{% endif %}
+      {% if own_entry %}<a class="button" href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=own_entry.id) }}">Your entry · {{ own_entry.status|capitalize }}</a>{% endif %}
+      {% if managing %}<a class="button" href="{{ url_for('dash.competition', competition_id=competition.id) }}">Manage competition</a>{% endif %}
+    </div>
+  </header>
+  <div class="competition-brief panel"><div class="panel-body stack"><div class="prose">{{ competition.description|markdown }}</div>
+    <div class="competition-dates">
+      <div><strong>Entries close</strong><p>{{ competition.entries_close_at|datetime if competition.entries_close_at else 'When the organizer starts judging' }}</p></div>
+      <div><strong>Judging and voting close</strong><p>{{ competition.ends_at|datetime if competition.ends_at else 'When the organizer closes the competition' }}</p></div>
+    </div>
+    {% if competition.rules %}<details><summary><strong>Rules and judging criteria</strong></summary><div class="prose section">{{ competition.rules|markdown }}</div></details>{% endif %}
+  </div></div>
+
+  {% if phase == 'results' %}
+  <section class="section stack"><h2>Results</h2><p class="muted">Published {{ competition.results_at|datetime }}. Tied entries share a rank.</p>
+    <div class="competition-grid">
+    {% for key, title in [('judges', 'Judges’ Choice'), ('readers', 'Readers’ Choice')] %}
+      {% if key in competition.results %}
+      <section class="panel"><div class="panel-header"><h3>{{ icon('award') }} {{ title }}</h3></div><div class="panel-body">
+      <ol class="competition-ranking">
+      {% for row in competition.results[key] %}{% set item = entry_map.get(row.entry_id) %}{% if item %}
+        <li><span class="competition-rank">{{ row.rank }}</span><div><a href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=item.id) }}">{{ item.title }}</a><p class="small muted">{{ item.author.display_name if item.author else 'Former contributor' }}</p></div><strong>{{ row.value }}{{ '/100' if key == 'judges' else ' votes' }}</strong></li>
+      {% endif %}{% else %}<li>No votes were cast.</li>{% endfor %}
+      </ol></div></section>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section stack" id="entries"><div class="spread"><h2>Entries</h2>{% if phase == 'judging' and is_judge and competition.mode != 'readers' %}<span class="status status-info">You can judge entries</span>{% endif %}</div>
+    {% if phase == 'submissions' %}<p class="muted">Approved entries will appear here when submissions close. Each participant may submit one entry.</p>
+    {% elif phase == 'draft' %}<p class="muted">This draft is visible to competition organizers only.</p>
+    {% else %}
+      {% if phase == 'judging' and competition.mode != 'judges' %}<p>You have one vote for the competition. You can change or remove it until voting closes. Vote totals appear when results are published.</p>
+      {% if not current_user.is_verified %}<p><a href="{{ url_for('auth.login', next=request.path) }}">Sign in with a verified account</a> to vote.</p>{% endif %}
+      {% if vote %}<form method="post" action="{{ url_for('competitions.vote', competition_id=competition.id) }}">{{ forms.csrf() }}<button class="link-button" name="action" value="remove">Remove my vote</button></form>{% endif %}
+      {% endif %}
+      <div class="competition-grid">
+      {% for item in entries %}
+      <article class="panel competition-card"><div class="panel-body stack"><h3><a href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=item.id) }}">{{ item.title }}</a></h3><p class="small muted">By {{ item.author.display_name if item.author else 'Former contributor' }}</p><p>{{ item.body|excerpt(180) }}</p>
+        <a class="button" href="{{ url_for('competitions.entry', competition_id=competition.id, entry_id=item.id) }}">View entry {{ icon('arrow-right') }}</a>
+        {% if phase == 'judging' and competition.mode != 'judges' and current_user.is_verified and item.user_id != current_user.id %}
+        <form method="post" action="{{ url_for('competitions.vote', competition_id=competition.id) }}">{{ forms.csrf() }}<input type="hidden" name="entry_id" value="{{ item.id }}"><button class="button {{ 'button-primary' if vote and vote.entry_id == item.id else '' }}" type="submit">{{ 'Your current vote' if vote and vote.entry_id == item.id else 'Vote for this entry' }}</button></form>
+        {% endif %}
+      </div></article>
+      {% else %}<p class="muted">No approved entries yet.</p>{% endfor %}
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

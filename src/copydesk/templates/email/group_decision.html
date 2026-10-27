@@ -1,0 +1,15 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}{{ email_subject }}{% endblock %}
+{% block content %}
+<h1 style="{{ es.h1 }}">{% if approved %}You're in {{ group.name }}{% else %}About your request to join {{ group.name }}{% endif %}</h1>
+<p style="{{ es.p }}">Hi {{ user.display_name }},</p>
+{% if approved %}
+<p style="{{ es.p }}">Your request to join <strong>{{ group.name }}</strong> was approved.{% if group.show_badge %} The {{ group.label }} badge now appears next to your name on anything you publish.{% endif %}</p>
+{% else %}
+<p style="{{ es.p }}">An editor reviewed your request to join <strong>{{ group.name }}</strong> and couldn't approve it this time.</p>
+{% if reason %}<div style="{{ es.quote }}">{{ reason }}</div>{% endif %}
+<p style="{{ es.p }}">If you think that's a mistake, reply to this email or contact the editors.</p>
+{% endif %}
+{{ m.button(url, "See your groups") }}
+{% endblock %}

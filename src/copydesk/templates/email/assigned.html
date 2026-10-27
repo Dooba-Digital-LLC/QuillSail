@@ -1,0 +1,9 @@
+{% extends "email/layout.html" %}
+{% import "email/macros.html" as m with context %}
+{% block preheader %}{{ actor.display_name if actor else "Someone" }} assigned you “{{ article.display_title }}”.{% endblock %}
+{% block content %}
+<p style="{{ es.label }}">Assigned to you</p>
+<h1 style="{{ es.h1 }}">{{ article.display_title }}</h1>
+<p style="{{ es.p }}">{{ actor.display_name if actor else "Someone" }} made you the editor for this piece by {{ article.authors|map(attribute="display_name")|join(" and ") }}. You'll get emails when the writer replies or resubmits.</p>
+{{ m.button(url, "Open it") }}
+{% endblock %}

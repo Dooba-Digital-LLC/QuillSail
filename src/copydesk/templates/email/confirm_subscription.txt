@@ -1,0 +1,8 @@
+{% if subscriber.name %}Hi {{ subscriber.name }},{% else %}Hi,{% endif %}
+
+Open this link to start getting {{ site.name }} in your inbox:
+
+{{ url }}
+
+If you didn't sign up, ignore this email. You won't be subscribed unless you click.
+{% include "email/_signature.txt" %}

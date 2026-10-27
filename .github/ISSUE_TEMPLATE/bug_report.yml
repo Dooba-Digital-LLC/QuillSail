@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a reproducible problem using synthetic data.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: "For security vulnerabilities, follow SECURITY.md instead. Never include passwords, tokens, subscriber data, or production configuration."
+  - type: input
+    id: version
+    attributes:
+      label: QuillSail version
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Python version, database, operating system, installation method, and browser when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use sample accounts and content. Include expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove credentials, email addresses, subscriber links, and other private data.

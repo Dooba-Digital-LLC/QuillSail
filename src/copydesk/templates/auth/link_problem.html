@@ -1,0 +1,23 @@
+{% extends "layout/public.html" %}
+
+{% block title %}This link doesn't work · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="center-message">
+  <div class="big-icon">{{ icon("alert") }}</div>
+  <h1>This link doesn't work anymore</h1>
+  {% if kind == "reset" %}
+  <p class="lead">Password reset links work once, for two hours. Ask for a new one and use it straight away.</p>
+  <a class="button button-primary" href="{{ url_for('auth.forgot_password') }}">Get a new link</a>
+  {% elif kind == "subscription" %}
+  <p class="lead">Confirmation links expire after a week. Sign up again and we'll send you a fresh one.</p>
+  <a class="button button-primary" href="{{ url_for('subscribe.subscribe') }}">Subscribe again</a>
+  {% elif kind == "email" %}
+  <p class="lead">Links to confirm a new email address expire after two days. Go to your account settings to try again.</p>
+  <a class="button button-primary" href="{{ url_for('account.security') }}">Account settings</a>
+  {% else %}
+  <p class="lead">Confirmation links expire after three days, or the link may have been copied incompletely. Sign in and we'll send you a new one.</p>
+  <a class="button button-primary" href="{{ url_for('auth.login') }}">Sign in</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'layout/public.html' %}
+{% block title %}Private design preview · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex,nofollow,noarchive">{% endblock %}
+{% block content %}
+<div class="container">
+  <header class="issue-header"><p class="eyebrow">{{ site.name }} · Preview edition</p><h1>{{ issue.display_title }}</h1><p class="muted">{{ issue.sent_at|date('long') }}</p></header>
+  <div class="issue-body"><div class="prose"><p>{{ issue.intro }}</p></div>
+    <div class="issue-story-list">{% for item in items %}<section class="issue-block"><p class="eyebrow">{{ 'Community' if loop.last else 'Ideas & perspectives' }}</p><h2>{{ item.title }}</h2><div class="prose">{{ item.web_html }}</div></section>{% endfor %}</div>
+    <section class="card-callout"><h2>Keep a little inspiration in your inbox</h2><p>Useful stories, thoughtfully selected.</p><a class="button button-primary" href="{{ url_for('subscribe.subscribe') }}">Subscribe</a></section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+Hi {{ user.display_name }}, this is a test email from {{ site.name }}. If you're reading it, QuillSail can send email.
+
+Tip: if it landed in spam, ask whoever runs your mail server about SPF, DKIM and DMARC for the sending domain.
+{% include "email/_signature.txt" %}

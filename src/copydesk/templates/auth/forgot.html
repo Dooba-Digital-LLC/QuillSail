@@ -1,0 +1,27 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Reset your password · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    {% if sent %}
+    <h1>Check your inbox</h1>
+    <p class="lead">If there's an account for <strong>{{ email }}</strong>, we've sent it a link to reset the password. The link works for two hours.</p>
+    <p class="muted">Nothing arrived after a few minutes? Check your spam folder, or make sure you typed the address you signed up with.</p>
+    <p><a href="{{ url_for('auth.login') }}">{{ icon("arrow-left") }} Back to sign in</a></p>
+    {% else %}
+    <h1>Reset your password</h1>
+    <p class="lead">Enter the email address you signed up with and we'll send you a link to choose a new password.</p>
+    {% if error %}<div class="flashes">{{ ui.alert("error", error) }}</div>{% endif %}
+    <form class="form" method="post">
+      {{ forms.csrf() }}
+      {{ forms.input("email", "Email address", email, type="email", required=True, autocomplete="email", attrs="autofocus") }}
+      <button class="button button-primary button-block" type="submit">Send reset link</button>
+    </form>
+    <p class="auth-alt"><a href="{{ url_for('auth.login') }}">Back to sign in</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

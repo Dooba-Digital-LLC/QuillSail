@@ -1,0 +1,70 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Send issue #{{ issue.number }}{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.issues') }}">Issues</a> / <a href="{{ url_for('dash.issue', issue_id=issue.id) }}">Issue #{{ issue.number }}</a></p>{% endblock %}
+{% block lead %}<p class="lead">Check the details, then send it now or pick a time.</p>{% endblock %}
+
+{% block content %}
+<div class="grid-main-side">
+  <section class="panel" aria-labelledby="ready-heading">
+    <div class="panel-header"><h2 id="ready-heading">Ready to go?</h2></div>
+    <div class="panel-body stack">
+      <dl class="definition-list">
+        <dt>Subject</dt><dd><strong>{{ subject }}</strong></dd>
+        <dt>Goes to</dt><dd>{{ audience_label }}: {{ pluralize(recipient_count, "subscriber") }}</dd>
+        <dt>Contents</dt><dd>{{ pluralize(issue.items|length, "item") }}{% if issue.intro %}, plus an introduction{% endif %}</dd>
+        <dt>Website</dt><dd>{{ "Already published" if issue.is_public else "Published in the archive when it's sent" }}</dd>
+      </dl>
+      <ul class="checklist">
+        {% for problem in problems %}
+        <li>{{ icon("x-circle", cls="icon bad") }} <span>{{ problem }}</span></li>
+        {% else %}
+        <li>{{ icon("check-circle", cls="icon ok") }} <span>Nothing is missing.</span></li>
+        {% endfor %}
+        {% if tested %}
+        <li>{{ icon("check-circle", cls="icon ok") }} <span>A test of this issue has been sent.</span></li>
+        {% else %}
+        <li>{{ icon("warning", cls="icon warn") }} <span>No test has been sent yet. It's worth seeing it in a real inbox first. <a href="{{ url_for('dash.issue_preview', issue_id=issue.id) }}">Preview and test</a></span></li>
+        {% endif %}
+        {% if recipient_count == 0 %}
+        <li>{{ icon("warning", cls="icon warn") }} <span>Nobody would get this right now. It would only be published on the website.</span></li>
+        {% endif %}
+        {% set accepted = issue.articles|selectattr("status", "equalto", "accepted")|list %}
+        {% if issue.publish_articles and accepted %}
+        <li>{{ icon("info", cls="icon") }} <span>{{ pluralize(accepted|length, "accepted article") }} will be published on the website at the same time, and their writers emailed.</span></li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <aside class="stack">
+    <section class="panel">
+      <div class="panel-header"><h2>Send now</h2></div>
+      <form class="panel-body form" method="post">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="send">
+        <div class="field">
+          <label for="f-confirm">Type <strong>{{ issue.number }}</strong> to confirm</label>
+          <p class="help" id="f-confirm-help">Emails can't be unsent once they go out.</p>
+          <input id="f-confirm" type="text" name="confirm_number" inputmode="numeric" autocomplete="off" required aria-describedby="f-confirm-help">
+        </div>
+        <button class="button button-primary button-block" type="submit"{% if problems %} disabled{% endif %}>{{ icon("send") }} Send to {{ pluralize(recipient_count, "person", "people") }}</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><h2>Or schedule it</h2></div>
+      <form class="panel-body form" method="post">
+        {{ forms.csrf() }}
+        <input type="hidden" name="action" value="schedule">
+        <div class="field">
+          <label for="f-when">Send on</label>
+          <p class="help" id="f-when-help">{{ setting("site.timezone")|replace("_", " ") }} time. You can keep editing until then.</p>
+          <input id="f-when" type="datetime-local" name="scheduled_at" value="{{ issue.scheduled_at|datetime_local }}" required aria-describedby="f-when-help">
+        </div>
+        <button class="button button-block" type="submit"{% if problems %} disabled{% endif %}>{{ icon("calendar") }} Schedule</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

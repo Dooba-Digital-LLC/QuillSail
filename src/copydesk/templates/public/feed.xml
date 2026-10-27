@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ title }}</title>
+  {% if site.tagline %}<subtitle>{{ site.tagline }}</subtitle>{% endif %}
+  <link href="{{ self_url }}" rel="self" type="application/atom+xml"/>
+  <link href="{{ alternate_url }}" rel="alternate" type="text/html"/>
+  <id>{{ self_url }}</id>
+  <updated>{{ updated|isodate }}</updated>
+  <generator version="{{ version }}">QuillSail</generator>
+  {% for entry in entries %}
+  <entry>
+    <title>{{ entry.title }}</title>
+    <link href="{{ entry.url }}" rel="alternate" type="text/html"/>
+    <id>{{ entry.url }}</id>
+    <published>{{ entry.published|isodate }}</published>
+    <updated>{{ entry.updated|isodate }}</updated>
+    {% for name in entry.authors %}<author><name>{{ name }}</name></author>{% endfor %}
+    {% if entry.category %}<category term="{{ entry.category }}"/>{% endif %}
+    {% if entry.summary %}<summary>{{ entry.summary }}</summary>{% endif %}
+    <content type="html">{{ entry.content|markdown|forceescape }}</content>
+  </entry>
+  {% endfor %}
+</feed>

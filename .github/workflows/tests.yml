@@ -1,0 +1,109 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -e '.[dev,integration]'
+      - run: ruff check src tests scripts deploy
+      - run: python scripts/check_public_files.py
+      - run: pytest
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - run: python scripts/check_public_files.py --archive dist/*.whl
+      - run: python scripts/check_public_files.py --archive dist/*.tar.gz
+      - run: python scripts/package_smoke.py dist/*.whl
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-packages
+          path: dist/
+          retention-days: 7
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: copydesk:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: bash scripts/container_smoke.sh
+  databases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [postgres, mariadb]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: copydesk_test
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U copydesk_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: ci-test-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e '.[dev,integration,postgres,mysql]'
+      - name: PostgreSQL integration suite
+        if: matrix.database == 'postgres'
+        env:
+          COPYDESK_TEST_DATABASE_URL: postgresql+psycopg://copydesk_test:ci-test-password@127.0.0.1:5432/postgres
+        run: pytest
+      - name: MariaDB integration suite
+        if: matrix.database == 'mariadb'
+        env:
+          COPYDESK_TEST_DATABASE_URL: mysql+pymysql://root:ci-test-password@127.0.0.1:3306/?charset=utf8mb4
+        run: pytest

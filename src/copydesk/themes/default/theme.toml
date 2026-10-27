@@ -1,0 +1,6 @@
+name = "default"
+title = "Default"
+description = "Clean and readable, in your accent color, with light and dark modes."
+version = "1.0.0"
+author = "QuillSail contributors"
+stylesheets = []

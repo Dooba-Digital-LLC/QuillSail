@@ -1,0 +1,22 @@
+{% extends "layout/public.html" %}
+
+{% block title %}#{{ tag.name }} · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container container-medium">
+  <header class="page-intro">
+    <p class="eyebrow">Tag</p>
+    <h1>#{{ tag.name }}</h1>
+    <p class="lead">{{ pluralize(page.total, "article") }} tagged “{{ tag.name }}”.</p>
+  </header>
+
+  {% if page.items %}
+  <ul class="article-list">
+    {% for item in page.items %}{{ ui.article_item(item) }}{% endfor %}
+  </ul>
+  {{ ui.pagination(page, "public.tag", "Newer", "Older", slug=tag.slug) }}
+  {% else %}
+  {{ ui.empty("Nothing published with this tag yet", icon_name="tag") }}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Import subscribers{% endblock %}
+{% block eyebrow %}<p class="eyebrow"><a href="{{ url_for('dash.subscribers') }}">Subscribers</a></p>{% endblock %}
+{% block lead %}<p class="lead">Bring over a list from a spreadsheet or another newsletter service.</p>{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flashes">{{ ui.alert("error", error) }}</div>{% endif %}
+
+{% if result and not result.error %}
+<section class="panel">
+  <div class="panel-header"><h2>Import finished</h2></div>
+  <div class="panel-body stack">
+    <ul class="checklist">
+      <li>{{ icon("check-circle", cls="icon ok") }} <span><strong>{{ result.added|number }}</strong> added</span></li>
+      <li>{{ icon("info", cls="icon") }} <span><strong>{{ result.existing|number }}</strong> were already on the list, so they were skipped</span></li>
+      {% if result.invalid %}<li>{{ icon("warning", cls="icon warn") }} <span><strong>{{ result.invalid|number }}</strong> weren't valid email addresses</span></li>{% endif %}
+    </ul>
+    {% if result.problems %}
+    <details><summary>Show the problem rows</summary><ul class="small">{% for problem in result.problems %}<li>{{ problem }}</li>{% endfor %}</ul></details>
+    {% endif %}
+    <p><a class="button" href="{{ url_for('dash.subscribers') }}">Back to subscribers</a></p>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid-main-side">
+  <form class="panel" method="post" enctype="multipart/form-data">
+    <div class="panel-header"><h2>Upload a CSV file</h2></div>
+    <div class="panel-body form">
+      {{ forms.csrf() }}
+      <div class="field">
+        <label for="f-file">CSV file</label>
+        <p class="help">Save your spreadsheet as “CSV UTF-8”. Up to 20,000 rows at a time.</p>
+        <input id="f-file" type="file" name="file" accept=".csv,text/csv" required>
+      </div>
+      {{ forms.radio_cards("mode", "These people should…", [
+          ("confirm", "Get an email asking them to confirm", "Recommended. Only people who click the link are subscribed."),
+          ("consented", "Be subscribed straight away", "Only if they already agreed to get this newsletter, for example on a previous platform."),
+        ], request.form.get("mode", "confirm")) }}
+      <div data-show-if="mode:consented">
+        {{ forms.checkbox("consent", "I confirm everyone on this list agreed to receive this newsletter") }}
+      </div>
+      <div class="form-actions"><button class="button button-primary" type="submit">{{ icon("upload") }} Import</button></div>
+    </div>
+  </form>
+
+  <aside class="panel">
+    <div class="panel-header"><h2>File format</h2></div>
+    <div class="panel-body stack small">
+      <p>The first row must contain column names. Only <strong>email</strong> is required.</p>
+      <pre class="code-block">email,name,groups
+ada@example.edu,Ada Lovelace,students
+grace@example.edu,Grace Hopper,"staff, alumni"</pre>
+      {% if groups %}
+      <p>Group names you can use: {% for group in groups %}<code>{{ group.slug }}</code>{% if not loop.last %}, {% endif %}{% endfor %}. Separate several with commas.</p>
+      {% endif %}
+      <p>Addresses already on the list are skipped, so it's safe to import the same file twice.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

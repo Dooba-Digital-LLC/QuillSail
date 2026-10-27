@@ -1,0 +1,30 @@
+{% extends "layout/account.html" %}
+
+{% block page_title %}Your data{% endblock %}
+
+{% block account %}
+<header class="page-header">
+  <div>
+    <h1>Your data</h1>
+    <p class="lead">See everything we store about you, or delete your account.</p>
+  </div>
+</header>
+
+<section class="settings-section">
+  <h2>Download your data</h2>
+  <p class="help">A file with your account details, groups, newsletter subscription, writing and comments.</p>
+  <a class="button" href="{{ url_for('account.export') }}">{{ icon("download") }} Download (JSON)</a>
+</section>
+
+<section class="settings-section">
+  <h2>Delete your account</h2>
+  <div class="danger-zone stack">
+    <p>Deleting your account removes your profile, groups, newsletter subscription and unpublished drafts. Articles that were already published stay up, credited to “Former contributor”. This can't be undone.</p>
+    {% if is_last_admin %}
+    <p><strong>You're the only administrator.</strong> Make someone else an administrator first.</p>
+    {% else %}
+    <a class="button button-danger" href="{{ url_for('account.delete') }}">{{ icon("trash") }} Delete my account</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

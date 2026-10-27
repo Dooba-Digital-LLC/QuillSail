@@ -1,0 +1,17 @@
+name: Feature request
+description: Describe a problem and how QuillSail could help.
+title: "Feature: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe who uses it and what happens. Include alternatives you considered.
+    validations:
+      required: true

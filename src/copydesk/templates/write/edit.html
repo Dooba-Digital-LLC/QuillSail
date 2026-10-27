@@ -1,0 +1,208 @@
+{% extends "layout/public.html" %}
+{% import "macros/forms.html" as forms with context %}
+
+{% block title %}Editing “{{ article.display_title }}” · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<form class="editor-page" method="post" enctype="multipart/form-data" novalidate id="editor-form">
+  {{ forms.csrf() }}
+  <div class="editor-bar">
+    <div class="container">
+      <div class="cluster">
+        {% if is_editor %}
+        <a href="{{ url_for('dash.article', article_id=article.id) }}">{{ icon("arrow-left") }} Back to review</a>
+        {% else %}
+        <a href="{{ url_for('write.index') }}">{{ icon("arrow-left") }} My writing</a>
+        {% endif %}
+        {{ ui.status(article.status) }}
+        <span class="small muted">Last saved {{ ui.ago(article.updated_at) }}</span>
+      </div>
+      <div class="cluster">
+        <button class="button" type="submit" name="action" value="save">Save{% if article.status == "draft" %} draft{% endif %}</button>
+        {% if can_publish_post %}<button class="button button-primary" type="submit" name="action" value="publish">{{ icon('globe') }} Publish post</button>{% endif %}
+        {% if not is_editor %}
+          {% if article.status == "draft" and not can_publish_post %}
+          <button class="button button-primary" type="submit" name="action" value="submit">{{ icon("send") }} Submit for review</button>
+          {% elif article.status == "changes_requested" and not can_publish_post %}
+          <button class="button button-primary" type="submit" name="action" value="resubmit">{{ icon("send") }} Resubmit</button>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="flashes" data-restore-notice hidden>
+      <div class="alert alert-warning">
+        {{ icon("history") }}
+        <div class="alert-body">
+          This browser has changes from <span data-restore-time></span> that weren't saved.
+          <button type="button" class="link-button" data-restore>Restore them</button> or
+          <button type="button" class="link-button" data-discard>discard them</button>.
+        </div>
+      </div>
+    </div>
+
+    {% if errors %}<div class="flashes">{{ forms.error_summary(errors) }}</div>{% endif %}
+
+    {% if article.status == "changes_requested" %}
+    {% set request_event = article.events|selectattr("to_status", "equalto", "changes_requested")|list|last %}
+    <div class="flashes">
+      <div class="alert alert-warning">
+        {{ icon("message") }}
+        <div class="alert-body">
+          <p><strong>{{ request_event.user.display_name if request_event and request_event.user else "Your editor" }} asked for changes:</strong></p>
+          {% if request_event and request_event.body %}{{ request_event.body|markdown }}{% endif %}
+          <p class="small"><a href="{{ url_for('write.status', article_id=article.id) }}#conversation">See the whole conversation</a></p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="editor-layout">
+      <div class="stack">
+        <div class="field{% if errors.get('title') %} has-error{% endif %}">
+          <label class="visually-hidden" for="f-title">Title</label>
+          {% if errors.get("title") %}<p class="error-text" id="f-title-error">{{ errors.title }}</p>{% endif %}
+          <input class="title-input" id="f-title" name="title" value="{{ values.title }}" placeholder="Title" maxlength="200" autocomplete="off"{% if not values.title %} autofocus{% endif %}>
+        </div>
+        <div class="field{% if errors.get('subtitle') %} has-error{% endif %}">
+          <label class="visually-hidden" for="f-subtitle">Subtitle</label>
+          {% if errors.get("subtitle") %}<p class="error-text">{{ errors.subtitle }}</p>{% endif %}
+          <input class="subtitle-input" id="f-subtitle" name="subtitle" value="{{ values.subtitle }}" maxlength="300" autocomplete="off"
+                 placeholder="Subtitle (optional): one line that draws readers in">
+        </div>
+
+        <div class="editor" data-editor
+             data-preview-url="{{ url_for('write.preview') }}"
+             data-upload-url="{{ url_for('write.upload') }}"
+             data-backup-key="cd-draft-{{ article.id }}"
+             data-max-words="{{ max_words }}">
+          <div class="editor-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" class="tool" data-editor-tab="write" aria-pressed="true" hidden>Write</button>
+            <button type="button" class="tool" data-editor-tab="preview" aria-pressed="false" hidden>{{ icon("eye") }} Preview</button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="tool" data-md="bold" title="Bold (Ctrl+B)" aria-label="Bold">{{ icon("bold") }}</button>
+            <button type="button" class="tool" data-md="italic" title="Italic (Ctrl+I)" aria-label="Italic">{{ icon("italic") }}</button>
+            <button type="button" class="tool" data-md="heading" title="Heading" aria-label="Heading">{{ icon("heading") }}</button>
+            <button type="button" class="tool" data-md="link" title="Link (Ctrl+K)" aria-label="Link">{{ icon("link") }}</button>
+            <button type="button" class="tool" data-md="quote" title="Quote" aria-label="Quote">{{ icon("quote") }}</button>
+            <button type="button" class="tool" data-md="code" title="Code" aria-label="Code">{{ icon("code") }}</button>
+            <button type="button" class="tool" data-md="ul" title="Bulleted list" aria-label="Bulleted list">{{ icon("list") }}</button>
+            <button type="button" class="tool" data-md="ol" title="Numbered list" aria-label="Numbered list">{{ icon("list-ordered") }}</button>
+            <button type="button" class="tool" data-md="callout" title="Tip box" aria-label="Tip box">{{ icon("bulb") }}</button>
+            <button type="button" class="tool" data-md="image" title="Add an image" aria-label="Add an image">{{ icon("image") }}</button>
+            <span class="spacer"></span>
+            <a class="tool" href="#markdown-help">Formatting help</a>
+          </div>
+          <label class="visually-hidden" for="f-body">Your piece</label>
+          {% if errors.get("body") %}<p class="error-text">{{ errors.body }}</p>{% endif %}
+          <textarea id="f-body" name="body" data-editor-input placeholder="Start writing. Paste or drop images straight in.">{{ values.body }}</textarea>
+          <div class="editor-preview" data-editor-preview hidden></div>
+          <div class="editor-status">
+            <span data-word-count>{{ pluralize(article.word_count, "word") }}</span>
+            <span>Markdown · Ctrl+S saves</span>
+          </div>
+        </div>
+
+        <noscript>
+          <div class="form-actions"><button class="button" type="submit" name="action" value="preview">{{ icon("eye") }} Preview</button></div>
+        </noscript>
+
+        {% if preview_html %}
+        <section class="card" aria-labelledby="preview-heading">
+          <h2 class="card-title" id="preview-heading">Preview</h2>
+          <div class="prose">{{ preview_html }}</div>
+        </section>
+        {% endif %}
+
+        {% if article.status == "changes_requested" and not is_editor %}
+        {{ forms.textarea("message", "What did you change? (optional)", request.form.get("message", ""), rows=3, optional=False,
+                          help="Sent to your editor along with the new version when you resubmit.") }}
+        {% endif %}
+
+        {{ forms.input("summary", "Describe this edit", "", optional=True,
+                       help="A short note for the version history, like “Tightened the intro”.") }}
+
+        <details id="markdown-help" class="card">
+          <summary><strong>Formatting help</strong></summary>
+          <div class="table-wrap section">
+            <table class="table">
+              <thead><tr><th scope="col">Type this</th><th scope="col">To get</th></tr></thead>
+              <tbody>
+                <tr><td><code>## Heading</code></td><td>A section heading</td></tr>
+                <tr><td><code>**bold**</code> and <code>_italic_</code></td><td><strong>bold</strong> and <em>italic</em></td></tr>
+                <tr><td><code>[link text](https://example.com)</code></td><td>A link</td></tr>
+                <tr><td><code>- item</code> or <code>1. item</code></td><td>A bulleted or numbered list</td></tr>
+                <tr><td><code>&gt; quote</code></td><td>A quotation</td></tr>
+                <tr><td><code>`code`</code></td><td>Inline <code>code</code></td></tr>
+                <tr><td><code>```python</code> … <code>```</code></td><td>A code block with syntax highlighting</td></tr>
+                <tr><td><code>![description](image-url)</code></td><td>An image (or use the image button)</td></tr>
+                <tr><td><code>::: tip</code> … <code>:::</code></td><td>A highlighted box (also <code>note</code> and <code>warning</code>)</td></tr>
+                <tr><td><code>Text[^1]</code> and <code>[^1]: Note</code></td><td>A footnote</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      <aside class="editor-sidebar" aria-label="Details">
+        <section class="card stack">
+          <h2 class="card-title">Details</h2>
+          {% set section_options = [("", "Choose a section…")] %}
+          {% for section in sections %}{% set _ = section_options.append((section.id, section.name)) %}{% endfor %}
+          {{ forms.select("section_id", "Section", section_options, values.section_id, errors=errors,
+                          optional=not setting("submissions.require_section")) }}
+          {{ forms.input("tags", "Tags", values.tags, optional=True, help="Separate tags with commas.") }}
+          {% if not is_editor %}
+          {{ forms.input("coauthors", "Co-authors", values.coauthors, errors=errors, optional=True,
+                         help="Usernames or emails of people who wrote this with you, separated by commas. They can edit it too.") }}
+          {% endif %}
+        </section>
+
+        <section class="card stack">
+          <h2 class="card-title">Cover image</h2>
+          {% if article.cover_image %}
+          <img class="cover-preview" src="{{ upload_url(article.cover_image) }}" alt="">
+          {{ forms.checkbox("remove_cover", "Remove the cover image") }}
+          {% endif %}
+          <div class="field{% if errors.get('cover') %} has-error{% endif %}">
+            <label for="f-cover">{{ "Replace the image" if article.cover_image else "Upload an image" }} <span class="optional">(optional)</span></label>
+            {% if errors.get("cover") %}<p class="error-text">{{ errors.cover }}</p>{% endif %}
+            <input id="f-cover" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif">
+          </div>
+          {{ forms.textarea("cover_alt", "Image description (alt text)", values.cover_alt, errors=errors, rows=2,
+                            optional=not article.cover_image,
+                            help="Describe the image for people using screen readers.") }}
+        </section>
+
+        <section class="card stack">
+          <h2 class="card-title">Note to the editors</h2>
+          {{ forms.textarea("author_note", "Anything they should know?", values.author_note, rows=4, optional=True,
+                            help="Only editors see this: sources, timing, why it matters now.") }}
+        </section>
+
+        <ul class="checklist small">
+          {% if guidelines %}<li>{{ icon("book") }} <a href="{{ url_for('public.page', slug=guidelines.slug) }}" target="_blank" rel="noopener">Writing guidelines</a></li>{% endif %}
+          <li>{{ icon("history") }} <a href="{{ url_for('write.history', article_id=article.id) }}">Version history</a></li>
+          <li>{{ icon("eye") }} <a href="{{ url_for('public.article', slug=article.slug) }}" target="_blank" rel="noopener">Preview the full page</a> (saved version)</li>
+          {% if article.status == "draft" and article.submitted_at is none and not is_editor %}
+          <li>{{ icon("trash") }} <button class="link-button danger" type="submit" form="delete-form">Delete this draft</button></li>
+          {% endif %}
+        </ul>
+      </aside>
+    </div>
+  </div>
+</form>
+
+{% if article.status == "draft" and article.submitted_at is none and not is_editor %}
+<form id="delete-form" method="post" action="{{ url_for('write.delete', article_id=article.id) }}" data-confirm="Delete this draft? This can't be undone.">
+  {{ forms.csrf() }}
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/editor.js', v=version) }}" defer></script>
+{% endblock %}

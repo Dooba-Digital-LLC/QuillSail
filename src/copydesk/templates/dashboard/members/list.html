@@ -1,0 +1,68 @@
+{% extends "layout/dashboard.html" %}
+
+{% block page_title %}Members{% endblock %}
+{% block lead %}<p class="lead">Everyone with an account: writers, editors and administrators.</p>{% endblock %}
+{% block actions %}
+  {% if pending %}<a class="button" href="{{ url_for('dash.requests') }}">{{ icon("users") }} Group requests <span class="count">{{ pending }}</span></a>{% endif %}
+  <a class="button button-primary" href="{{ url_for('dash.member_new') }}">{{ icon("plus") }} Invite someone</a>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="Filter members">
+  <ul class="tabs">
+    {% for key, label in [("active", "Active"), ("unverified", "Email not confirmed"), ("blocked", "Blocked"), ("deleted", "Deleted")] %}
+    <li><a href="{{ url_for('dash.members', state=key, q=q or None, group=group_id) }}"{% if key == state %} aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<form class="toolbar" method="get" role="search">
+  <input type="hidden" name="state" value="{{ state }}">
+  <div class="field">
+    <label for="f-q">Search</label>
+    <input id="f-q" type="search" name="q" value="{{ q }}" placeholder="Name, username or email">
+  </div>
+  <div class="field">
+    <label for="f-group">Group</label>
+    <select id="f-group" name="group" data-autosubmit>
+      <option value="">Any group</option>
+      {% for group in groups %}<option value="{{ group.id }}"{% if group.id == group_id %} selected{% endif %}>{{ group.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="button" type="submit">Apply</button>
+</form>
+
+{% if page.items %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th scope="col">Member</th><th scope="col">Groups</th><th scope="col">Email</th><th scope="col">Joined</th><th scope="col">Last seen</th></tr>
+    </thead>
+    <tbody>
+      {% for member in page.items %}
+      <tr>
+        <td class="primary-cell">
+          <span class="cluster">
+            {{ ui.avatar(member, "sm") }}
+            <span><a href="{{ url_for('dash.member', user_id=member.id) }}">{{ member.display_name }}</a><span class="sub">@{{ member.username }}</span></span>
+          </span>
+        </td>
+        <td>
+          {% for membership in member.memberships %}
+            {{ ui.badge(membership.group) }}{% if membership.status == "pending" %}<span class="small muted"> (asked)</span>{% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ member.email }}{% if not member.is_verified %} <span class="small muted">(not confirmed)</span>{% endif %}</td>
+        <td class="nowrap">{{ ui.when(member.created_at) }}</td>
+        <td class="nowrap">{{ ui.ago(member.last_seen_at) if member.last_seen_at else "Never" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="small muted">Showing {{ page.first_index|number }}–{{ page.last_index|number }} of {{ page.total|number }}.</p>
+{{ ui.pagination(page, "dash.members", state=state, q=q or None, group=group_id) }}
+{% else %}
+{{ ui.empty("No members here", "Try another tab or clear the search.", icon_name="users") }}
+{% endif %}
+{% endblock %}

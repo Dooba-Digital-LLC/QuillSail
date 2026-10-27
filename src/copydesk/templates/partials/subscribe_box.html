@@ -1,0 +1,31 @@
+{# The newsletter sign-up form. Pass `groups` (audience groups to offer) and an optional `box_id`. #}
+{% if newsletter_enabled %}
+{% set box = box_id|default("main") %}
+<form class="subscribe-box" method="post" action="{{ url_for('subscribe.subscribe') }}">
+  {% if current_user.is_authenticated %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+  <div class="honeypot" aria-hidden="true">
+    <label for="sb-website-{{ box }}">Leave this field empty</label>
+    <input id="sb-website-{{ box }}" type="text" name="website" tabindex="-1" autocomplete="off">
+  </div>
+  <label class="visually-hidden" for="sb-email-{{ box }}">Email address</label>
+  <div class="input-row">
+    <input id="sb-email-{{ box }}" type="email" name="email" required autocomplete="email"
+           placeholder="you@example.com" value="{{ current_user.email if current_user.is_authenticated else '' }}">
+    <button class="button button-primary" type="submit">{{ icon("mail") }} Subscribe</button>
+  </div>
+  {% if groups %}
+  <fieldset class="fieldset subscribe-groups">
+    <legend>I'm a… <span class="optional">(optional, pick any)</span></legend>
+    <div class="pill-choices">
+      {% for group in groups %}
+      <label class="pill-choice">
+        <input type="checkbox" name="groups" value="{{ group.slug }}">
+        <span>{{ group.label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+  <p class="fine-print">{{ setting("newsletter.signup_text") }}</p>
+</form>
+{% endif %}
