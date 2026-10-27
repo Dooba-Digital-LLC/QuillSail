@@ -4,6 +4,8 @@
 
 Self-hosted blogs and newsletters where readers write.
 
+Built by [Dooba Digital](https://github.com/Dooba-Digital-LLC).
+
 QuillSail brings blog publishing, reader submissions, editorial review, customizable community groups, and newsletter delivery into one application. Organizations host their own installation and own their data. Choose Newsletter, Blog, or Blog + newsletter. The publication name, branding, groups, permissions, pages, and email content are configurable.
 
 The product name is **QuillSail**, with capital Q and S. The command is `quillsail`. The older `copydesk` command still works as an alias, and the `copydesk` Python package, configuration names, and integration identifiers are unchanged for compatibility with installed sites.
