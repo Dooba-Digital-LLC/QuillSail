@@ -9,11 +9,15 @@ use the launcher's update button or `quillsail update --app /path/to/application
 Once registered, a server needs one command:
 
 ```sh
-sudo /opt/copydesk/current/venv/bin/quillsail update
+sudo quillsail update
 ```
 
-If that executable is on your sudo PATH, use `sudo quillsail update`. The
-`copydesk` command remains an alias. Add `--yes` for unattended approval or
+Starting with 1.9.1, setup and bootstrap install a protected command at
+`/usr/local/bin/quillsail` and verify that it is reachable through the installing
+operator's sudo PATH. Python deployments link through `current`, so later
+updates automatically use the new executable. The full path
+`/opt/copydesk/current/venv/bin/quillsail` remains available.
+The `copydesk` package command remains an alias. Add `--yes` for unattended approval or
 `--check` to check availability without installing. The profile selects Stable
 or Beta; `--channel stable` or `--channel beta` overrides it for one invocation.
 An unpublished development version does not become available merely by being
@@ -50,6 +54,45 @@ Setup records a protected `/etc/copydesk/update.json`; it does not replace live
 code or stop services. Use `--profile /protected/path/update.json` for another
 installation and pass that profile to subsequent update commands.
 
+### Command availability and existing installations
+
+Server setup creates the stable command for all accounts on that host. It does
+not grant sudo access. Administrators can configure a different sudo PATH for
+each account; setup verifies the sudo environment it runs in and does not edit
+sudoers, shell startup files or security policy.
+
+Use `--command /approved/bin/quillsail` if `/usr/local/bin` is absent from sudo's
+PATH. The chosen directory and earlier PATH locations must be protected from
+other users. Setup refuses conflicting commands and reports the issue before
+registering. Use `--no-command` to preserve an existing command and continue with
+the full executable path. A nondefault profile still needs `--profile` when
+updating; setup prints the complete command, including that argument.
+
+After installing 1.9.1 or later, an already registered server can install or
+verify its command without stopping services:
+
+```sh
+sudo /opt/copydesk/current/venv/bin/quillsail update install-command
+sudo quillsail update --check
+```
+
+Compose hosts run `update install-command` with their persistent host CLI. The
+link points to that host environment, which must remain installed. A command
+already provided by that environment is preserved. Use `--command PATH` to
+choose another name or directory. Repeating the command is safe and does not
+replace a conflicting executable.
+
+For 1.9.0, use the full executable path or create the link manually once in a
+directory approved for sudo's PATH:
+
+```sh
+sudo ln -s /opt/copydesk/current/venv/bin/quillsail /usr/local/bin/quillsail
+sudo quillsail update --check
+```
+
+The link command fails if the name is already taken. Inspect that command before
+replacing it; do not overwrite another installation's entry point.
+
 If systemd uses environment files, supply each one using
 `--environment-file /etc/copydesk/production.env`. These files must be root-owned
 and must not be writable by the service account. They use literal dotenv
@@ -75,7 +118,10 @@ sudo python3 -I deploy/bootstrap_server.py \
 
 This one command stages the updater in a temporary environment, registers the
 existing versioned installation, and runs the normal backed-up update
-transaction. Adjust its path/service options for the existing installation.
+transaction. It installs or verifies the stable command for new and previously
+registered Python servers. `--command PATH` chooses its location; `--no-command`
+skips that step. Use a 1.9.1+ wheel for automatic command installation, or the
+matching older installer when bootstrapping 1.9.0. Adjust its path/service options for the existing installation.
 Python 3.11+ and working package-index access are required. First installation
 uses the operator's explicitly pinned local installer; later network updates
 authenticate their metadata and wheel with TUF. There is no unsigned network

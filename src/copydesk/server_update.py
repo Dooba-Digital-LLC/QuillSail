@@ -132,6 +132,9 @@ class ServerProfile:
 
     def validate(self):
         trusted_directory(self.path.parent)
+        for key in ("command_path", "command_target"):
+            if key in self.values and (not isinstance(self.values[key], str) or not Path(self.values[key]).is_absolute()):
+                raise UpdateError(f"The server profile needs an absolute {key} path.")
         for key in ("instance_root", "config", "backup_root", "install_root"):
             if not isinstance(self.values.get(key), str) or not Path(self.values[key]).is_absolute():
                 raise UpdateError(f"The server profile needs an absolute {key} path.")

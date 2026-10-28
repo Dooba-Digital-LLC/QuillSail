@@ -175,6 +175,12 @@ def exercise(source):
                      'web_service': 'synthetic-web', 'worker_service': 'synthetic-worker',
                      'health_url': f'http://127.0.0.1:{port}/publication/healthz', 'health_timeout': 20})
         profile = ServerProfile.load(profile_path)
+        command = root / 'operator-bin/quillsail'
+        command.parent.mkdir()
+        with patch.dict(os.environ, {'PATH': str(command.parent)}), patch('copydesk.server_command.require_operator'):
+            installed = CliRunner().invoke(cli, ['update', 'install-command', '--profile', str(profile_path), '--command', str(command)])
+        assert installed.exit_code == 0, installed.output
+        assert command.is_symlink() and '0.0.1' in run([command, '--version'])
         services = Processes(profile, run, port)
         controller = ServerUpdater(profile, run=run, client=LocalPackages(new_wheel), deployment=services, require_privileges=False)
         # Migrations run as this test user; production uses runuser/systemd.
@@ -204,11 +210,13 @@ def exercise(source):
             print(result.output)
             state = controller.state()
             assert state['stage'] == 'complete' and services.version() == '0.0.2'
+            assert '0.0.2' in run([command, '--version'])
             assert publication_file.read_text() == 'original private upload'
             assert requests.get(profile.values['health_url'], timeout=5).json()['maintenance'] is False
             publication_file.write_text('content received after update')
             rollback = controller.rollback()
             assert rollback['stage'] == 'rolled_back' and services.version() == '0.0.1'
+            assert '0.0.1' in run([command, '--version'])
             assert publication_file.read_text() == 'original private upload'
             safety = Path(rollback['transaction']) / 'snapshot/instance/data/uploads/synthetic.txt'
             assert safety.read_text() == 'content received after update'

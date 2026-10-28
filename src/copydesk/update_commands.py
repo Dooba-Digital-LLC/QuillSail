@@ -150,7 +150,7 @@ def update(ctx, check_only, app, desktop, profile, resume, channel, yes):
 def capabilities():
     """Report the updater/maintenance contract without loading an instance."""
     click.echo(json.dumps({"version": __version__, "server_update_protocol": 1, "maintenance_gate": True,
-                           "desktop_updates": True, "server_updates": ["python", "compose"]}))
+                           "desktop_updates": True, "server_updates": ["python", "compose"], "system_command": True}))
 
 
 @update.command("status")
@@ -259,22 +259,25 @@ def bootstrap(profile, wheel, expected, yes):
 @click.option("--backup-host", help="Host-reachable database address when container DNS differs.")
 @click.option("--backup-port", type=int)
 @click.option("--channel", type=click.Choice(["stable", "beta"]), default="beta", show_default=True)
+@click.option("--command", "command_path", type=click.Path(path_type=Path), default="/usr/local/bin/quillsail", show_default=True, help="Stable server command; its directory must be on sudo's PATH.")
+@click.option("--no-command", is_flag=True, help="Register without installing a system-wide command.")
 @click.option("--yes", "-y", is_flag=True)
 @click.pass_context
 def setup(ctx, profile, kind, install_root, instance_root, backup_root, service_user, web_service,
-          worker_service, health_url, compose_file, project, base_image, environment_files, backup_host, backup_port, channel, yes):
+          worker_service, health_url, compose_file, project, base_image, environment_files, backup_host, backup_port, channel, command_path, no_command, yes):
     """Register an existing deployment; preserve its configuration and services.
 
     Use the standard versioned Python/systemd layout, or register an existing
     Compose project. This command records settings without changing live code.
     """
     from copydesk.config import ENV_OVERRIDES, ConfigError, load_config
+    from copydesk.server_command import command_target, plan, require_operator
     from copydesk.server_update import CommandRunner, ServerProfile, private_json, trusted_directory
 
     created_compose = None
+    command_link = None
     try:
-        if sys.platform != "linux" or os.geteuid() != 0:
-            raise UpdateError("Run server setup with sudo on the Linux host.")
+        require_operator()
         destination = profile_path(profile).absolute()
         trusted_directory(destination.parent)
         trusted_directory(install_root.absolute())
@@ -341,18 +344,61 @@ def setup(ctx, profile, kind, install_root, instance_root, backup_root, service_
                       health_url=health_url or config.base_url.rstrip("/") + "/healthz")
         candidate = ServerProfile(destination, values)
         candidate.validate()
+        if not no_command:
+            command_link = plan(candidate, command_path)
+            values.update(command_path=str(command_link.destination), command_target=str(command_link.target))
         if not yes:
             click.echo(json.dumps({key: values[key] for key in ("kind", "install_root", "instance_root", "backup_root", "health_url")}, indent=2))
+            if command_link:
+                click.echo(f"Server command: {command_link.destination} → {command_link.target}")
             click.confirm("Register this deployment for signed, backed-up updates?", abort=True)
         if kind == "compose":
             private_json(managed_compose, normalized)
             created_compose = managed_compose
         candidate.config()
+        if command_link:
+            command_link.install()
         private_json(destination, values)
         click.echo(f"Server registered: {destination}")
-        click.echo("Future updates: sudo quillsail update")
+        future_command(command_link.destination if command_link else command_target(candidate), destination, on_path=bool(command_link))
     except (UpdateError, ConfigError, OSError, ValueError, KeyError) as exc:
         raise click.ClickException(str(exc)) from exc
     finally:
         if created_compose and not destination.exists():
             created_compose.unlink(missing_ok=True)
+        if command_link and not destination.exists():
+            command_link.undo()
+
+
+def future_command(command, profile, *, on_path=False):
+    import shlex
+
+    from copydesk.server_update import DEFAULT_PROFILE
+
+    arguments = ["sudo", Path(command).name if on_path else str(command), "update"]
+    if Path(profile).resolve() != DEFAULT_PROFILE:
+        arguments += ["--profile", str(profile)]
+    click.echo("Future updates: " + shlex.join(arguments))
+
+
+@update.command("install-command")
+@click.option("--profile", type=click.Path(path_type=Path))
+@click.option("--command", "command_path", type=click.Path(path_type=Path), help="Default: the registered command, or /usr/local/bin/quillsail.")
+def install_command(profile, command_path):
+    """Install or verify a stable command for an already registered server."""
+    from copydesk.server_command import plan, require_operator
+    from copydesk.server_update import ServerProfile, private_json
+
+    command_link = None
+    try:
+        require_operator()
+        registered = ServerProfile.load(profile_path(profile))
+        command_link = plan(registered, command_path)
+        command_link.install()
+        private_json(registered.path, {**registered.values, "command_path": str(command_link.destination), "command_target": str(command_link.target)})
+        click.echo(f"Server command ready: {command_link.destination}")
+        future_command(command_link.destination, registered.path, on_path=True)
+    except (UpdateError, OSError, ValueError) as exc:
+        if command_link:
+            command_link.undo()
+        raise click.ClickException(str(exc)) from exc

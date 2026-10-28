@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -28,6 +29,8 @@ def main():
     parser.add_argument("--web-service", default="copydesk-web")
     parser.add_argument("--worker-service", default="copydesk-worker")
     parser.add_argument("--health-url")
+    parser.add_argument("--command", type=Path, help="Stable command path; default: /usr/local/bin/quillsail.")
+    parser.add_argument("--no-command", action="store_true", help="Skip installing a system-wide command.")
     parser.add_argument("--yes", action="store_true")
     args = parser.parse_args()
     if sys.platform != "linux" or os.geteuid() != 0:
@@ -36,6 +39,10 @@ def main():
     # so relative paths must be resolved first.
     for name in ("profile", "install_root", "instance_root", "backup_root"):
         setattr(args, name, getattr(args, name).expanduser().absolute())
+    if args.command:
+        args.command = args.command.expanduser().absolute()
+    if args.profile.exists() and json.loads(args.profile.read_text()).get("kind") != "python":
+        parser.error("this bootstrap installs versioned Python servers; Compose needs a persistent host CLI")
     wheel = args.wheel.expanduser().resolve()
     if hashlib.sha256(wheel.read_bytes()).hexdigest() != args.sha256:
         parser.error("the wheel does not match the trusted SHA-256 checksum")
@@ -51,20 +58,34 @@ def main():
         subprocess.run([str(python), "-I", "-m", "pip", "install", "--disable-pip-version-check", "--only-binary=:all:",
                         str(wheel) + "[server,postgres,mysql]"], check=True, cwd="/")
         command = [str(root / "venv/bin/quillsail"), "update"]
+        capabilities = json.loads(subprocess.run([*command, "capabilities"], check=True, capture_output=True, text=True, cwd="/").stdout)
+        supports_command = capabilities.get("system_command") is True
+        if not supports_command and not args.no_command:
+            parser.error("automatic command installation requires a QuillSail 1.9.1+ wheel; use the matching installer or pass --no-command for an older server wheel")
         if not args.profile.exists():
             setup = [*command, "setup", "--profile", str(args.profile), "--install-root", str(args.install_root),
                      "--instance-root", str(args.instance_root), "--backup-root", str(args.backup_root),
                      "--service-user", args.service_user, "--web-service", args.web_service, "--worker-service", args.worker_service]
             if args.health_url:
                 setup += ["--health-url", args.health_url]
+            if supports_command and args.command:
+                setup += ["--command", str(args.command)]
+            if supports_command and args.no_command:
+                setup.append("--no-command")
             if args.yes:
                 setup.append("--yes")
             subprocess.run(setup, check=True, cwd="/")
+        if not args.no_command:
+            link = [*command, "install-command", "--profile", str(args.profile)]
+            if args.command:
+                link += ["--command", str(args.command)]
+            subprocess.run(link, check=True, cwd="/")
         install = [*command, "bootstrap", "--profile", str(args.profile), "--wheel", str(wheel), "--sha256", args.sha256]
         if args.yes:
             install.append("--yes")
         subprocess.run(install, check=True, cwd="/")
-    print("Future updates:", args.install_root / "current/venv/bin/quillsail", "update")
+    if args.no_command:
+        print("Future updates:", args.install_root / "current/venv/bin/quillsail", "update")
 
 
 if __name__ == "__main__":

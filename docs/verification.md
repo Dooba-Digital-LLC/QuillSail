@@ -6,6 +6,7 @@ QuillSail is beta software. These are development checks, not an independent sec
 
 | Version | SQLite | PostgreSQL | Scope |
 | --- | --- | --- | --- |
+| 1.9.1 (unreleased) | 372 passed, 3 skipped | Not rerun locally | Stable Linux server command installation, sudo PATH checks, conflict protection, bootstrap ordering, registration rollback, and command continuity across real disposable updates and recovery |
 | 1.9.0 | 357 passed, 3 skipped | Not rerun locally | Managed server updates: release preparation, maintenance gate, instance/database snapshots, migration, web/worker validation, failure recovery, resume, manual rollback and retry, privileged-release and working-directory protections. Local server update smoke test passed on macOS; Compose updates and PostgreSQL/MariaDB backup restoration run in CI |
 | 1.5.0 | 234 passed, 2 skipped | Not rerun | Publication design presets, permission/CSRF checks, isolated unsaved previews, logo variants/transparency/aspect ratio, design import/export boundaries, offline CSS inlining and existing workflows |
 | 1.3.0 | 153 passed, 2 skipped | 154 passed, 1 skipped | Blog/newsletter modes, direct publishing permissions, same-site post reuse, attributed external submissions, no remote source fetching, editorial review, subscriptions, competitions, backup/restore |

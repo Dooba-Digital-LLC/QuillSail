@@ -29,7 +29,7 @@ def main():
     subprocess.run([sys.executable, "-m", "twine", "check", "--strict", str(wheel), str(source)], check=True)
     subprocess.run([sys.executable, "scripts/package_smoke.py", str(wheel)], check=True, cwd=root)
     subprocess.run([sys.executable, "scripts/server_update_smoke.py", str(wheel)], check=True, cwd=root)
-    subprocess.run([sys.executable, "-m", "pytest", "tests/test_server_update.py", "tests/test_updater.py"], check=True, cwd=root)
+    subprocess.run([sys.executable, "-m", "pytest", "tests/test_server_update.py", "tests/test_server_command.py", "tests/test_updater.py"], check=True, cwd=root)
     for archive in (wheel, source):
         shutil.copy2(archive, output / archive.name)
     report = {"version": __version__, "commit": os.environ.get("GITHUB_SHA", "local"), "archive": wheel.name,

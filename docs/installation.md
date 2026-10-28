@@ -61,6 +61,15 @@ For production Linux, use a dedicated `copydesk` account, a versioned virtual en
 
 To install a downloaded release wheel, use `pip install '/path/to/copydesk-VERSION-py3-none-any.whl[server]'`. Add the `postgres` or `mysql` extra for those database drivers. Source/Compose installations use SQLite by default; an external database is configured in the protected instance TOML or process environment. See [configuration](configuration.md).
 
+Installing the package creates the `quillsail` and `copydesk` entry points in
+Python's scripts directory. For a virtual environment, activate it before using
+the short commands: `. .venv/bin/activate` on macOS/Linux or
+`.\.venv\Scripts\Activate.ps1` in Windows PowerShell. Otherwise, use the full
+path to its executable. Activation affects that shell; sudo uses its own PATH.
+For production Linux, [server registration](server-updates.md) installs and
+checks a stable system-wide command starting with 1.9.1. It does not require
+each administrator to activate the service's virtual environment.
+
 ## Backups and upgrades
 
 The [managed server updater](server-updates.md) provides one-command updates for

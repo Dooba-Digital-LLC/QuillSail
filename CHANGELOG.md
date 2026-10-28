@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1 — Beta
+
+- Install a stable system-wide `quillsail` command during Linux server registration and bootstrap. Verify sudo's PATH, keep Python deployments linked through `current`, and provide `quillsail update install-command` for existing deployments.
+- Allow a custom command path or explicit opt-out. Reject conflicting commands and unsafe PATH locations without overwriting files or modifying sudo policy.
+
 ## 1.9.0 — Beta
 
 - Add complete `quillsail update` server transactions for registered versioned Python/systemd and Docker Compose installations: verify releases, prepare environments/images online, pause traffic and queued mail, back up the instance/native database, migrate, activate and validate web/worker health.
