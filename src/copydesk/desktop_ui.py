@@ -123,6 +123,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             icon_path = Path(__file__).parent / "static/brand/quillsail.svg"
             self.setWindowIcon(QIcon(str(icon_path)))
             content = QWidget()
+            content.setObjectName("launcher-content")
             layout = QVBoxLayout(content)
             layout.setContentsMargins(32, 28, 32, 28)
             layout.setSpacing(18)
@@ -216,11 +217,15 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             version.setObjectName("version")
             layout.addWidget(version)
             scroll = QScrollArea()
+            scroll.setObjectName("launcher-scroll")
             scroll.setWidgetResizable(True)
             scroll.setWidget(content)
             self.setCentralWidget(scroll)
             self.setStyleSheet("""
                 QMainWindow { background: #faf9fc; }
+                QWidget#launcher-content, QScrollArea#launcher-scroll { background: #faf9fc; border: 0; }
+                QComboBox { background: white; color: #332b40; padding: 7px; border: 1px solid #d8d1e1; border-radius: 7px; }
+                QComboBox QAbstractItemView { background: white; color: #332b40; selection-background-color: #eee8fa; selection-color: #332b40; }
                 QLabel { color: #272331; font-size: 13px; }
                 QLabel#status { background: #eee8fa; border-radius: 8px; padding: 14px; font-weight: 600; }
                 QLabel#version { color: #706879; font-size: 11px; }
