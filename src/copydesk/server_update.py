@@ -86,7 +86,7 @@ def trusted_code(path):
     """A file or folder that root will run, such as a release's base interpreter."""
     info = path.stat()
     if info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
-        raise UpdateError(UNPROTECTED_RELEASE)
+        raise UpdateError(f"{UNPROTECTED_RELEASE} Unprotected path: {path} (mode {stat.S_IMODE(info.st_mode):o}).")
     trusted_directory(path if stat.S_ISDIR(info.st_mode) else path.parent)
 
 
@@ -262,7 +262,7 @@ class PythonDeployment:
                     # For example venv/bin/python -> the base interpreter.
                     trusted_code(path.resolve())
                 elif (info := path.lstat()).st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
-                    raise UpdateError(UNPROTECTED_RELEASE)
+                    raise UpdateError(f"{UNPROTECTED_RELEASE} Unprotected path: {path} (mode {stat.S_IMODE(info.st_mode):o}).")
 
     def preflight(self):
         self.check_release()
