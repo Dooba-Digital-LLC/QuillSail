@@ -32,6 +32,7 @@ from copydesk.server_update import (
     PythonDeployment,
     ServerProfile,
     ServerUpdater,
+    harden_release,
     private_json,
     runtime_environment,
 )
@@ -156,6 +157,7 @@ def exercise(source):
         new_wheel = synthetic_wheel(source, root, '0.0.2')
         run([sys.executable, '-m', 'venv', old / 'venv'])
         run([old / 'venv/bin/python', '-m', 'pip', 'install', '--quiet', str(old_wheel) + '[server]'])
+        harden_release(old)
         (application / 'current').symlink_to(old)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))

@@ -374,6 +374,23 @@ def test_privileged_commands_never_import_from_the_working_directory(tmp_path, m
     assert not (tmp_path / "planted-module-ran").exists()
 
 
+def test_new_environment_hardening_protects_templates_without_changing_external_interpreter(tmp_path):
+    from copydesk.server_update import harden_release
+
+    release = tmp_path / "new-release"
+    release.mkdir()
+    template = release / "Activate.ps1"
+    template.write_text("synthetic activation template")
+    template.chmod(0o777)
+    external = tmp_path / "external-python"
+    external.write_text("synthetic interpreter")
+    external.chmod(0o666)
+    (release / "python").symlink_to(external)
+    harden_release(release)
+    assert template.stat().st_mode & 0o022 == 0
+    assert external.stat().st_mode & 0o022 == 0o022
+
+
 def test_compose_candidate_build_contains_only_the_wheel_and_pins_recovery_images(deployment, tmp_path):
     from copydesk.compose_update import ComposeDeployment
 

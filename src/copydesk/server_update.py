@@ -90,6 +90,23 @@ def trusted_code(path):
     trusted_directory(path if stat.S_ISDIR(info.st_mode) else path.parent)
 
 
+def harden_release(root):
+    """Protect fresh environments without following their interpreter links.
+
+    Some Python distributions copy activation templates with mode 0777. Only
+    new operator-created releases are normalized; unsafe existing releases
+    are rejected instead of silently trusting their changed code.
+    """
+    for base, directories, files in os.walk(root, followlinks=False):
+        for path in [Path(base), *(Path(base) / name for name in directories + files)]:
+            if path.is_symlink():
+                continue
+            info = path.lstat()
+            if info.st_uid != os.geteuid():
+                raise UpdateError("New release files must belong to the invoking operator.")
+            os.chmod(path, stat.S_IMODE(info.st_mode) & ~0o022)
+
+
 @dataclass
 class ServerProfile:
     path: Path
@@ -281,6 +298,7 @@ class PythonDeployment:
         release = self.profile.at("install_root") / "releases" / (transaction.name + "-" + version)
         release.mkdir(parents=True, mode=0o755)
         self.run([self.current / "venv/bin/python", "-m", "venv", release / "venv"])
+        harden_release(release)
         config = self.profile.config()
         from sqlalchemy.engine import make_url
 
@@ -288,6 +306,7 @@ class PythonDeployment:
         extras = ["server", *( ["postgres"] if backend == "postgresql" else ["mysql"] if backend == "mysql" else [])]
         self.run([release / "venv/bin/python", "-m", "pip", "install", "--disable-pip-version-check", "--only-binary=:all:",
                   str(wheel) + "[" + ",".join(extras) + "]", *self.profile.values.get("requirements", [])])
+        harden_release(release)
         capabilities = json.loads(self.run([release / "venv/bin/quillsail", "update", "capabilities"]))
         if capabilities.get("server_update_protocol") != PROTOCOL or not capabilities.get("maintenance_gate") or capabilities.get("version") != version:
             raise UpdateError("The candidate package does not support safe server-update validation.")
