@@ -2,6 +2,9 @@
 
 Only the systemd lifecycle is substituted: real child processes run as the
 current user. No system services, external mail or publication data are used.
+The interpreter running this script is trusted as the base Python: CI and
+development interpreters live in group- or world-writable tool caches, which a
+production updater rightly refuses. Disposable releases are still checked.
 """
 
 import argparse
@@ -22,6 +25,7 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
+from copydesk import server_update
 from copydesk.cli import main as cli
 from copydesk.server_update import (
     CommandRunner,
@@ -121,9 +125,26 @@ class LocalPackages:
         return destination
 
 
+def trust_base_interpreter():
+    """Skip the protection check only for this script's own base Python installation."""
+    checked = server_update.trusted_code
+    base = Path(sys.base_prefix).resolve()
+
+    def trusted_code(path):
+        if not Path(path).resolve().is_relative_to(base):
+            checked(path)
+
+    return patch.object(server_update, 'trusted_code', trusted_code)
+
+
 def main(source):
     if os.name != 'posix':
         raise SystemExit('The managed server smoke test requires a POSIX host.')
+    with trust_base_interpreter():
+        exercise(source)
+
+
+def exercise(source):
     run = CommandRunner()
     with tempfile.TemporaryDirectory(prefix='quillsail-server-smoke-') as folder:
         root = Path(folder)

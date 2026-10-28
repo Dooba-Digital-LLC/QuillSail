@@ -78,6 +78,18 @@ def trusted_directory(path):
             raise UpdateError("Application and backup folders must be operator-owned and protected from other users.")
 
 
+UNPROTECTED_RELEASE = ("Existing application releases must be operator-owned and protected from service-user "
+                       "changes before privileged updates.")
+
+
+def trusted_code(path):
+    """A file or folder that root will run, such as a release's base interpreter."""
+    info = path.stat()
+    if info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
+        raise UpdateError(UNPROTECTED_RELEASE)
+    trusted_directory(path if stat.S_ISDIR(info.st_mode) else path.parent)
+
+
 @dataclass
 class ServerProfile:
     path: Path
@@ -195,9 +207,12 @@ class CommandRunner:
     log_path = None
 
     def __call__(self, arguments, *, env=None, stdout=None, stdin=None, timeout=900):
+        # Python puts the working directory first on sys.path for -c and -m.
+        # Root must never import modules from an operator's (possibly
+        # service-writable) folder, so every command runs from /.
         try:
             result = subprocess.run([str(arg) for arg in arguments], env=runtime_environment() if env is None else env, stdin=stdin,
-                                    stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+                                    stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, cwd="/")
         except subprocess.TimeoutExpired as exc:
             raise UpdateError(f"{Path(arguments[0]).name} timed out.") from exc
         if self.log_path:
@@ -243,11 +258,11 @@ class PythonDeployment:
             trusted_directory(Path(base))
             for name in directories + files:
                 path = Path(base) / name
-                info = path.stat()
-                if info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
-                    raise UpdateError("Existing application releases must be operator-owned and protected from service-user changes before privileged updates.")
                 if path.is_symlink():
-                    trusted_directory(path.resolve() if path.is_dir() else path.resolve().parent)
+                    # For example venv/bin/python -> the base interpreter.
+                    trusted_code(path.resolve())
+                elif (info := path.lstat()).st_uid not in {0, os.geteuid()} or info.st_mode & 0o022:
+                    raise UpdateError(UNPROTECTED_RELEASE)
 
     def preflight(self):
         self.check_release()
@@ -499,6 +514,14 @@ class ServerUpdater:
             self._unflag(state)
             self.save(state, "cancelled")
             return
+        if stage == "stopping" and state.get("manual_rollback"):
+            # Nothing was restored yet. Restart the current deployment and keep
+            # the completed update available for another rollback attempt.
+            self.deployment.start()
+            self.deployment.start(worker=True)
+            self._unflag(state)
+            self.save(state, "cancelled")
+            return
         if stage in {"committed", "complete"}:
             # After commit, readers or mail may already have acted. Never replay
             # an older database snapshot automatically past this boundary.
@@ -528,6 +551,8 @@ class ServerUpdater:
         database = DatabaseBackup(self.config, self.run)
         try:
             original = self.state()
+            if original and original.get("manual_rollback") and original["stage"] == "cancelled":
+                original = read_json(Path(original["rollback_of"]) / "journal.json")
             if not original or original["stage"] != "complete":
                 raise UpdateError("There is no completed update to roll back. Use --resume for an interrupted transaction.")
             snapshot = Path(original["transaction"]) / "snapshot"
@@ -535,14 +560,19 @@ class ServerUpdater:
                 raise UpdateError("The matching recovery snapshot is unavailable.")
             transaction = self.profile.at("backup_root") / ("rollback-" + uuid.uuid4().hex)
             transaction.mkdir(mode=0o700)
-            state = {**original, "transaction": str(transaction), "snapshot_source": str(snapshot), "manual_rollback": True}
+            state = {**original, "transaction": str(transaction), "snapshot_source": str(snapshot),
+                     "rollback_of": original["transaction"], "manual_rollback": True}
             self.save(state, "prepared")
-            self._flag(state)
-            self.save(state, "stopping")
-            self.deployment.stop()
-            # Preserve all content received since the original update before
-            # honoring the operator's explicit request to restore its snapshot.
-            self._backup(state, database)
+            try:
+                self._flag(state)
+                self.save(state, "stopping")
+                self.deployment.stop()
+                # Preserve all content received since the original update before
+                # honoring the operator's explicit request to restore its snapshot.
+                self._backup(state, database)
+            except BaseException:
+                self._recover(state, database)
+                raise
             self.save(state, "rolling_back")
             self._recover(state, database)
             return state

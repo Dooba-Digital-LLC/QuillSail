@@ -232,6 +232,27 @@ def test_manual_rollback_saves_current_content_before_restoring_previous_snapsho
         assert connection.execute("SELECT value FROM sentinel").fetchone()[0] == "reader content after update"
 
 
+def test_failed_rollback_safety_backup_restarts_services_and_can_be_retried(deployment, monkeypatch):
+    controller, provider, release = deployment
+    controller.execute(release)
+    with sqlite3.connect(provider.database) as connection:
+        connection.execute("UPDATE sentinel SET value='reader content after update'")
+
+    def full_disk(_state, _database):
+        raise UpdateError("synthetic full disk")
+
+    monkeypatch.setattr(controller, "_backup", full_disk)
+    provider.calls.clear()
+    with pytest.raises(UpdateError, match="full disk"):
+        controller.rollback()
+    assert controller.state()["stage"] == "cancelled" and not marker(controller.config).exists()
+    assert {"stop", "start-web", "start-worker"} <= set(provider.calls) and "activate-old" not in provider.calls
+    assert value(provider) == "reader content after update" and provider.version() == "2.0.0"
+    monkeypatch.undo()
+    state = controller.rollback()
+    assert state["stage"] == "rolled_back" and provider.version() == "1.0.0" and value(provider) == "old version"
+
+
 def test_bootstrap_rejects_wrong_checksum_without_changing_server(deployment, tmp_path, monkeypatch):
     controller, provider, _release = deployment
     wheel = tmp_path / "copydesk-2.0.0-py3-none-any.whl"
@@ -321,6 +342,36 @@ def test_privileged_version_probe_rejects_writable_python_code(deployment):
     with pytest.raises(UpdateError, match="protected"):
         adapter.version()
     assert not commands
+
+
+def test_privileged_version_probe_rejects_an_interpreter_in_a_shared_folder(deployment, tmp_path):
+    from copydesk.server_update import PythonDeployment
+
+    controller, provider, _release = deployment
+    shared = tmp_path / "shared-tools"
+    shared.mkdir()
+    (shared / "python3").write_text("synthetic interpreter")
+    shared.chmod(0o777)
+    (provider.current.resolve() / "venv/bin").mkdir(parents=True)
+    (provider.current.resolve() / "venv/bin/python").symlink_to(shared / "python3")
+    commands = []
+    adapter = PythonDeployment(controller.profile, lambda arguments: commands.append(arguments))
+    with pytest.raises(UpdateError, match="protected"):
+        adapter.version()
+    assert not commands
+
+
+def test_privileged_commands_never_import_from_the_working_directory(tmp_path, monkeypatch):
+    import sys
+
+    from copydesk.server_update import CommandRunner
+
+    # A service account could plant this in the folder an operator runs sudo from.
+    (tmp_path / "csv.py").write_text("open('planted-module-ran', 'w').close()\n")
+    monkeypatch.chdir(tmp_path)
+    output = CommandRunner()([sys.executable, "-c", "import csv, os; print(os.getcwd())"])
+    assert output.strip() == "/"
+    assert not (tmp_path / "planted-module-ran").exists()
 
 
 def test_compose_candidate_build_contains_only_the_wheel_and_pins_recovery_images(deployment, tmp_path):

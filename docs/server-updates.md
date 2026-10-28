@@ -67,7 +67,7 @@ its SHA-256 digest and `deploy/bootstrap_server.py` through a trusted first-inst
 channel. Review the installer and verify the digest independently, then run:
 
 ```sh
-sudo python3 deploy/bootstrap_server.py \
+sudo python3 -I deploy/bootstrap_server.py \
   --wheel /protected/copydesk-VERSION-py3-none-any.whl \
   --sha256 TRUSTED_64_CHARACTER_SHA256 \
   --health-url http://127.0.0.1:8000/healthz

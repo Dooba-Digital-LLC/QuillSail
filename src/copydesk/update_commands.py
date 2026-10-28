@@ -34,7 +34,8 @@ def server_controller(value=None):
         if prefix != resolved and not os.environ.get("QUILLSAIL_UPDATE_REAL_RUNTIME"):
             environment = {**os.environ, "QUILLSAIL_UPDATE_REAL_RUNTIME": "1"}
             python = resolved / "bin/python"
-            os.execve(python, [str(python), "-m", "copydesk", *sys.argv[1:]], environment)
+            # -I: "-m" would otherwise import copydesk from the working directory.
+            os.execve(python, [str(python), "-I", "-m", "copydesk", *sys.argv[1:]], environment)
     return ServerUpdater(profile)
 
 

@@ -6,6 +6,7 @@ QuillSail is beta software. These are development checks, not an independent sec
 
 | Version | SQLite | PostgreSQL | Scope |
 | --- | --- | --- | --- |
+| 1.9.0 | 356 passed, 3 skipped | Not rerun locally | Managed server updates: release preparation, maintenance gate, instance/database snapshots, migration, web/worker validation, failure recovery, resume, manual rollback and retry, privileged-release and working-directory protections. Local server update smoke test passed on macOS; Compose updates and PostgreSQL/MariaDB backup restoration run in CI |
 | 1.5.0 | 234 passed, 2 skipped | Not rerun | Publication design presets, permission/CSRF checks, isolated unsaved previews, logo variants/transparency/aspect ratio, design import/export boundaries, offline CSS inlining and existing workflows |
 | 1.3.0 | 153 passed, 2 skipped | 154 passed, 1 skipped | Blog/newsletter modes, direct publishing permissions, same-site post reuse, attributed external submissions, no remote source fetching, editorial review, subscriptions, competitions, backup/restore |
 | 1.2.0 | 134 passed, 2 skipped | 135 passed, 1 skipped | Competition hosting, moderation, assigned judges, concurrent reader voting, deadlines, ties and immutable results |
@@ -31,7 +32,10 @@ python scripts/check_public_files.py
 python scripts/check_public_files.py --archive dist/*.whl
 python scripts/check_public_files.py --archive dist/*.tar.gz
 python scripts/package_smoke.py dist/*.whl
+python scripts/server_update_smoke.py dist/*.whl
 ```
+
+The server update smoke test installs two synthetic versions of the built wheel into disposable virtual environments, runs real Gunicorn and worker processes, and exercises an update, a manual rollback and recovery from a failed health check. It replaces only systemd and trusts the interpreter that runs it, because development and CI interpreters live in shared tool caches that a production updater refuses.
 
 The default suite uses disposable SQLite databases and synthetic accounts. Real loopback SMTP/TLS tests need the integration dependencies. To use a database server, also install the relevant driver and set `COPYDESK_TEST_DATABASE_URL` with a role permitted to create and drop test databases. Fixtures create randomly named `copydesk_test_*` databases and remove only those databases. Use a dedicated test server.
 

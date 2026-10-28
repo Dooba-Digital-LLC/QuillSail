@@ -32,6 +32,10 @@ def main():
     args = parser.parse_args()
     if sys.platform != "linux" or os.geteuid() != 0:
         parser.error("run this installer with sudo on the Linux host")
+    # Child commands run from / (Python imports from the working directory),
+    # so relative paths must be resolved first.
+    for name in ("profile", "install_root", "instance_root", "backup_root"):
+        setattr(args, name, getattr(args, name).expanduser().absolute())
     wheel = args.wheel.expanduser().resolve()
     if hashlib.sha256(wheel.read_bytes()).hexdigest() != args.sha256:
         parser.error("the wheel does not match the trusted SHA-256 checksum")
@@ -42,10 +46,10 @@ def main():
         if hashlib.sha256(installer.read_bytes()).hexdigest() != args.sha256:
             parser.error("the installer changed while being staged")
         wheel = installer
-        subprocess.run([sys.executable, "-m", "venv", str(root / "venv")], check=True)
+        subprocess.run([sys.executable, "-I", "-m", "venv", str(root / "venv")], check=True, cwd="/")
         python = root / "venv/bin/python"
-        subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "--only-binary=:all:",
-                        str(wheel) + "[server,postgres,mysql]"], check=True)
+        subprocess.run([str(python), "-I", "-m", "pip", "install", "--disable-pip-version-check", "--only-binary=:all:",
+                        str(wheel) + "[server,postgres,mysql]"], check=True, cwd="/")
         command = [str(root / "venv/bin/quillsail"), "update"]
         if not args.profile.exists():
             setup = [*command, "setup", "--profile", str(args.profile), "--install-root", str(args.install_root),
@@ -55,11 +59,11 @@ def main():
                 setup += ["--health-url", args.health_url]
             if args.yes:
                 setup.append("--yes")
-            subprocess.run(setup, check=True)
+            subprocess.run(setup, check=True, cwd="/")
         install = [*command, "bootstrap", "--profile", str(args.profile), "--wheel", str(wheel), "--sha256", args.sha256]
         if args.yes:
             install.append("--yes")
-        subprocess.run(install, check=True)
+        subprocess.run(install, check=True, cwd="/")
     print("Future updates:", args.install_root / "current/venv/bin/quillsail", "update")
 
 
