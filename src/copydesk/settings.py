@@ -129,7 +129,7 @@ define("appearance.show_subscriber_count", False, "Show the number of subscriber
 define("appearance.home_intro", "", "Home page introduction", type="markdown", tab="appearance",
        help="Optional. A short welcome shown on the home page under the sign-up form.")
 define("appearance.custom_css", "", "Custom CSS", type="code", tab="appearance",
-       help="Advanced. Added after the theme's styles on every public page.")
+       help="Advanced. Added after the theme's styles on the website and dashboard. Use .dashboard for dashboard-specific rules.")
 
 # Designer values are stored in the existing settings table. Missing values keep
 # older installations on their existing theme until an administrator saves a design.

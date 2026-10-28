@@ -92,18 +92,21 @@
   // ---------------------------------------------------------------- light / dark
 
   var THEME_KEY = "cd-theme";
-  var themeLabels = { system: "Theme: automatic", light: "Theme: light", dark: "Theme: dark" };
+  var themeLabels = { system: "Theme: default", light: "Theme: light", dark: "Theme: dark" };
+  var designPreview = root.hasAttribute("data-design-preview");
 
   function storedTheme() {
     try {
-      return localStorage.getItem(THEME_KEY) || "system";
+      var value = localStorage.getItem(THEME_KEY);
+      return value === "light" || value === "dark" ? value : "system";
     } catch (e) {
       return "system";
     }
   }
 
   function applyTheme(value) {
-    if (value === "light" || value === "dark") root.setAttribute("data-theme", value);
+    var effective = designPreview || value === "system" ? root.getAttribute("data-default-theme") : value;
+    if (effective === "light" || effective === "dark") root.setAttribute("data-theme", effective);
     else root.removeAttribute("data-theme");
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
       var label = button.querySelector("[data-theme-label]");
@@ -113,6 +116,7 @@
   }
 
   document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
+    if (designPreview) return;
     button.hidden = false;
     button.addEventListener("click", function () {
       var order = ["system", "light", "dark"];

@@ -8,7 +8,7 @@
 {% if design_preview and setting('appearance.custom_css') %}
 <style nonce="{{ csp_nonce() }}">{{ setting('appearance.custom_css')|replace('<', '\\3c ')|safe }}</style>
 {% elif setting('appearance.custom_css') %}
-<link rel="stylesheet" href="{{ url_for('public.custom_css', v=setting('appearance.custom_css')|length) }}">
+<link rel="stylesheet" href="{{ url_for('public.custom_css', v=custom_css_version()) }}">
 {% endif %}
 {% endblock %}
 

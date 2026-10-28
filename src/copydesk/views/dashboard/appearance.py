@@ -87,7 +87,7 @@ def appearance_page():
                 audit.record("settings.updated", None, actor=current_user, label="Publication appearance",
                              details={"tab": "appearance", "keys": changed})
                 db.session.commit()
-                flash("Publication design saved. The website and future emails now use these settings.", "success")
+                flash("Publication design saved. The website, dashboard and future emails now use these settings.", "success")
                 return redirect(url_for("dash.settings", tab="appearance"))
     groups = [
         ("identity", "Your identity", "Upload your publication's own branding.", ["brand_display", "logo_height"]),
@@ -101,7 +101,7 @@ def appearance_page():
          ["masthead", "content_width", "reading_width", "issue_layout", "density", "corner_radius", "home_intro", "show_subscriber_count"]),
         ("email", "Newsletter email", "Shares your colors and typography. Email clients may simplify fonts and advanced CSS.",
          ["email_layout", "email_width", "email_size", "email_padding"]),
-        ("advanced", "Advanced design", "Add your own CSS or install template themes for complete markup control. Website CSS is restricted to public pages.",
+        ("advanced", "Advanced design", "Add your own CSS or install template themes. Website CSS also applies to the dashboard; use .dashboard for dashboard-specific rules.",
          ["theme", "custom_css", "email_css"]),
     ]
     response = make_response(render_template("dashboard/settings/appearance.html", values=values, errors=errors,
@@ -148,7 +148,9 @@ def appearance_preview():
             items.append(SimpleNamespace(kind="text", title=title, web_html=rendered,
                                          html=text.email_html(rendered, appearance.design()["link"], state().config.origin), section="", article=None))
         kind = request.args.get("preview_format") or request.form.get("preview_format", "web")
-        if kind == "home":
+        if kind == "dashboard":
+            html = render_template(env.get_template("dashboard/design_preview.html"), dash_active="overview")
+        elif kind == "home":
             template = "public/blog_home.html" if publication.is_blog() else "public/home.html"
             html = render_template(env.get_template(template), latest_issue=None, featured=None, recent=[],
                                    subscriber_count=0, groups=signup_groups() if settings.get("newsletter.ask_audience") else [],

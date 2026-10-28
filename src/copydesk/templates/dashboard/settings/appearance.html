@@ -60,6 +60,7 @@
         <summary><strong>{{ title }}</strong></summary>
         <div class="panel-body stack">
           <p class="help">{{ description }}</p>
+          {% if id == 'advanced' %}<p class="help">If custom styles hide the controls, open the <a href="{{ url_for('dash.settings', tab='appearance', dashboard_style='default') }}">default dashboard view</a> to edit them. Your saved design stays in place.</p>{% endif %}
           {% if id in ('identity', 'hero') %}
           <div class="design-logos">
             {% for role, label in logo_roles.items() if role.startswith('hero_') == (id == 'hero') %}
@@ -90,19 +91,19 @@
           <p><button class="button button-small" name="action" value="import" type="submit">Load design file</button></p>
         </div>
       </details>
-      <div class="design-save"><button class="button button-primary" name="action" value="save" type="submit">Save publication design</button><p class="help">Applies to the website and future emails. Previously delivered emails keep their design.</p></div>
+      <div class="design-save"><button class="button button-primary" name="action" value="save" type="submit">Save publication design</button><p class="help">Applies to the website, dashboard and future emails. Previously delivered emails keep their design.</p></div>
     </div>
     <aside class="design-preview-panel" aria-label="Design preview">
       <div class="design-preview-tools">
         <label for="design-preview-kind" class="visually-hidden">Preview type</label>
-        <select id="design-preview-kind" data-preview-kind><option value="web">Website — issue</option><option value="home">Website — homepage</option><option value="email">Newsletter email</option></select>
+        <select id="design-preview-kind" data-preview-kind><option value="web">Website — issue</option><option value="home">Website — homepage</option><option value="dashboard">Dashboard</option><option value="email">Newsletter email</option></select>
         <button class="button button-small" type="button" data-preview-size="desktop" aria-pressed="true">Desktop</button>
         <button class="button button-small" type="button" data-preview-size="mobile" aria-pressed="false">Mobile</button>
         <button class="button button-small" type="submit" formaction="{{ url_for('dash.appearance_preview') }}" formtarget="design-preview" data-update-preview>Preview changes</button>
       </div>
-      <p class="help">Private sample edition. No posts are published and no email is sent.</p>
+      <p class="help">Private sample preview. No posts are published and no email is sent.</p>
       <div class="design-preview-stage"><iframe title="Publication design preview" name="design-preview" id="design-preview" src="{{ url_for('dash.appearance_preview') }}" sandbox="allow-same-origin allow-scripts" referrerpolicy="no-referrer"></iframe></div>
-      <noscript><p class="help">Use Preview changes to update the website preview. <button type="submit" class="button button-small" formaction="{{ url_for('dash.appearance_preview', preview_format='email') }}" formtarget="design-preview">Preview newsletter email</button></p></noscript>
+      <noscript><p class="help">Use Preview changes to update the website preview. <button type="submit" class="button button-small" formaction="{{ url_for('dash.appearance_preview', preview_format='dashboard') }}" formtarget="design-preview">Preview dashboard</button> <button type="submit" class="button button-small" formaction="{{ url_for('dash.appearance_preview', preview_format='email') }}" formtarget="design-preview">Preview newsletter email</button></p></noscript>
     </aside>
   </div>
 </form>

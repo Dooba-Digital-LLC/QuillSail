@@ -97,8 +97,8 @@ def test_preset_and_import_load_without_saving(app, editor_client):
     assert snapshot(app) == before
 
 
-def test_save_applies_to_website_and_actual_newsletter_render(app, editor_client, admin):
-    response = post(editor_client, **appearance.preset_values("canvas"), **{"appearance.email_css": ".email-story h2 { color: #123456 !important; }"})
+def test_save_applies_to_website_dashboard_and_actual_newsletter_render(app, editor_client, admin):
+    response = post(editor_client, **appearance.preset_values("canvas"), **{"appearance.email_css": ".email-story h2 { color: #123456 !important; }", "appearance.custom_css": ".dashboard .panel {border-width:2px;}"})
     assert response.status_code == 302
     assert b"designed design-canvas" in editor_client.get("/").data
     with app.test_request_context("/"):
@@ -110,10 +110,96 @@ def test_save_applies_to_website_and_actual_newsletter_render(app, editor_client
         assert "Unsubscribe" in html and "Choose what you get" in html
         assert "A story" in plain and "A paragraph" in plain
         assert subject.endswith("A styled issue")
-    # Publication CSS never affects the administration interface.
     dash = editor_client.get(PATH).data
-    assert b"css/publication.css" not in dash
-    assert b"<link rel=\"stylesheet\" href=\"/custom.css" not in dash
+    assert b"dashboard publication designed design-canvas" in dash
+    assert b"css/publication.css" in dash and b"css/dashboard.css" in dash
+    assert b"<link rel=\"stylesheet\" href=\"/custom.css" in dash
+    assert b"--bg:#f4f0fa" in dash and b"Rockwell" in dash
+
+
+@pytest.mark.parametrize("name", appearance.PRESETS)
+def test_dashboard_preview_is_private_isolated_and_has_no_live_actions(app, editor_client, name):
+    from html.parser import HTMLParser
+
+    class Actions(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            fields = dict(attrs)
+            if tag == "a" and fields.get("href", "").startswith("/"):
+                assert fields["href"] == "#cd-main"
+            if tag == "form":
+                assert fields.get("action") == "#"
+            if tag == "button" and fields.get("type") == "submit":
+                assert "disabled" in fields
+
+    before = snapshot(app)
+    response = post(editor_client, PREVIEW, preview_format="dashboard", **appearance.preset_values(name), logo=(png(), "sample.png"))
+    assert response.status_code == 200, response.data[:300]
+    assert f"dashboard publication designed design-{name}".encode() in response.data
+    assert b"Dashboard preview" in response.data and b"Sample audience" in response.data
+    assert b"data:image/png;base64," in response.data
+    assert response.headers["Cache-Control"] == "private, no-store"
+    assert "noindex" in response.headers["X-Robots-Tag"]
+    Actions().feed(response.get_data(as_text=True))
+    assert snapshot(app) == before
+    actual = editor_client.get(PATH).data
+    assert b"designed design-" not in actual
+    assert b"data:image/png;base64," not in actual
+
+
+def test_dashboard_uses_saved_branding_dark_variant_icon_and_template_styles(app, editor_client):
+    values = appearance.preset_values("broadsheet") | {"appearance.theme": "broadsheet", "appearance.brand_display": "both", "appearance.color_mode": "light"}
+    response = post(editor_client, **values,
+                    logo=(png(), "logo.png"), logo_dark=(png(), "dark.png"), favicon=(png(), "icon.png"))
+    assert response.status_code == 302
+    page = editor_client.get("/dashboard/").data
+    assert b"/theme/broadsheet/" in page
+    assert b"dash-brand-identity" in page and b"logo-light" in page and b"logo-dark" in page
+    assert b'<link rel="icon" href="/uploads/' in page
+    assert b'data-default-theme="light"' in page
+    assert b'data-theme-toggle' in page
+    assert b'action="/logout"' in page and b'name="csrf_token"' in page
+
+
+def test_same_length_custom_css_edits_invalidate_the_dashboard_and_public_cache(editor_client):
+    import re
+
+    def url(path):
+        return re.search(rb'href="([^"]*custom.css\?[^"]*)"', editor_client.get(path).data).group(1)
+
+    assert post(editor_client, **{"appearance.custom_css": ".publication{color:#123456}"}).status_code == 302
+    first = url(PATH)
+    assert first == url("/")
+    assert post(editor_client, **{"appearance.custom_css": ".publication{color:#654321}"}).status_code == 302
+    assert url(PATH) != first and url(PATH) == url("/")
+
+
+def test_dashboard_tokens_keep_text_readable_on_different_page_and_panel_colors(app):
+    import re
+
+    from copydesk.colors import contrast
+
+    with app.test_request_context("/"):
+        appearance.override({**appearance.preset_values("classic"), "appearance.background": "#ffffff", "appearance.surface": "#000000", "appearance.text_color": "#ffffff"})
+        css = str(appearance.web_tokens(appearance.design(), dashboard=True))
+        light = dict(re.findall(r"--([a-z-]+):([^;}]+)", css.split("@media")[0]))
+        assert contrast(light["text"], light["bg"]) >= 4.5
+        assert contrast(light["panel-text"], light["surface"]) >= 4.5
+        assert contrast(light["on-accent-soft"], light["accent-soft"]) >= 4.5
+
+
+def test_default_dashboard_view_recovers_controls_without_resetting_the_saved_design(app, editor_client):
+    assert post(editor_client, **appearance.preset_values("canvas"), **{"appearance.theme": "broadsheet", "appearance.custom_css": ".publication{display:none}"}).status_code == 302
+    before = snapshot(app)
+    response = editor_client.get(PATH + "?dashboard_style=default")
+    assert response.status_code == 200
+    assert b'<body class="dashboard">' in response.data
+    assert b'css/publication.css' not in response.data and b'/theme/broadsheet/' not in response.data
+    assert b'<link rel="stylesheet" href="/custom.css' not in response.data
+    assert b'.publication{display:none}' in response.data  # editable textarea value
+    assert b'Save publication design' in response.data
+    assert snapshot(app) == before
+    assert app.test_client().get(PATH + "?dashboard_style=default").status_code == 302
+    assert b'designed design-canvas' in editor_client.get(PATH).data
 
 
 @pytest.mark.parametrize("values", [

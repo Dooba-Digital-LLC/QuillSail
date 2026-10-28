@@ -4,14 +4,29 @@
 
 {% block title %}{% block page_title %}Dashboard{% endblock %} · {{ site.name }}{% endblock %}
 {% block meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
-{% block body_class %}dashboard{% endblock %}
-{% block custom_css %}{% endblock %}
+{% block body_class %}dashboard{% if not dashboard_default %} publication{% if design.enabled %} designed design-{{ design.style }} density-{{ design.density }}{% endif %}{% endif %}{% endblock %}
+{% block custom_css %}
+{% if not dashboard_default %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/publication.css', v=version) }}">
+{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v=version) }}">
+{% if not dashboard_default %}
+<style nonce="{{ csp_nonce() }}">{{ dashboard_design_tokens() }}</style>
+{% if design_preview and setting('appearance.custom_css') %}
+<style nonce="{{ csp_nonce() }}">{{ setting('appearance.custom_css')|replace('<', '\\3c ')|safe }}</style>
+{% elif setting('appearance.custom_css') %}
+<link rel="stylesheet" href="{{ url_for('public.custom_css', v=custom_css_version()) }}">
+{% endif %}
+{% endif %}
+{% endblock %}
 
 {% block body %}
-{% set counts = dash_counts() %}
+{% set counts = {} if design_preview else dash_counts() %}
+{% macro dashboard_link(endpoint) %}{{ '#' if design_preview else url_for(endpoint) }}{% endmacro %}
+{% macro preview_link() %}{% if design_preview %} aria-disabled="true" tabindex="-1"{% endif %}{% endmacro %}
 <div class="dash">
   <aside class="dash-sidebar" id="cd-dash-nav" aria-label="Dashboard">
-    <a class="dash-brand" href="{{ url_for('dash.overview') }}">{{ site.name }}<span>Dashboard</span></a>
+    <a class="dash-brand" href="{{ dashboard_link('dash.overview') }}" aria-label="{{ site.name }} dashboard"{{ preview_link() }}><span class="dash-brand-identity">{% include 'partials/dashboard_brand.html' %}</span><span class="dash-brand-caption">Dashboard</span></a>
     <nav>
       {% for heading, links in dash_nav %}
         {% set visible = [] %}
@@ -21,7 +36,7 @@
         <ul class="dash-nav">
           {% for key, label, icon_name in visible %}
           <li>
-            <a href="{{ url_for('dash.' ~ key) }}"{% if dash_active == key %} aria-current="page"{% endif %}>
+            <a href="{{ dashboard_link('dash.' ~ key) }}"{{ preview_link() }}{% if dash_active == key %} aria-current="page"{% endif %}>
               {{ icon(icon_name) }} {{ label }}
               {% if counts.get(key) %}<span class="count" aria-label="{{ counts[key] }} waiting">{{ counts[key] }}</span>{% endif %}
             </a>
@@ -34,18 +49,19 @@
       {% if extra %}
       <p class="dash-nav-label">Extensions</p>
       <ul class="dash-nav">
-        {% for link in extra %}<li><a href="{{ url_for(link.endpoint) }}">{{ icon("plug") }} {{ link.label }}</a></li>{% endfor %}
+        {% for link in extra %}<li><a href="{{ dashboard_link(link.endpoint) }}"{{ preview_link() }}>{{ icon("plug") }} {{ link.label }}</a></li>{% endfor %}
       </ul>
       {% endif %}
     </nav>
     <div class="dash-sidebar-footer">
       <div class="dash-platform">{% include 'partials/brand.html' %}</div>
-      <a href="{{ url_for('public.home') }}">{{ icon("external") }} View the site</a>
-      {% if can("submit") %}<a href="{{ url_for('write.index') }}">{{ icon("pen") }} My writing</a>{% endif %}
-      <a href="{{ url_for('account.profile') }}">{{ ui.avatar(current_user, "sm") }} {{ current_user.display_name }}</a>
-      <form method="post" action="{{ url_for('auth.logout') }}">
+      <a href="{{ dashboard_link('public.home') }}"{{ preview_link() }}>{{ icon("external") }} View the site</a>
+      {% if can("submit") %}<a href="{{ dashboard_link('write.index') }}"{{ preview_link() }}>{{ icon("pen") }} My writing</a>{% endif %}
+      <a href="{{ dashboard_link('account.profile') }}"{{ preview_link() }}>{{ ui.avatar(current_user, "sm") }} {{ 'Sample editor' if design_preview else current_user.display_name }}</a>
+      {% if not design_preview %}<button class="theme-toggle" type="button" data-theme-toggle hidden>{{ icon("sun") }} <span data-theme-label>Theme: automatic</span></button>{% endif %}
+      <form method="post" action="{{ dashboard_link('auth.logout') }}">
         {{ forms.csrf() }}
-        <button type="submit">{{ icon("logout") }} Sign out</button>
+        <button type="submit"{% if design_preview %} disabled{% endif %}>{{ icon("logout") }} Sign out</button>
       </form>
     </div>
   </aside>
@@ -54,7 +70,7 @@
   <div class="dash-main">
     <div class="dash-topbar">
       <button class="button button-small nav-button" type="button" data-dash-nav-toggle aria-controls="cd-dash-nav" aria-expanded="false">{{ icon("menu") }} Menu</button>
-      <strong>{{ site.name }}</strong>
+      <a class="dash-topbar-brand" href="{{ dashboard_link('dash.overview') }}" aria-label="{{ site.name }} dashboard"{{ preview_link() }}>{% include 'partials/dashboard_brand.html' %}</a>
     </div>
     <main id="cd-main" class="dash-content" tabindex="-1">
       {% with in_dashboard = true %}{% include "partials/flashes.html" %}{% endwith %}

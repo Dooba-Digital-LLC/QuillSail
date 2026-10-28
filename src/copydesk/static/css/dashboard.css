@@ -1,0 +1,26 @@
+/* Publication identity on administrative screens; preserve the dashboard grid. */
+.dashboard .dash-brand-identity{display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;min-width:0}
+.dashboard .dash-brand-identity .brand-logo{max-width:100%;width:auto;height:auto;max-height:clamp(20px,var(--logo-height,40px),80px);object-fit:contain}
+.dashboard .dash-brand .dash-brand-identity,.dashboard .dash-brand .dash-publication-name{font-size:1.05rem;font-weight:800;color:var(--text);letter-spacing:normal;text-transform:none}
+.dashboard .dash-brand-caption{font-size:.8125rem}
+.dashboard .dash-topbar-brand{display:flex;align-items:center;gap:.5rem;min-width:0;color:var(--text);font-weight:700;text-decoration:none;overflow-wrap:anywhere}
+.dashboard .dash-topbar-brand .brand-logo{width:auto;height:auto;max-height:40px;max-width:min(160px,40vw);object-fit:contain}
+.dashboard .dash-topbar-brand .dash-publication-name{min-width:0;font-size:.925rem}
+.dashboard.designed{--radius-sm:min(6px,var(--radius));--radius-lg:calc(var(--radius)*1.4);--dash-space:clamp(20px,var(--design-space),44px);background:var(--bg);font-family:var(--font-article);font-size:clamp(15px,var(--design-size),20px);line-height:var(--design-leading)}
+.dashboard.designed :is(h1,h2,h3,h4,.dash-publication-name){font-family:var(--font-display)}
+.dashboard.designed :is(.dash-sidebar,.dash-topbar,.panel,.stat,.table-wrap,.menu-panel){--text:var(--panel-text);--text-muted:var(--panel-muted);--text-subtle:var(--panel-muted);color:var(--text)}
+.dashboard.designed :is(input,select,textarea),.dashboard.designed .button:not(.button-primary):not(.button-danger):not(.button-ghost){color:var(--panel-text)}
+.dashboard.designed input::placeholder,.dashboard.designed textarea::placeholder{color:var(--panel-muted)}
+.dashboard.designed .dash-content{padding-block-start:var(--dash-space)}
+.dashboard.designed :is(.panel-body,.stat){padding:clamp(16px,calc(var(--design-space)*.65),28px)}
+.dashboard.designed .panel-header{padding:clamp(12px,calc(var(--design-space)*.5),24px) clamp(16px,calc(var(--design-space)*.65),28px)}
+.dashboard.designed :is(.grid-2,.stats){gap:clamp(12px,calc(var(--design-space)*.5),24px)}
+.dashboard.designed .dash-nav a[aria-current=page],.dashboard.designed .count{color:var(--on-accent-soft,var(--accent))}
+.dashboard.design-broadsheet .page-header{border-bottom:4px double var(--text);padding-bottom:1rem}
+.dashboard.design-broadsheet :is(.panel,.stat){box-shadow:none}
+.dashboard.design-reference .page-header{border-bottom:1px solid var(--border);padding-bottom:1rem}
+.dashboard.design-reference .page-header h1{font-weight:400;letter-spacing:0}
+.dashboard.design-brief .dash-nav a[aria-current=page]{box-shadow:inset 3px 0 var(--accent)}
+.dashboard.design-canvas .stat{border-top:3px solid var(--accent)}
+.dashboard [aria-disabled=true]{cursor:default}
+@media(max-width:59.99rem){.dashboard.designed .dash-content{padding-block-start:clamp(20px,var(--design-space),32px)}.dashboard .dash-topbar .nav-button{flex-shrink:0}.dashboard .dash-topbar-brand{flex:1}}

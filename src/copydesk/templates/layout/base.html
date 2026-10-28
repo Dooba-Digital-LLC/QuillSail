@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="no-js" data-article-font="{{ setting('appearance.article_font') }}">
+<html lang="en" class="no-js" data-article-font="{{ setting('appearance.article_font') }}" data-default-theme="{{ design.color_mode if design.enabled and not dashboard_default else 'auto' }}"{% if design_preview %} data-design-preview{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,7 @@
   {% block meta %}{% endblock %}
   <link rel="alternate" type="application/atom+xml" title="{{ site.name }}: articles" href="{{ url_for('public.feed') }}">
   <link rel="alternate" type="application/atom+xml" title="{{ site.name }}: issues" href="{{ url_for('public.issues_feed') }}">
-  {% if request.blueprint not in ('dash', 'setup') and appearance_image('favicon') %}
+  {% if request.blueprint != 'setup' and not dashboard_default and appearance_image('favicon') %}
   <link rel="icon" href="{{ appearance_image('favicon') }}">
   {% else %}
   <link rel="icon" href="{{ url_for('static', filename='brand/quillsail.svg', v=version) if request.blueprint in ('dash', 'setup') else url_for('public.favicon') }}" type="image/svg+xml">
@@ -22,12 +22,10 @@
       var root = document.documentElement;
       root.classList.remove("no-js");
       root.classList.add("js");
-      try {
-        var theme = localStorage.getItem("cd-theme");
-        if ({{ design_preview|tojson }}) theme = {{ design.color_mode|tojson }};
-        if (!theme && {{ (request.blueprint != 'dash' or design_preview)|tojson }} && {{ design.enabled|tojson }}) theme = {{ design.color_mode|tojson }};
-        if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
-      } catch (e) {}
+      var theme = null;
+      try { theme = localStorage.getItem("cd-theme"); } catch (e) {}
+      if (root.hasAttribute("data-design-preview") || (theme !== "light" && theme !== "dark")) theme = root.getAttribute("data-default-theme");
+      if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
     })();
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/copydesk.css', v=version) }}">
@@ -44,7 +42,7 @@
   </style>
   {% block custom_css %}
   {% if setting('appearance.custom_css') %}
-  <link rel="stylesheet" href="{{ url_for('public.custom_css', v=setting('appearance.custom_css')|length) }}">
+  <link rel="stylesheet" href="{{ url_for('public.custom_css', v=custom_css_version()) }}">
   {% endif %}
   {% endblock %}
   {{ slot('head') }}
@@ -53,7 +51,7 @@
 <body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#cd-main">Skip to main content</a>
   {% block body %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/app.js', v=version) }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js', v=version ~ '-appearance') }}" defer></script>
   {% block scripts %}{% endblock %}
   {{ slot('body_end') }}
 </body>

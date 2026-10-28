@@ -6,6 +6,7 @@ change the app's template loader, settings rows, uploads or email queue.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from html import escape
@@ -128,6 +129,10 @@ def image_url(role: str = "logo", *, external: bool = False) -> str:
     return external_url("public.upload", path=path) if external else url_for("public.upload", path=path)
 
 
+def css_version() -> str:
+    return hashlib.sha256(settings.get("appearance.custom_css").encode()).hexdigest()[:12]
+
+
 def home_hero() -> dict:
     """Homepage branding is independent of navigation and email branding."""
     custom_logo = image_url("hero_logo")
@@ -182,7 +187,7 @@ def design() -> dict:
     return d
 
 
-def web_tokens(d: dict) -> Markup:
+def web_tokens(d: dict, *, dashboard: bool = False) -> Markup:
     if not d["enabled"]:
         return Markup("")
     # Values only come from typed settings; font strings cannot contain CSS/HTML.
@@ -203,13 +208,20 @@ def web_tokens(d: dict) -> Markup:
             "accent": d["dark_link"], "accent-hover": d["dark_link"], "accent-soft": mix(d["dark_surface"], d["dark_link"], .12),
             "on-accent": ensure_contrast("#16181d", d["dark_link"], 4.5)}
     for palette in (light, dark):
+        if dashboard:
+            # A host may choose very different page and panel backgrounds.
+            for key in ("text", "muted"):
+                palette["panel-" + key] = ensure_contrast(palette[key], palette["surface"])
+                palette[key] = ensure_contrast(palette[key], palette["bg"])
+            palette["on-accent-soft"] = ensure_contrast(palette["accent"], palette["accent-soft"])
         palette.update({"text-muted": palette["muted"], "text-subtle": palette["muted"],
                         "bg-subtle": palette["surface-2"], "bg-muted": palette["surface-2"],
                         "surface-raised": palette["surface"], "border-strong": palette["border"]})
     declarations = lambda values: ";".join(f"--{k}:{v}" for k, v in values.items())  # noqa: E731
-    return Markup(".publication{" + declarations(common | light) + "}"
-                  "@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .publication{" + declarations(dark) + "}}"
-                  ":root[data-theme=dark] .publication{" + declarations(dark) + "}")
+    selector = ".dashboard" if dashboard else ".publication"
+    return Markup(selector + "{" + declarations(common | light) + "}"
+                  "@media(prefers-color-scheme:dark){:root:not([data-theme=light]) " + selector + "{" + declarations(dark) + "}}"
+                  ":root[data-theme=dark] " + selector + "{" + declarations(dark) + "}")
 
 
 def inline_email_css(html: str) -> str:

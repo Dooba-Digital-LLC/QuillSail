@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, g, jsonify, render_template, request
+from flask import Flask, g, has_request_context, jsonify, render_template, request
 from markupsafe import Markup
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -360,7 +360,7 @@ def _register_template_helpers(app: Flask, state: CopydeskState) -> None:
     def theme_stylesheets() -> list[str]:
         from flask import url_for
 
-        if request.blueprint == "dash" and not g.get("appearance_preview"):
+        if request.blueprint == "dash" and request.args.get("dashboard_style") == "default" and not g.get("appearance_preview"):
             return []
         urls = []
         for theme in reversed(themes.chain(state.themes, g.get("preview_theme") or state.active_theme)):
@@ -400,9 +400,12 @@ def _register_template_helpers(app: Flask, state: CopydeskState) -> None:
             "Markup": Markup,
             "design": design,
             "design_tokens": appearance.web_tokens(design),
+            "dashboard_design_tokens": lambda: appearance.web_tokens(design, dashboard=True),
             "appearance_image": appearance.image_url,
+            "custom_css_version": appearance.css_version,
             "home_hero": appearance.home_hero,
             "email_brand": appearance.email_brand,
             "design_preview": g.get("appearance_preview", False),
+            "dashboard_default": has_request_context() and request.blueprint == "dash" and request.args.get("dashboard_style") == "default" and not g.get("appearance_preview"),
             "es": appearance.email_design(design),
         }

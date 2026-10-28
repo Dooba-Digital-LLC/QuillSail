@@ -1,4 +1,4 @@
-/* The editor stays independent of a publication's custom CSS. */
+/* Appearance editor layout; colors and typography follow the publication. */
 .design-workspace{display:grid;grid-template-columns:minmax(300px,1fr) minmax(360px,1.15fr);gap:24px;align-items:start}
 .design-controls{min-width:0;display:grid;gap:16px}.design-controls .panel{margin:0}.design-controls .panel-header{flex-wrap:wrap;gap:8px}
 .design-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
