@@ -2,6 +2,7 @@
 
 ## 1.9.1 — Beta
 
+- Add responsive top padding above the business outreach heading.
 - Start newsletter subscription email fields blank for signed-in users, preserving only an address explicitly submitted during validation.
 - Install a stable system-wide `quillsail` command during Linux server registration and bootstrap. Verify sudo's PATH, keep Python deployments linked through `current`, and provide `quillsail update install-command` for existing deployments.
 - Allow a custom command path or explicit opt-out. Reject conflicting commands and unsafe PATH locations without overwriting files or modifying sudo policy.

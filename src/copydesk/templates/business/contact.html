@@ -1,8 +1,14 @@
 {% extends "layout/public.html" %}
 {% import "macros/forms.html" as forms with context %}
 {% block title %}For businesses · {{ site.name }}{% endblock %}
+{% block head %}
+{{ super() }}
+<style nonce="{{ csp_nonce() }}">
+  .business-outreach { padding-block-start: clamp(1.5rem, 4vw, 2.5rem); }
+</style>
+{% endblock %}
 {% block content %}
-<div class="container container-narrow">
+<div class="container container-narrow business-outreach">
   <header class="page-header"><div><p class="eyebrow">Business outreach</p><h1>Connect your business with students</h1><p class="lead">Share an opportunity, a practical project, or a workforce need. Our editors will review it and follow up with you.</p></div></header>
   <p>Internships, jobs, student projects, mentorship, events, partnerships, and newsletter feedback are welcome. No account is needed. Your submission goes to a private staff inbox; it is not published automatically.</p>
   {{ forms.error_summary(errors) }}
