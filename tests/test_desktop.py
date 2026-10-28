@@ -171,8 +171,9 @@ def test_desktop_upgrade_backs_up_old_database_config_and_uploaded_files(tmp_pat
         seed.seed("Older desktop publication")
         create_admin(email="older@example.test", name="Previous Owner", password="synthetic-older-owner-123")
         db.session.commit()
-    db.session.remove()
-    db.engine.dispose()
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
     config.uploads_dir.mkdir()
     (config.uploads_dir / "preserved.txt").write_text("old upload")
     original = config_path.read_bytes()

@@ -40,10 +40,12 @@ def test_export_restore_on_actual_server_database(app, tmp_path, database_url):
     result = runner.invoke(main, ['--config', str(source), 'export', str(backup)])
     assert result.exit_code == 0, result.output
     original = json.loads(backup.read_text())
-    db.session.remove()
-    db.engine.dispose()
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
     with temporary_database(server) as target_url:
         target = config_file('target', target_url)
+        target_app = None
         try:
             result = runner.invoke(main, ['--config', str(target), 'import', str(backup), '--yes'])
             assert result.exit_code == 0, (result.output, result.exception)
@@ -60,5 +62,7 @@ def test_export_restore_on_actual_server_database(app, tmp_path, database_url):
                 db.session.commit()
                 assert user.id > previous
         finally:
-            db.session.remove()
-            db.engine.dispose()
+            if target_app is not None:
+                with target_app.app_context():
+                    db.session.remove()
+                    db.engine.dispose()

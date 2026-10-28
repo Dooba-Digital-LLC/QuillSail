@@ -18,25 +18,29 @@ from copydesk.desktop import DesktopRuntime, default_data_dir, smoke_test
 log = logging.getLogger("copydesk.desktop")
 
 
-def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
+def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_browser=True, smoke=False):
     try:
         from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, QUrl, Signal, Slot
         from PySide6.QtGui import QAction, QDesktopServices, QIcon
         from PySide6.QtWidgets import (
             QApplication,
             QComboBox,
+            QFileDialog,
             QHBoxLayout,
+            QInputDialog,
             QLabel,
             QMainWindow,
             QMessageBox,
             QProgressBar,
             QPushButton,
+            QScrollArea,
             QVBoxLayout,
             QWidget,
         )
     except ImportError as exc:
         raise RuntimeError("Install the desktop extra with: pip install 'copydesk[desktop]'") from exc
 
+    from copydesk.instances import InstanceRegistry, running_url
     from copydesk.update_install import InstallError, application_lock, read_install
     from copydesk.updater import (
         UpdateClient,
@@ -48,7 +52,14 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         saved_channel,
     )
 
-    root = (data_dir or default_data_dir()).expanduser().resolve()
+    default_root = default_data_dir().expanduser().resolve()
+    root = (data_dir or default_root).expanduser().resolve()
+    registry = InstanceRegistry()
+    registered = next((item for item in registry.list() if item.root == root), None) if data_dir else None
+    if data_dir and root != default_root and registered is None:
+        registry = InstanceRegistry(root.with_name(root.name + "-instances"), default_root=root)
+    selected = registry.get(instance_id or (registered.id if registered else "default"))
+    root = selected.root
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     logfile = root / "quillsail.log"
     # Create with private permissions before logging opens the file.
@@ -100,6 +111,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
         def __init__(self):
             super().__init__()
             self.runtime = DesktopRuntime(root)
+            self.runtimes = {selected.id: self.runtime}
+            self.selected_instance = selected
             self.busy = self.closing = False
             self.task = self.thread = None
             self.smoke_starts, self.smoke_error = 0, False
@@ -121,8 +134,32 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             brand.addWidget(image)
             title = QLabel("<h1 style='margin:0 0 4px'>QuillSail</h1><p style='margin:0'>Your publication, on your computer.</p>")
             title.setWordWrap(True)
+            title.setMinimumHeight(title.heightForWidth(240))
             brand.addWidget(title, 1)
             layout.addLayout(brand)
+            instance_label = QLabel("Publication instance")
+            self.instance_selector = QComboBox()
+            self.instance_selector.setObjectName("instance-selector")
+            self.instance_selector.setAccessibleName("Publication instance")
+            instance_label.setBuddy(self.instance_selector)
+            layout.addWidget(instance_label)
+            layout.addWidget(self.instance_selector)
+            instance_row = QHBoxLayout()
+            self.new_instance = QPushButton("New instance…")
+            self.new_instance.clicked.connect(self.create_instance)
+            instance_row.addWidget(self.new_instance)
+            self.add_instance = QPushButton("Add existing…")
+            self.add_instance.clicked.connect(self.add_existing_instance)
+            instance_row.addWidget(self.add_instance)
+            self.refresh_button = QPushButton("Refresh")
+            self.refresh_button.clicked.connect(lambda: self.refresh_instances(self.selected_instance.id))
+            instance_row.addWidget(self.refresh_button)
+            layout.addLayout(instance_row)
+            self.refresh_instances(selected.id)
+            self.instance_selector.currentIndexChanged.connect(self.select_instance)
+            self.instance_summary = QLabel("No instances running in this launcher.")
+            self.instance_summary.setWordWrap(True)
+            layout.addWidget(self.instance_summary)
             self.status = QLabel("Starting your publication…")
             self.status.setObjectName("status")
             self.status.setWordWrap(True)
@@ -144,7 +181,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             logs.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(logfile))))
             row.addWidget(logs)
             files = QPushButton("Open data folder")
-            files.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(root))))
+            files.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.selected_instance.root))))
             row.addWidget(files)
             layout.addLayout(row)
             self.update_button = QPushButton("Check for updates")
@@ -171,14 +208,17 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.update_progress.setAccessibleName("Update progress")
             self.update_progress.hide()
             layout.addWidget(self.update_progress)
-            note = QLabel("Your local website and background jobs run while QuillSail is open.\nYour content stays saved when you stop or update the app.")
+            note = QLabel("Instances can run together. Switching instances keeps the others running.\nClosing QuillSail stops all instances started here; their content stays saved.")
             note.setWordWrap(True)
             layout.addWidget(note)
             layout.addStretch()
             version = QLabel(f"Version {__version__} · Local access only")
             version.setObjectName("version")
             layout.addWidget(version)
-            self.setCentralWidget(content)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(content)
+            self.setCentralWidget(scroll)
             self.setStyleSheet("""
                 QMainWindow { background: #faf9fc; }
                 QLabel { color: #272331; font-size: 13px; }
@@ -195,12 +235,75 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.menuBar().addMenu("QuillSail").addAction(quit_action)
             QTimer.singleShot(0, self.start)
 
+        def refresh_instances(self, selected_id):
+            self.instance_selector.blockSignals(True)
+            self.instance_selector.clear()
+            for item in registry.list():
+                self.instance_selector.addItem(item.name, item.id)
+            self.instance_selector.setCurrentIndex(self.instance_selector.findData(selected_id))
+            self.instance_selector.blockSignals(False)
+
+        def refresh_running_labels(self):
+            count = sum(bool(runtime.server) for runtime in self.runtimes.values())
+            self.instance_summary.setText(f"{count} instance{'s' if count != 1 else ''} running in this launcher.")
+            for index in range(self.instance_selector.count()):
+                identifier = self.instance_selector.itemData(index)
+                item = registry.get(identifier)
+                runtime = self.runtimes.get(identifier)
+                self.instance_selector.setItemText(index, item.name + (" · Running" if runtime and runtime.server else ""))
+
+        def select_instance(self):
+            self.selected_instance = registry.get(self.instance_selector.currentData())
+            identifier = self.selected_instance.id
+            if identifier not in self.runtimes:
+                self.runtimes[identifier] = DesktopRuntime(self.selected_instance.root)
+            self.runtime = self.runtimes[identifier]
+            self.setWindowTitle(self.selected_instance.name + " · QuillSail")
+            external = running_url(self.selected_instance) if not self.runtime.server else ""
+            self.external_url = external
+            self.status.setText("Running in another launcher or terminal." if external else
+                                "Your publication is running" if self.runtime.server else "Stopped. Your content is saved.")
+            self.address.setText(external or self.runtime.url if self.runtime.server or external else "Start this instance to open its dashboard.")
+            self.toggle.setText("Stop" if self.runtime.server else "Start")
+            self.toggle.setEnabled(not external)
+            self.open_button.setEnabled(bool(self.runtime.server or external))
+            self.refresh_running_labels()
+
+        def create_instance(self):
+            name, accepted = QInputDialog.getText(self, "New publication instance", "Instance name")
+            if accepted and name.strip():
+                self.status.setText("Creating a separate publication…")
+                self.operation(lambda: registry.add(name), self.instance_added)
+
+        def add_existing_instance(self):
+            directory = QFileDialog.getExistingDirectory(self, "Choose a QuillSail publication data folder")
+            if not directory:
+                return
+            name, accepted = QInputDialog.getText(self, "Add existing instance", "Instance name")
+            if accepted and name.strip():
+                self.operation(lambda: registry.add(name, Path(directory), existing=True), self.instance_added)
+
+        @Slot(object)
+        def instance_added(self, item):
+            self.finish_operation()
+            self.busy = False
+            self.refresh_instances(item.id)
+            self.select_instance()
+            if self.closing:
+                QTimer.singleShot(0, self.close)
+            elif not self.external_url:
+                self.start()
+
         def operation(self, callback, completed, on_failed=None):
             self.busy = True
             self.toggle.setEnabled(False)
             self.open_button.setEnabled(False)
             self.update_button.setEnabled(False)
             self.update_channel.setEnabled(False)
+            self.instance_selector.setEnabled(False)
+            self.new_instance.setEnabled(False)
+            self.add_instance.setEnabled(False)
+            self.refresh_button.setEnabled(False)
             self.task = Task(callback, self)
             self.task.finished.connect(completed, Qt.ConnectionType.QueuedConnection)
             self.task.failed.connect(on_failed or self.failed, Qt.ConnectionType.QueuedConnection)
@@ -215,6 +318,10 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.task.deleteLater()
             self.update_button.setEnabled(True)
             self.update_channel.setEnabled(True)
+            self.instance_selector.setEnabled(True)
+            self.new_instance.setEnabled(True)
+            self.add_instance.setEnabled(True)
+            self.refresh_button.setEnabled(True)
 
         def update_channel_changed(self):
             self.available_update = None
@@ -247,7 +354,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             dialog.setWindowTitle("Update QuillSail")
             dialog.setTextFormat(Qt.TextFormat.PlainText)
             dialog.setText(f"Download and install QuillSail {release.version}?")
-            dialog.setInformativeText("QuillSail will finish background work, install the verified update, and restart. Your publication files stay saved. Close any other QuillSail windows first.")
+            dialog.setInformativeText("QuillSail will finish background work for all instances started here, install the verified update, and restart. All publication files stay saved. Stop instances launched in other terminals or apps before updating.")
             dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
             dialog.button(QMessageBox.StandardButton.Ok).setText("Download and restart")
             dialog.setDefaultButton(QMessageBox.StandardButton.Cancel)
@@ -308,6 +415,10 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
 
         def start(self):
             if not self.busy:
+                if external := running_url(self.selected_instance):
+                    self.external_url = external
+                    self.select_instance()
+                    return
                 self.status.setText("Starting your publication…")
                 self.operation(self.runtime.start, self.started)
 
@@ -320,6 +431,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.toggle.setText("Stop")
             self.toggle.setEnabled(True)
             self.open_button.setEnabled(True)
+            self.refresh_running_labels()
             if smoke:
                 self.smoke_starts += 1
                 QTimer.singleShot(0, self.stop if self.smoke_starts == 1 else self.close)
@@ -329,14 +441,16 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
                 self.open_dashboard()
 
         def open_dashboard(self):
-            if self.runtime.server and not QDesktopServices.openUrl(QUrl(self.runtime.launch_url())):
+            url = self.runtime.launch_url() if self.runtime.server else running_url(self.selected_instance) + "/dashboard/"
+            if not QDesktopServices.openUrl(QUrl(url)):
                 self.status.setText("Your browser could not be opened. Try Open dashboard again.")
 
         def stop(self):
             if not self.busy:
                 self.status.setText("Finishing background work and stopping…")
                 def stop_and_handoff():
-                    self.runtime.stop()
+                    for runtime in self.runtimes.values() if self.closing else (self.runtime,):
+                        runtime.stop()
                     if self.update_plan is not None:
                         launch_installer(self.update_plan)
                 self.operation(stop_and_handoff, self.stopped, self.update_failed if self.update_plan else None)
@@ -349,6 +463,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             self.address.setText("Start QuillSail to open your dashboard.")
             self.toggle.setText("Start")
             self.toggle.setEnabled(True)
+            self.refresh_running_labels()
             if self.closing:
                 QTimer.singleShot(0, self.close)
             elif smoke:
@@ -372,7 +487,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
             if self.busy:
                 event.ignore()
                 return
-            if self.runtime.server:
+            if any(runtime.server for runtime in self.runtimes.values()):
                 event.ignore()
                 self.stop()
             else:
@@ -404,7 +519,8 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
     finally:
         if window.thread is not None:
             window.thread.join()
-        window.runtime.stop()
+        for runtime in window.runtimes.values():
+            runtime.stop()
         # Destroy the widget tree while QApplication still exists. Leaving it
         # to Python/Qt's atexit order can double-delete child wrappers in a bundle.
         window.deleteLater()
@@ -418,6 +534,7 @@ def run(*, data_dir: Path | None = None, open_browser=True, smoke=False):
 def main():
     parser = argparse.ArgumentParser(description="Open QuillSail on your computer.")
     parser.add_argument("--data-dir", type=Path, help="Use a separate desktop publication folder.")
+    parser.add_argument("--instance", help="Open a named local publication from the shared instance list.")
     parser.add_argument("--no-browser", action="store_true", help="Start the launcher without opening the browser.")
     parser.add_argument("--smoke-test", action="store_true", help="Check a disposable local publication, then exit.")
     parser.add_argument("--smoke-test-gui", action="store_true", help="Check native window startup, stop and restart with disposable data.")
@@ -428,6 +545,8 @@ def main():
     parser.add_argument("--yes", action="store_true", help="Approve a command-line update without prompting.")
     parser.add_argument("--version", action="version", version="QuillSail " + __version__)
     args = parser.parse_args()
+    if args.data_dir and args.instance:
+        parser.error("Choose --data-dir or --instance, rather than both.")
     if args.check_updates or args.update:
         from copydesk.cli import main as cli_main
 
@@ -446,7 +565,7 @@ def main():
     if args.smoke_test_gui:
         with tempfile.TemporaryDirectory(prefix="quillsail-gui-smoke-") as directory:
             raise SystemExit(run(data_dir=Path(directory), open_browser=False, smoke=True))
-    raise SystemExit(run(data_dir=args.data_dir, open_browser=not args.no_browser))
+    raise SystemExit(run(data_dir=args.data_dir, instance_id=args.instance, open_browser=not args.no_browser))
 
 
 if __name__ == "__main__":

@@ -55,8 +55,9 @@ def test_container_initializer_is_private_idempotent_and_has_no_default_admin(tm
     setup = client.get("/community/setup/")
     assert setup.status_code == 200 and b"Setup code" in setup.data
     assert (config.parent / "data/setup-code.txt").stat().st_mode & 0o077 == 0
-    db.session.remove()
-    db.engine.dispose()
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
 
 
 def test_container_startup_refuses_missing_migrations(tmp_path, monkeypatch):

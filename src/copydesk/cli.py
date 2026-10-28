@@ -22,10 +22,13 @@ import csv
 import json
 import os
 import secrets
+import signal
 import sys
+import webbrowser
 from datetime import date, datetime
 from pathlib import Path
 from string import Template
+from threading import Event
 
 import click
 
@@ -37,19 +40,40 @@ TEMPLATE = Path(__file__).parent / "config_template.toml"
 
 
 class Context:
-    def __init__(self, config_path: str | None) -> None:
+    def __init__(self, config_path: str | None, instance_id: str | None = None) -> None:
         self.config_path = config_path
+        self.instance_id = instance_id
         self._app = None
+
+    def close(self):
+        if self._app is not None:
+            from copydesk.db import db
+
+            with self._app.app_context():
+                db.session.remove()
+                db.engine.dispose()
 
     def app(self):
         if self._app is None:
             from copydesk.app import create_app
 
             try:
-                config = load_config(self.config_path, require_file=not os.environ.get("COPYDESK_SECRET_KEY"))
+                if self.instance_id:
+                    from copydesk.instances import InstanceRegistry, running_url
+
+                    instance = InstanceRegistry().get(self.instance_id)
+                    config = load_config(instance.config_path, require_file=True, use_environment=False)
+                    if url := running_url(instance):
+                        config.base_url = url
+                else:
+                    config = load_config(self.config_path, require_file=not os.environ.get("COPYDESK_SECRET_KEY"))
             except ConfigError as exc:
                 raise click.ClickException(str(exc)) from exc
             self._app = create_app(config)
+            if self.instance_id:
+                from copydesk.desktop import instance_cookie_name
+
+                self._app.config["SESSION_COOKIE_NAME"] = instance_cookie_name(instance.root)
         return self._app
 
 
@@ -59,10 +83,16 @@ pass_context = click.make_pass_decorator(Context)
 @click.group(help=__doc__.split("\n\n")[0])
 @click.option("--config", "config_path", envvar="COPYDESK_CONFIG", type=click.Path(dir_okay=False),
               help="Path to copydesk.toml (default: ./copydesk.toml, then /etc/copydesk/copydesk.toml).")
+@click.option("--instance", "instance_id", help="Use a named local instance (see `quillsail instance list`).")
 @click.version_option(__version__, prog_name="QuillSail")
 @click.pass_context
-def main(ctx: click.Context, config_path: str | None) -> None:
-    ctx.obj = Context(config_path)
+def main(ctx: click.Context, config_path: str | None, instance_id: str | None) -> None:
+    if instance_id and config_path and ctx.get_parameter_source("config_path") == click.core.ParameterSource.COMMANDLINE:
+        raise click.UsageError("Choose --instance or --config, rather than both.")
+    if instance_id and ctx.invoked_subcommand in {"init", "update", "instance"}:
+        raise click.UsageError("Use `quillsail instance create` for a new instance. Software updates are shared: run `quillsail update --desktop` without --instance.")
+    ctx.obj = Context(None if instance_id else config_path, instance_id)
+    ctx.call_on_close(ctx.obj.close)
 
 
 # --------------------------------------------------------------------------- init
@@ -170,14 +200,109 @@ def init(directory, site_name, mode, base_url, database_url, admin_email, admin_
 
 @main.command()
 @click.option("--data-dir", type=click.Path(file_okay=False, path_type=Path), help="Use a separate desktop publication folder.")
-def desktop(data_dir):
+@pass_context
+def desktop(ctx, data_dir):
     """Open the desktop launcher and start a local publication in your browser."""
     from copydesk.desktop_ui import run
 
     try:
-        run(data_dir=data_dir)
-    except RuntimeError as exc:
+        if data_dir and ctx.instance_id:
+            raise click.UsageError("Choose --data-dir or --instance, rather than both.")
+        run(data_dir=data_dir, instance_id=ctx.instance_id)
+    except (ConfigError, OSError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@main.group("instance")
+def instance_commands():
+    """Create, list and run independent local publications."""
+
+
+@instance_commands.command("list")
+@click.option("--json", "as_json", is_flag=True, help="Print names, paths and running addresses as JSON.")
+def instance_list(as_json):
+    from copydesk.instances import InstanceRegistry, running_url
+
+    try:
+        rows = [{"id": row.id, "name": row.name, "directory": str(row.root), "url": running_url(row)}
+                for row in InstanceRegistry().list()]
+    except ConfigError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if as_json:
+        click.echo(json.dumps(rows, indent=2))
+    else:
+        for row in rows:
+            click.echo(f"{row['id']} · {row['name']} · {row['url'] or 'Stopped'}\n  {row['directory']}")
+
+
+@instance_commands.command("create")
+@click.argument("name")
+@click.option("--data-dir", type=click.Path(file_okay=False, path_type=Path), help="Use an empty folder instead of the managed data folder.")
+def instance_create(name, data_dir):
+    """Create a private publication. Complete its account setup in the browser."""
+    from copydesk.instances import InstanceRegistry
+
+    try:
+        item = InstanceRegistry().add(name, data_dir)
+    except (ConfigError, OSError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Created {item.id}: {item.root}\nStart and set it up: quillsail instance run {item.id}")
+
+
+@instance_commands.command("add")
+@click.argument("name")
+@click.argument("data_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+def instance_add(name, data_dir):
+    """Register an existing desktop publication without changing its data."""
+    from copydesk.instances import InstanceRegistry
+
+    try:
+        item = InstanceRegistry().add(name, data_dir, existing=True)
+    except (ConfigError, OSError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Registered {item.id}: {item.root}")
+
+
+@instance_commands.command("run")
+@click.argument("names", nargs=-1, required=True)
+@click.option("--no-browser", is_flag=True, help="Print local setup/dashboard links without opening a browser.")
+@click.option("--no-worker", is_flag=True, help="Run websites without processing background jobs.")
+def instance_run(names, no_browser, no_worker):
+    """Run one or more instances until Ctrl+C; each gets an available local port."""
+    from copydesk.desktop import DesktopRuntime
+    from copydesk.instances import InstanceRegistry, running_url
+
+    runtimes = []
+    stopped = Event()
+    previous = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, lambda *_args: stopped.set())
+    try:
+        registry = InstanceRegistry()
+        selected = [registry.get(name) for name in dict.fromkeys(names)]
+        for item in selected:
+            url = running_url(item)
+            if url:
+                click.echo(f"{item.id} is already running: {url}/dashboard/")
+                continue
+            runtime = DesktopRuntime(item.root)
+            runtimes.append(runtime)
+            runtime.start(with_worker=not no_worker)
+            launch = runtime.launch_url()
+            click.echo(f"{item.id}: {runtime.url}\nOpen setup/dashboard: {launch}")
+            if not no_browser:
+                webbrowser.open(launch)
+        if runtimes:
+            click.echo("Press Ctrl+C to stop these instances. Their content stays saved.")
+            while not stopped.wait(.5):
+                pass
+    except KeyboardInterrupt:
+        pass
+    except (ConfigError, OSError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        for runtime in reversed(runtimes):
+            runtime.stop()
+        signal.signal(signal.SIGTERM, previous)
 
 
 @main.command()

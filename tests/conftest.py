@@ -40,8 +40,9 @@ def app(tmp_path, database_url):
         create_admin(email='editor@example.edu', name='Test Editor', password='correct-horse-battery-123')
         db.session.commit()
     yield app
-    db.session.remove()
-    db.engine.dispose()
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
     mail.outbox.clear()
 
 

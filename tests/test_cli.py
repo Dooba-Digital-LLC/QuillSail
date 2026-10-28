@@ -136,8 +136,9 @@ def test_restore_rejects_existing_data_without_accounts(tmp_path):
     assert "already contains data" in result.output
     with app.app_context():
         assert db.session.get(Job, job_id).payload == {"keep": True}
-    db.session.remove()
-    db.engine.dispose()
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
 
 
 def test_quillsail_command_keeps_copydesk_alias():

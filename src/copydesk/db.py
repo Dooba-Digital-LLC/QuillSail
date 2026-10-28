@@ -1,11 +1,14 @@
 """Database engine and session.
 
-``db.session`` is a scoped SQLAlchemy session: one per thread, removed at the
-end of every request (and by the worker after every job).
+``db.session`` belongs to the active Flask application and application context,
+removed when that context ends. Each publication has its own engine and pool.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from flask import current_app, g
 from sqlalchemy import Engine, MetaData, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
@@ -42,25 +45,40 @@ def make_engine(url: str) -> Engine:
     return create_engine(url, pool_pre_ping=True, pool_recycle=1800)
 
 
+@dataclass
+class Binding:
+    engine: Engine
+    session: scoped_session
+
+
 class Database:
-    def __init__(self) -> None:
-        self.engine: Engine | None = None
-        self.session = scoped_session(sessionmaker(expire_on_commit=False))
+    """Resolve connections from the active app, never from the last app created."""
+
+    @property
+    def engine(self) -> Engine:
+        return current_app.extensions["copydesk_db"].engine
+
+    @property
+    def session(self) -> scoped_session:
+        return current_app.extensions["copydesk_db"].session
 
     def configure(self, url: str) -> Engine:
-        self.session.remove()
-        if self.engine is not None:
-            self.engine.dispose()
-        self.engine = make_engine(url)
-        self.session.configure(bind=self.engine)
+        app = current_app._get_current_object()
+        if previous := app.extensions.get("copydesk_db"):
+            previous.session.remove()
+            previous.engine.dispose()
+        self.init_app(app, url)
         return self.engine
 
     def init_app(self, app, url: str) -> None:
-        self.configure(url)
+        engine = make_engine(url)
+        sessions = scoped_session(sessionmaker(bind=engine, expire_on_commit=False),
+                                  scopefunc=lambda: id(g._get_current_object()))
+        app.extensions["copydesk_db"] = Binding(engine, sessions)
 
         @app.teardown_appcontext
         def _remove_session(_exc):
-            self.session.remove()
+            sessions.remove()
 
     def create_all(self) -> None:
         from copydesk import models  # noqa: F401 - registers the tables

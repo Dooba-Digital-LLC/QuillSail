@@ -2,6 +2,9 @@
 
 ## 1.9.1 — Beta
 
+- Add named local instances shared by the desktop launcher and CLI. Create, register, select and run multiple publications with separate databases, files, queues, browser sessions and ports; stopping one leaves the others running. Closing or updating the launcher stops every instance it owns.
+- Scope database bindings and sessions to each Flask application and context so concurrent publications cannot rebind one another's connections.
+
 - Apply saved publication appearance to the dashboard: branding, fonts, colors, spacing, corners, template styles and custom CSS. Add a private dashboard preview with sample controls and preserve the saved default color mode.
 - Add responsive top padding above the business outreach heading.
 - Start newsletter subscription email fields blank for signed-in users, preserving only an address explicitly submitted during validation.

@@ -1,6 +1,6 @@
 """Local desktop lifecycle; no GUI imports or operator environment overrides.
 
-The launcher owns one private instance, one loopback HTTP server and one worker.
+Each runtime owns one private instance, one loopback HTTP server and one worker.
 Only a short-lived, single-use launch ticket authorizes the browser setup form.
 It never logs a user in or creates an administrator by itself.
 """
@@ -13,6 +13,7 @@ import json
 import os
 import secrets
 import shutil
+import socket
 import sqlite3
 import sys
 import tarfile
@@ -37,6 +38,10 @@ from copydesk.jobs import Worker
 from copydesk.models import User
 
 FORMAT = "quillsail.desktop.v1"
+
+
+def instance_cookie_name(directory: Path) -> str:
+    return "quillsail_desktop_" + hashlib.sha256(str(directory.resolve()).encode()).hexdigest()[:12]
 
 
 def default_data_dir() -> Path:
@@ -132,6 +137,15 @@ class DesktopRuntime:
         self._tickets: dict[str, float] = {}
         self._ticket_lock = threading.Lock()
 
+    def initialize(self):
+        """Prepare a stopped publication without starting HTTP or sending jobs."""
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.lock.acquire()
+        try:
+            self._initialize()
+        finally:
+            self.lock.release()
+
     def _initialize(self):
         if self.state_path.exists():
             state = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -191,12 +205,20 @@ class DesktopRuntime:
         try:
             config, saved = self._initialize()
             self.app = create_app(config)
-            self.app.config["SESSION_COOKIE_NAME"] = "quillsail_desktop_" + hashlib.sha256(str(self.root).encode()).hexdigest()[:12]
+            self.app.config["SESSION_COOKIE_NAME"] = instance_cookie_name(self.root)
             self.app.extensions["copydesk_desktop"] = self
             self.app.add_url_rule("/_desktop/open", "setup.desktop_open", self._open)
+            self.app.add_url_rule("/_desktop/status", "setup.desktop_status", lambda: {
+                "instance": hashlib.sha256(str(self.root).encode()).hexdigest(), "version": __version__})
             port = saved.get("port", 5080)
             if not isinstance(port, int) or not 0 <= port <= 65535:
                 port = 0
+            if port:
+                with socket.socket() as probe:
+                    try:
+                        probe.bind(("127.0.0.1", port))
+                    except OSError:
+                        port = 0
             try:
                 self.server = make_server("127.0.0.1", port, self.app, threaded=True, request_handler=QuietHandler)
             except (OSError, SystemExit):

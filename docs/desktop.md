@@ -42,7 +42,7 @@ The app keeps its publication outside the application bundle, so replacing the a
 
 Quit QuillSail before backing up or replacing the app. Copy the complete data folder to protected storage. Before a schema upgrade, the launcher automatically saves a consistent SQLite database backup, configuration and uploaded files under `backups/`. If startup reports an upgrade failure, preserve that backup and consult [maintenance](maintenance.md) before retrying or restoring an older app. Do not restore pending mail jobs into an active sender without reviewing them.
 
-Each launcher owns one desktop publication. Repeated starts cannot create a second worker for the same folder. Desktop configuration is isolated from server environment variables and existing CLI/server installations. Advanced users can select a separate empty folder with `quillsail desktop --data-dir PATH`.
+Each publication has a separate runtime and folder lock. Repeated starts cannot create a second worker for the same folder. Desktop configuration is isolated from server environment variables and existing CLI/server installations. Advanced users can select a separate empty folder with `quillsail desktop --data-dir PATH`.
 
 An OS lock prevents replacing a desktop application while its launcher is open. The verified archive and previous application remain in a private `.quillsail-update-*` folder beside the application. If replacement fails, the helper restores the previous application and records the error for the next launch. Application replacement does not restore or alter publication files. After database migrations have run, recovering an older version still requires the matching publication backup described in [maintenance](maintenance.md).
 
@@ -68,3 +68,35 @@ The **Desktop bundles** GitHub Actions workflow explicitly builds all four targe
 Local macOS builds are ad-hoc signed. Public download distribution still needs Developer ID signing/notarization, and Windows distribution should use an appropriate code-signing process. These release credentials are not part of the repository. No signing identity or notarization account is configured by the build script.
 
 The launcher uses [Qt for Python](https://doc.qt.io/qtforpython-6/deployment/deployment-pyinstaller.html) and [PyInstaller](https://pyinstaller.org/en/stable/usage.html). Retain the bundled dependency licenses when redistributing; their licenses remain separate from QuillSail's MIT license.
+
+## Multiple publications
+
+Starting with 1.9.1, **Publication instance** selects the publication controlled by the launcher. Choose **New instance…**, name it, and finish the usual setup in your browser. **Add existing…** registers an existing desktop data folder without moving or copying it. **Refresh** picks up instances created by the CLI.
+
+Start each desired instance with **Start**. Switching the selector keeps the others running; **Stop** stops only the selected publication. Each instance has its own database, configuration, account setup, browser cookie, uploads, email queue and available loopback port. A second launcher cannot start another worker for the same folder. If an instance is running in another launcher or terminal, you can open its dashboard here; stop it from the launcher or terminal that started it.
+
+Closing the app finishes work and stops all instances started by that window. Updating does the same before replacing the shared application. Publication folders and the instance list remain saved; reopen and start the publications you want after the update. Stop CLI-launched instances before replacing the desktop application.
+
+Your original publication remains **Default publication**, in its original folder. Additional instances and their private registry live beside that folder in `QuillSail-instances` on macOS/Windows or `quillsail-instances` on Linux. `QUILLSAIL_INSTANCE_HOME` can select another registry/managed-publications directory. Back up the registry and every registered publication folder; added external folders are referenced, not copied. The registry contains display names and paths, not provider credentials.
+
+The CLI uses the same instance list:
+
+```sh
+quillsail instance create "Student Blog"
+quillsail instance create "Community News"
+quillsail instance list
+quillsail instance run student-blog community-news
+```
+
+The last command starts both websites and background workers, prints their local setup/dashboard links, and opens them in the browser. Leave the terminal running; **Ctrl+C** stops all instances started by that command. Use `--no-browser` to print links only or `--no-worker` to leave queued jobs unprocessed. You can also run instances in separate terminals. `instance list --json` reports their paths and currently running addresses.
+
+Use `quillsail instance add NAME /path/to/publication` for an existing desktop publication. Named instances are also available to maintenance commands and the desktop launcher:
+
+```sh
+quillsail --instance student-blog jobs list
+quillsail --instance student-blog check
+quillsail --instance student-blog export ./student-blog-backup.json
+quillsail --instance student-blog desktop
+```
+
+Choose either `--instance` or an explicit `--config`. Named instances ignore server configuration environment overrides, so a local command cannot accidentally target a server database. `init` creates a manually configured installation; use `instance create` for a named local publication. Software updates apply to the shared installation, so run desktop updates without `--instance`. Production deployments can continue to use separate configuration files and supervised web/worker processes, as described in [installation](installation.md).
