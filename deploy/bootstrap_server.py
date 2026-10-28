@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -85,7 +86,11 @@ def main():
             install.append("--yes")
         subprocess.run(install, check=True, cwd="/")
     if args.no_command:
-        print("Future updates:", args.install_root / "current/venv/bin/quillsail", "update")
+        registered = json.loads(args.profile.read_text())
+        future = ["sudo", str(Path(registered["install_root"]) / "current/venv/bin/quillsail"), "update"]
+        if args.profile != Path("/etc/copydesk/update.json"):
+            future += ["--profile", str(args.profile)]
+        print("Future updates:", shlex.join(future))
 
 
 if __name__ == "__main__":

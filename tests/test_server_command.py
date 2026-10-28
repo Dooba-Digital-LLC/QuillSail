@@ -167,8 +167,8 @@ def test_compose_reuses_a_persistent_host_command_without_replacing_its_entrypoi
     assert not destination.is_symlink() and destination.lstat().st_ino == identity
 
 
-@pytest.mark.parametrize("existing_profile", [False, True])
-def test_bootstrap_installs_or_checks_the_stable_command_before_upgrading(tmp_path, monkeypatch, existing_profile):
+@pytest.mark.parametrize(("existing_profile", "install_shortcut"), [(False, True), (True, True), (True, False)])
+def test_bootstrap_installs_or_checks_the_stable_command_before_upgrading(tmp_path, monkeypatch, capsys, existing_profile, install_shortcut):
     import hashlib
     import importlib.util
     import subprocess
@@ -182,9 +182,11 @@ def test_bootstrap_installs_or_checks_the_stable_command_before_upgrading(tmp_pa
     wheel.write_bytes(b"synthetic pinned installer")
     profile = tmp_path / "update.json"
     if existing_profile:
-        profile.write_text('{"kind":"python"}')
+        profile.write_text(json.dumps({"kind": "python", "install_root": str(tmp_path / "custom-application")}))
     arguments = [str(path), "--wheel", str(wheel), "--sha256", hashlib.sha256(wheel.read_bytes()).hexdigest(),
                  "--profile", str(profile), "--yes"]
+    if not install_shortcut:
+        arguments.append("--no-command")
     monkeypatch.setattr(sys, "argv", arguments)
     monkeypatch.setattr(module.sys, "platform", "linux")
     monkeypatch.setattr(module.os, "geteuid", lambda: 0)
@@ -192,11 +194,17 @@ def test_bootstrap_installs_or_checks_the_stable_command_before_upgrading(tmp_pa
 
     def run(arguments, **options):
         calls.append(list(map(str, arguments)))
-        return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"system_command": True}))
+        return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"system_command": install_shortcut}))
 
     monkeypatch.setattr(module.subprocess, "run", run)
     module.main()
-    link = next(index for index, call in enumerate(calls) if "install-command" in call)
-    upgrade = next(index for index, call in enumerate(calls) if "bootstrap" in call)
-    assert link < upgrade
+    if install_shortcut:
+        link = next(index for index, call in enumerate(calls) if "install-command" in call)
+        upgrade = next(index for index, call in enumerate(calls) if "bootstrap" in call)
+        assert link < upgrade
+    else:
+        assert not any("install-command" in call for call in calls)
+        output = capsys.readouterr().out
+        assert str(tmp_path / "custom-application/current/venv/bin/quillsail") in output
+        assert "--profile " + str(profile) in output
     assert any("setup" in call for call in calls) is not existing_profile
