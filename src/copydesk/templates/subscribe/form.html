@@ -20,7 +20,7 @@
       <div class="field">
         <label for="f-email">Email address</label>
         <input id="f-email" type="email" name="email" required autocomplete="email" autofocus
-               value="{{ email or (current_user.email if current_user.is_authenticated else '') }}">
+               value="{{ email or '' }}">
       </div>
       <div class="field">
         <label for="f-name">Name <span class="optional">(optional)</span></label>

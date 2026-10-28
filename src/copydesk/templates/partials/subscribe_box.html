@@ -10,7 +10,7 @@
   <label class="visually-hidden" for="sb-email-{{ box }}">Email address</label>
   <div class="input-row">
     <input id="sb-email-{{ box }}" type="email" name="email" required autocomplete="email"
-           placeholder="you@example.com" value="{{ current_user.email if current_user.is_authenticated else '' }}">
+           placeholder="you@example.com" value="">
     <button class="button button-primary" type="submit"{% if design_preview %} disabled title="Subscriptions are disabled in design previews."{% endif %}>{{ icon("mail") }} Subscribe</button>
   </div>
   {% if groups %}
