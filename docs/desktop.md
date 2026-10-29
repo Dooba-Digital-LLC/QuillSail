@@ -12,7 +12,9 @@ Extract the bundle for your operating system. On macOS, move **QuillSail.app** t
 
 Linux builds use Ubuntu 22.04 and require a desktop environment. On a minimal Ubuntu installation, missing Qt/X11 libraries can be installed with `sudo apt-get install libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 libxcb-xfixes0`. Other distributions need the equivalent packages. Windows builds target x64 Windows; Windows ARM and 32-bit systems are not included.
 
-The launcher starts automatically. **Open dashboard** reopens your browser, **Stop** finishes background work and stops the local website, and **Start** starts it again. **View logs** opens the private local log, while **Open data folder** shows the files to back up. Closing the launcher stops its website and worker; your content stays saved. The launcher uses an available port on `127.0.0.1`, remembers it, and stays accessible only on your computer.
+The launcher starts automatically. **Open dashboard** reopens your browser, **Stop** finishes background work and stops the local website, and **Start** starts it again. **View logs** opens the private local log, while **Open data folder** shows the files to back up. The launcher uses an available port on `127.0.0.1`, remembers it, and stays accessible only on your computer.
+
+The launcher opens in light mode. Under **Appearance**, choose **Dark**, or **Automatic** to follow your system's light or dark setting. Your choice is remembered for the next launch, and the first-time setup page in your browser uses the same appearance.
 
 Email initially stays in local `.eml` files. Configure a sender in Settings → Email when you want actual delivery. Local URLs work only on your computer; [server installation](installation.md) covers a public website and an always-running email worker. Connecting Gmail/Outlook still needs the provider registration described in [email connectors](email-connectors.md).
 
@@ -75,7 +77,7 @@ Starting with 1.9.1, **Publication instance** selects the publication controlled
 
 Start each desired instance with **Start**. Switching the selector keeps the others running; **Stop** stops only the selected publication. Each instance has its own database, configuration, account setup, browser cookie, uploads, email queue and available loopback port. A second launcher cannot start another worker for the same folder. If an instance is running in another launcher or terminal, you can open its dashboard here; stop it from the launcher or terminal that started it.
 
-Closing the app finishes work and stops all instances started by that window. Updating does the same before replacing the shared application. Publication folders and the instance list remain saved; reopen and start the publications you want after the update. Stop CLI-launched instances before replacing the desktop application.
+Closing the window keeps every instance running in the background, like other menu bar apps. QuillSail stays in the macOS menu bar or the Windows and Linux system tray; choose **Open QuillSail** there, click its Dock icon, or open the app again to bring the window back. To stop the instances, quit QuillSail: use the **Quit QuillSail** button, **⌘Q** (Ctrl+Q on Windows and Linux), the menu bar or tray icon, or run `quillsail quit` in a terminal. Quitting finishes background work first, and your content stays saved. If your Linux desktop has no system tray, closing the window quits instead. Installing an update also stops the launcher's instances before replacing the shared application. Publication folders and the instance list remain saved; reopen and start the publications you want after the update. Stop CLI-launched instances before replacing the desktop application.
 
 Your original publication remains **Default publication**, in its original folder. Additional instances and their private registry live beside that folder in `QuillSail-instances` on macOS/Windows or `quillsail-instances` on Linux. `QUILLSAIL_INSTANCE_HOME` can select another registry/managed-publications directory. Back up the registry and every registered publication folder; added external folders are referenced, not copied. The registry contains display names and paths, not provider credentials.
 
@@ -88,7 +90,7 @@ quillsail instance list
 quillsail instance run student-blog community-news
 ```
 
-The last command starts both websites and background workers, prints their local setup/dashboard links, and opens them in the browser. Leave the terminal running; **Ctrl+C** stops all instances started by that command. Use `--no-browser` to print links only or `--no-worker` to leave queued jobs unprocessed. You can also run instances in separate terminals. `instance list --json` reports their paths and currently running addresses.
+The last command starts both websites and background workers, prints their local setup/dashboard links, and opens them in the browser. Leave the terminal running; **Ctrl+C** stops all instances started by that command. `quillsail quit` quits the desktop app and the instances it started; it does not stop instances running in a terminal. Use `--no-browser` to print links only or `--no-worker` to leave queued jobs unprocessed. You can also run instances in separate terminals. `instance list --json` reports their paths and currently running addresses.
 
 Use `quillsail instance add NAME /path/to/publication` for an existing desktop publication. Named instances are also available to maintenance commands and the desktop launcher:
 

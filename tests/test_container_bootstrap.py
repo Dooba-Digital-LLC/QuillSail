@@ -54,6 +54,8 @@ def test_container_initializer_is_private_idempotent_and_has_no_default_admin(tm
     assert client.get("/community/healthz").get_json()["database"] == "ok"
     setup = client.get("/community/setup/")
     assert setup.status_code == 200 and b"Setup code" in setup.data
+    # Without a desktop launcher, setup uses the default light appearance.
+    assert b'data-theme-locked data-theme="light"' in setup.data
     assert (config.parent / "data/setup-code.txt").stat().st_mode & 0o077 == 0
     with app.app_context():
         db.session.remove()

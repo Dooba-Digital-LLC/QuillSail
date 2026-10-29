@@ -93,7 +93,8 @@
 
   var THEME_KEY = "cd-theme";
   var themeLabels = { system: "Theme: default", light: "Theme: light", dark: "Theme: dark" };
-  var designPreview = root.hasAttribute("data-design-preview");
+  // Design previews and locked pages (desktop setup) ignore the saved choice.
+  var fixedTheme = root.hasAttribute("data-design-preview") || root.hasAttribute("data-theme-locked");
 
   function storedTheme() {
     try {
@@ -105,7 +106,7 @@
   }
 
   function applyTheme(value) {
-    var effective = designPreview || value === "system" ? root.getAttribute("data-default-theme") : value;
+    var effective = fixedTheme || value === "system" ? root.getAttribute("data-default-theme") : value;
     if (effective === "light" || effective === "dark") root.setAttribute("data-theme", effective);
     else root.removeAttribute("data-theme");
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
@@ -116,7 +117,7 @@
   }
 
   document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
-    if (designPreview) return;
+    if (fixedTheme) return;
     button.hidden = false;
     button.addEventListener("click", function () {
       var order = ["system", "light", "dark"];

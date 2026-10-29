@@ -6,6 +6,7 @@
     quillsail jobs run        process waiting jobs once, then exit (for cron)
     quillsail upgrade         update the database after installing a new version
     quillsail update          update a desktop app or a registered server
+    quillsail quit            quit the desktop app and stop its publications
     quillsail check           check the configuration, database and email
     quillsail user ...        create users, reset passwords, manage groups
     quillsail subscribers ... import and export the subscriber list
@@ -211,6 +212,21 @@ def desktop(ctx, data_dir):
         run(data_dir=data_dir, instance_id=ctx.instance_id)
     except (ConfigError, OSError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@main.command("quit")
+def quit_command():
+    """Quit the desktop app and stop the publications it started."""
+    from copydesk.instances import default_registry_dir
+    from copydesk.launcher import send_command, wait_until_closed
+
+    folder = default_registry_dir()
+    if send_command(folder, "quit") != "ok":
+        raise click.ClickException("QuillSail isn't open.")
+    click.echo("Finishing background work and stopping publications…")
+    if not wait_until_closed(folder, timeout=120):
+        raise click.ClickException("QuillSail is still stopping. Check its window, then try again.")
+    click.echo("QuillSail has quit. Your content is saved.")
 
 
 @main.group("instance")

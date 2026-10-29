@@ -1,0 +1,260 @@
+/*
+ * First-time setup in the QuillSail interface style (assets/README.md):
+ * ink on paper, hairline rules, and the logo purple as the only accent.
+ * The page follows the desktop launcher's light or dark appearance.
+ */
+
+@font-face {
+  font-family: "Amiri";
+  src: url("../fonts/Amiri-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ------------------------------------------------------------------ tokens */
+
+.setup-page {
+  color-scheme: light;
+  --paper: #ffffff;
+  --ink: #000000;
+  --line: #000000;
+  --wash: #000000;
+  --inverse: #ffffff;
+  --purple: #6e4cc2;
+  --font-heading: "Amiri", "Big Caslon", Georgia, serif;
+  --font-label: "Avenir Next", "Helvetica Neue", "Segoe UI", Helvetica, Arial, sans-serif;
+
+  /* Shared component tokens, mapped onto the setup palette. */
+  --bg: var(--paper);
+  --surface: var(--paper);
+  --text: var(--ink);
+  --text-muted: var(--ink);
+  --text-subtle: var(--ink);
+  --border: var(--line);
+  --border-strong: var(--line);
+  --accent: var(--purple);
+  --accent-hover: var(--purple);
+  --on-accent: #ffffff;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif);
+}
+
+/* Full-strength white on black glares, so the dark theme softens it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .setup-page {
+    color-scheme: dark;
+    --paper: #000000;
+    --ink: rgb(255 255 255 / 0.86);
+    --line: rgb(255 255 255 / 0.4);
+    --wash: rgb(255 255 255 / 0.14);
+    --inverse: var(--ink);
+  }
+
+  :root:not([data-theme="light"]) .setup-page select {
+    background-image: url("../desktop/chevron-white.svg");
+  }
+
+  :root:not([data-theme="light"]) .setup-page .quillsail-mark {
+    opacity: 0.86;
+  }
+}
+
+:root[data-theme="dark"] .setup-page {
+  color-scheme: dark;
+  --paper: #000000;
+  --ink: rgb(255 255 255 / 0.86);
+  --line: rgb(255 255 255 / 0.4);
+  --wash: rgb(255 255 255 / 0.14);
+  --inverse: var(--ink);
+}
+
+:root[data-theme="dark"] .setup-page select {
+  background-image: url("../desktop/chevron-white.svg");
+}
+
+:root[data-theme="dark"] .setup-page .quillsail-mark {
+  opacity: 0.86;
+}
+
+.setup-page ::selection {
+  background: var(--purple);
+  color: #ffffff;
+}
+
+.setup-page :focus-visible {
+  border-radius: 0;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.setup {
+  display: grid;
+  justify-items: center;
+  padding: clamp(2rem, 1rem + 4vw, 4.5rem) var(--gutter) 4rem;
+}
+
+.setup-sheet {
+  width: 100%;
+  max-width: 34rem;
+}
+
+.setup-masthead {
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--line);
+}
+
+.setup-masthead .quillsail-brand {
+  gap: 0.9rem;
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 2rem + 2vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* "Quill" stays logo purple; "Sail" takes the ink color. Purple on black
+ * passes WCAG AA here because the wordmark is large text. */
+.setup-masthead .quillsail-quill {
+  color: var(--purple);
+}
+
+.setup-masthead .quillsail-mark {
+  width: 58px;
+  height: 48px;
+}
+
+.setup-folio,
+.setup-section {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.setup-folio {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin: 0 0 2.25rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.setup-page h1 {
+  margin-bottom: 0.5rem;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 1.6rem + 1.6vw, 2.625rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.setup-page .lead {
+  margin: 0 0 1.75rem;
+  color: var(--ink);
+  font-size: 1.125rem;
+}
+
+.setup-section {
+  margin: 0.75rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.setup-note {
+  margin: 0;
+  font-style: italic;
+}
+
+/* ------------------------------------------------------------------ fields */
+
+.setup-page .field > label {
+  font-family: var(--font-label);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.setup-page input[type="text"],
+.setup-page input[type="email"],
+.setup-page input[type="password"],
+.setup-page select {
+  border-radius: 0;
+  background-color: var(--paper);
+  box-shadow: none;
+}
+
+.setup-page select {
+  background-image: url("../desktop/chevron-black.svg");
+  background-size: 12px 8px;
+  background-position: right 0.85rem center;
+}
+
+.setup-page input:focus,
+.setup-page select:focus {
+  border-color: var(--purple);
+  box-shadow: inset 0 0 0 1px var(--purple);
+}
+
+.setup-page ::placeholder {
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+/* Errors are marked with a purple rule and plain text, not a new color. */
+.setup-page .has-error {
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--purple);
+}
+
+.setup-page .has-error input,
+.setup-page .has-error select {
+  border-color: var(--purple);
+}
+
+.setup-page .error-text {
+  color: var(--ink);
+}
+
+.setup-page .error-summary {
+  margin-bottom: 1.75rem;
+  border: 2px solid var(--purple);
+  border-radius: 0;
+  background: var(--paper);
+}
+
+.setup-page .error-summary h2 {
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.setup-page .error-summary a {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+.setup-page .button {
+  min-height: 3rem;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-label);
+  font-weight: 600;
+}
+
+.setup-page .button-primary:hover {
+  --button-bg: var(--wash);
+  --button-text: var(--inverse);
+  --button-border: var(--purple);
+}
+
+.setup-page .button:focus-visible {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--purple);
+}
