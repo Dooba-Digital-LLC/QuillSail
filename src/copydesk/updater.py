@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -19,11 +20,13 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import certifi
+import tuf
 from packaging.version import InvalidVersion, Version
 from tuf.api.exceptions import DownloadError, RepositoryError
 from tuf.api.metadata import TargetFile
 from tuf.ngclient import Updater, UpdaterConfig
-from tuf.ngclient.urllib3_fetcher import Urllib3Fetcher
+from tuf.ngclient.urllib3_fetcher import ProxyEnvironment, Urllib3Fetcher
 
 from copydesk import __version__
 from copydesk.desktop import AlreadyRunning, InstanceLock, default_data_dir, write_private
@@ -104,6 +107,11 @@ class Update:
 class ProgressFetcher(Urllib3Fetcher):
     def __init__(self, progress=None):
         super().__init__(socket_timeout=15)
+        # Frozen Python cannot rely on the build machine's OpenSSL CA paths.
+        # Keep system/custom trust and add the CA bundle shipped with the app.
+        context = ssl.create_default_context()
+        context.load_verify_locations(cafile=certifi.where())
+        self._proxy_env = ProxyEnvironment(ssl_context=context, headers={"User-Agent": f"QuillSail/{__version__} python-tuf/{tuf.__version__}"})
         self.progress, self.download_size = progress, None
 
     def _fetch(self, url):

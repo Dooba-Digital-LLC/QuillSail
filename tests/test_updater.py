@@ -399,3 +399,70 @@ def test_cleanup_never_deletes_current_transaction_through_a_path_alias(tmp_path
     update_install.record_success(plan, installation)
     assert (current / "previous/old-app").read_text() == "synthetic previous version"
     assert json.loads((current / "result.json").read_text())["status"] == "installed"
+
+
+@pytest.mark.parametrize("trusted", [True, False])
+def test_update_https_uses_bundled_ca_without_system_roots(tmp_path, monkeypatch, trusted):
+    import ssl
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+    from urllib3.exceptions import MaxRetryError, SSLError
+
+    from copydesk import updater
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
+    now = datetime.now(UTC)
+    certificate = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+                   .public_key(key.public_key()).serial_number(x509.random_serial_number())
+                   .not_valid_before(now - timedelta(minutes=1)).not_valid_after(now + timedelta(hours=1))
+                   .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False)
+                   .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+                   .sign(key, hashes.SHA256()))
+    cert_path, key_path = tmp_path / "test-ca.pem", tmp_path / "test-key.pem"
+    cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                          serialization.NoEncryption()))
+    empty_ca_dir = tmp_path / "empty-ca"
+    empty_ca_dir.mkdir()
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing-build-machine-ca.pem"))
+    monkeypatch.setenv("SSL_CERT_DIR", str(empty_ca_dir))
+    monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1")
+    assert not ssl.create_default_context().get_ca_certs()
+    if trusted:
+        monkeypatch.setattr(updater.certifi, "where", lambda: str(cert_path))
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"synthetic update metadata")
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(cert_path, key_path)
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        fetcher = updater.ProgressFetcher()
+        url = f"https://localhost:{server.server_port}/timestamp.json"
+        if trusted:
+            assert b"".join(fetcher.fetch(url)) == b"synthetic update metadata"
+        else:
+            with pytest.raises(MaxRetryError) as error:
+                b"".join(fetcher.fetch(url))
+            assert isinstance(error.value.reason, SSLError)
+            assert "CERTIFICATE_VERIFY_FAILED" in str(error.value)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

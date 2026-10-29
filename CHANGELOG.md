@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2 — Beta
+
+- Ship a trusted certificate bundle for desktop update checks and downloads, avoiding missing build-machine certificate paths while preserving HTTPS certificate and signed-release verification.
+- Keep launcher controls readable when macOS uses a dark appearance.
+
 ## 1.9.1 — Beta
 
 - Add named local instances shared by the desktop launcher and CLI. Create, register, select and run multiple publications with separate databases, files, queues, browser sessions and ports; stopping one leaves the others running. Closing or updating the launcher stops every instance it owns.

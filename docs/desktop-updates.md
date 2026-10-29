@@ -2,6 +2,8 @@
 
 The desktop updater uses the maintained [python-tuf client](https://theupdateframework.readthedocs.io/en/latest/api/tuf.ngclient.updater.html). Each package ships a trusted root under `copydesk/updates/root.json`. Root signatures require two of three offline Ed25519 keys. Separate online targets, snapshot and timestamp keys authenticate release metadata. Archives must match the signed length and SHA-256 digest; expired metadata, metadata rollback, mismatched processors and application downgrades are rejected.
 
+Desktop bundles include a certifi CA bundle for HTTPS verification, in addition to Python’s available system or configured trust roots. This avoids relying only on certificate paths from the build machine. HTTPS certificate verification remains enabled.
+
 The TUF root is public and belongs in the repository. Private signing keys must remain outside Git, wheels, containers, desktop applications and logs. Losing the online keys requires a root rotation signed by the existing offline root threshold; do not replace the shipped root with an unrelated root or silently generate new release keys.
 
 ## One-time setup

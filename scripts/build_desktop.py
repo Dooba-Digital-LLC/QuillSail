@@ -111,7 +111,7 @@ def main():
             image.save(icon)
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
                "--name", "QuillSail", "--distpath", str(output), "--workpath", str(work / "pyinstaller"),
-               "--specpath", str(work), "--collect-all", "copydesk", "--hidden-import", "sqlalchemy.dialects.sqlite",
+               "--specpath", str(work), "--collect-all", "copydesk", "--collect-data", "certifi", "--hidden-import", "sqlalchemy.dialects.sqlite",
                "--add-data", str(notices) + os.pathsep + "licenses",
                "--exclude-module", "pytest", "--exclude-module", "tkinter", "--exclude-module", "IPython"]
     if sys.platform in {"darwin", "win32"}:
