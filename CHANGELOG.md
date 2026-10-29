@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.10.0 — Beta
 
 - Restyle the desktop launcher in black, white and the logo's purple, with serif headlines and body text and small-capital labels. Headlines use the bundled Amiri Bold typeface (SIL Open Font License). Design guidance for the launcher is in `assets/README.md`.
 - Open the launcher in light mode by default. Choose **Dark**, or **Automatic** to follow the system appearance, under **Appearance**; the choice is remembered. The dark theme softens white text and rules to reduce glare.

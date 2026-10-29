@@ -6,7 +6,7 @@ On the first launch, enter your publication name, choose Newsletter / Blog / Blo
 
 ## Using the app
 
-Download the beta from the [GitHub release](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.9.2). Four separate downloads cover Apple Silicon Macs (`macos-arm64`), Intel Macs (`macos-x86_64`), 64-bit Windows (`windows-x86_64`), and 64-bit Linux (`linux-x86_64`). `SHA256SUMS.txt` contains the archive hashes; `desktop-builds.json` records the source commit and native verification results.
+Download the beta from the [GitHub release](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.10.0). Four separate downloads cover Apple Silicon Macs (`macos-arm64`), Intel Macs (`macos-x86_64`), 64-bit Windows (`windows-x86_64`), and 64-bit Linux (`linux-x86_64`). `SHA256SUMS.txt` contains the archive hashes; `desktop-builds.json` records the source commit and native verification results.
 
 Extract the bundle for your operating system. On macOS, move **QuillSail.app** to Applications and open it. On Windows, keep the extracted folder together and open **QuillSail.exe**. On Linux, keep the extracted folder together and open **QuillSail**. Use a build matching your CPU architecture.
 
