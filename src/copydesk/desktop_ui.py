@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import faulthandler
+import json
 import logging
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -13,27 +15,106 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from copydesk import __version__
-from copydesk.desktop import DesktopRuntime, default_data_dir, smoke_test
+from copydesk.desktop import DesktopRuntime, default_data_dir, smoke_test, write_private
 
 log = logging.getLogger("copydesk.desktop")
+
+# Ink on paper, with the logo's purple as the only accent. The launcher is light
+# unless someone chooses dark, or automatic to follow the system appearance.
+APPEARANCES = {"light": "Light", "dark": "Dark", "auto": "Automatic"}
+PURPLE = "#6e4cc2"
+TYPEFACES = {
+    # Amiri Bold ships in static/fonts under the SIL Open Font License.
+    "display": ("Amiri", "Big Caslon", "Georgia"),
+    "text": ("Iowan Old Style", "Charter", "Sitka Text", "Palatino Linotype", "Georgia"),
+    "label": ("Avenir Next", "Helvetica Neue", "Segoe UI", "Helvetica", "Arial"),
+}
+# Applied to the whole application so dialogs match the launcher window. Fonts
+# are set here too: macOS resets per-class application fonts after startup.
+STYLE = """
+    QMainWindow, QDialog, QWidget#launcher-content, QScrollArea#launcher-scroll { background: @paper; border: 0; }
+    QLabel, QComboBox, QLineEdit, QAbstractItemView { font-family: "@text"; font-size: 14px; }
+    QLabel { color: @ink; background: transparent; }
+    QLabel#masthead { font-family: "@display"; font-size: 42px; font-weight: 700; }
+    QLabel#status { font-family: "@display"; font-size: 26px; font-weight: 700; }
+    QLabel#tagline { font-size: 15px; font-style: italic; }
+    QLabel[role="note"] { font-size: 13px; font-style: italic; }
+    QLabel[role="kicker"] { font-family: "@label"; font-size: 11px; font-weight: 600; }
+    QLabel#version { font-size: 10px; }
+    QFrame#rule { background: @line; border: 0; }
+    QPushButton { font-family: "@label"; font-size: 13px; font-weight: 500;
+                  background: @paper; color: @ink; border: 1px solid @line; border-radius: 0; padding: 9px 14px; }
+    QPushButton:hover, QPushButton:pressed { background: @wash; color: @inverse; }
+    QPushButton:checked { background: @ink; border-color: @ink; color: @paper; }
+    QPushButton:focus { border: 2px solid @purple; padding: 8px 13px; }
+    QPushButton#primary { background: @purple; border-color: @purple; color: #ffffff; }
+    QPushButton#primary:hover, QPushButton#primary:pressed { background: @wash; color: @inverse; }
+    QPushButton#primary:focus { border-color: @ink; }
+    QPushButton:disabled, QPushButton#primary:disabled { background: @paper; color: @faint; border: 1px solid @faint; }
+    QPushButton[role="segment"] { padding: 7px 14px; }
+    QPushButton[role="segment"]:focus { padding: 6px 13px; }
+    QComboBox, QLineEdit { background: @paper; color: @ink; border: 1px solid @line; border-radius: 0; padding: 7px 9px;
+                           selection-background-color: @purple; selection-color: #ffffff; }
+    QComboBox:focus, QLineEdit:focus { border: 2px solid @purple; padding: 6px 8px; }
+    QComboBox:disabled, QLineEdit:disabled { color: @faint; border-color: @faint; }
+    QComboBox::drop-down { border: 0; width: 30px; }
+    QComboBox::down-arrow { image: url("@chevron"); width: 12px; height: 8px; }
+    QComboBox QAbstractItemView { background: @paper; color: @ink; border: 1px solid @line; outline: 0;
+                                  selection-background-color: @purple; selection-color: #ffffff; }
+    QProgressBar { background: @paper; border: 1px solid @line; border-radius: 0; max-height: 6px; }
+    QProgressBar::chunk { background: @purple; }
+"""
+
+
+def saved_appearance(folder: Path) -> str:
+    try:
+        appearance = json.loads((folder / "launcher.json").read_text(encoding="utf-8")).get("appearance")
+        if appearance in APPEARANCES:
+            return appearance
+    except (OSError, ValueError, AttributeError):
+        pass
+    return "light"
+
+
+def save_appearance(folder: Path, appearance: str) -> None:
+    if appearance not in APPEARANCES:
+        raise ValueError("Choose a light, dark or automatic appearance.")
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    write_private(folder / "launcher.json", json.dumps({"appearance": appearance}))
 
 
 def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_browser=True, smoke=False):
     try:
         from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, QUrl, Signal, Slot
-        from PySide6.QtGui import QAction, QDesktopServices, QIcon
+        from PySide6.QtGui import (
+            QAction,
+            QColor,
+            QDesktopServices,
+            QFont,
+            QFontDatabase,
+            QFontMetrics,
+            QIcon,
+            QKeySequence,
+            QPainter,
+            QPalette,
+        )
+        from PySide6.QtNetwork import QLocalServer
         from PySide6.QtWidgets import (
             QApplication,
+            QButtonGroup,
             QComboBox,
             QFileDialog,
+            QFrame,
             QHBoxLayout,
             QInputDialog,
             QLabel,
             QMainWindow,
+            QMenu,
             QMessageBox,
             QProgressBar,
             QPushButton,
             QScrollArea,
+            QSystemTrayIcon,
             QVBoxLayout,
             QWidget,
         )
@@ -41,6 +122,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
         raise RuntimeError("Install the desktop extra with: pip install 'copydesk[desktop]'") from exc
 
     from copydesk.instances import InstanceRegistry, running_url
+    from copydesk.launcher import COMMANDS, control_address, send_command
     from copydesk.update_install import InstallError, application_lock, read_install
     from copydesk.updater import (
         UpdateClient,
@@ -59,6 +141,10 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
     if data_dir and root != default_root and registered is None:
         registry = InstanceRegistry(root.with_name(root.name + "-instances"), default_root=root)
     selected = registry.get(instance_id or (registered.id if registered else "default"))
+    # A second launch brings the open launcher forward instead of starting another.
+    if send_command(registry.root, "show") == "ok":
+        return 0
+    appearance = saved_appearance(registry.root)
     root = selected.root
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     logfile = root / "quillsail.log"
@@ -88,18 +174,86 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                 log.exception("Desktop operation failed")
                 self.failed.emit(str(exc))
 
+    def apply_theme(appearance):
+        dark = appearance == "dark" or (appearance == "auto" and app.styleHints().colorScheme() == Qt.ColorScheme.Dark)
+        paper = QColor("#000000" if dark else "#ffffff")
+
+        def ink(alpha):
+            color = QColor("#ffffff" if dark else "#000000")
+            color.setAlphaF(alpha)
+            return color
+
+        # Full-strength white on black glares, so the dark theme softens it.
+        colors = {"paper": paper, "ink": ink(.86 if dark else 1), "line": ink(.4 if dark else 1),
+                  "wash": ink(.14 if dark else 1), "faint": ink(.3 if dark else .4)}
+        colors["inverse"] = colors["ink"] if dark else paper
+        palette = QPalette()
+        role = QPalette.ColorRole
+        for name in (role.Window, role.Base, role.AlternateBase, role.Button, role.ToolTipBase):
+            palette.setColor(name, paper)
+        for name in (role.WindowText, role.Text, role.ButtonText, role.BrightText, role.ToolTipText, role.Link):
+            palette.setColor(name, colors["ink"])
+        for name in (role.WindowText, role.Text, role.ButtonText):
+            palette.setColor(QPalette.ColorGroup.Disabled, name, colors["faint"])
+        palette.setColor(role.PlaceholderText, colors["faint"])
+        palette.setColor(role.Highlight, QColor(PURPLE))
+        palette.setColor(role.HighlightedText, QColor("#ffffff"))
+        app.setPalette(palette)
+        tokens = {name: f"rgba({c.red()}, {c.green()}, {c.blue()}, {c.alpha()})" for name, c in colors.items()}
+        tokens["purple"] = PURPLE
+        tokens["chevron"] = (Path(__file__).parent / f"static/desktop/chevron-{'white' if dark else 'black'}.svg").as_posix()
+        installed = set(QFontDatabase.families())
+        for name, families in TYPEFACES.items():
+            # Fall back to the last choice; Qt then substitutes a platform default.
+            tokens[name] = next((family for family in families if family in installed), families[-1])
+        app.setStyleSheet(re.sub(r"@(\w+)", lambda match: tokens[match.group(1)], STYLE))
+
+    def kicker(text):
+        label = QLabel(text)
+        label.setProperty("role", "kicker")
+        # The stylesheet sets the typeface; it cannot set capitals or tracking.
+        font = label.font()
+        font.setCapitalization(QFont.Capitalization.AllUppercase)
+        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.4)
+        label.setFont(font)
+        return label
+
+    def trim_line_box(label):
+        # Amiri's line box leaves room for Arabic marks above and below.
+        # Trim the space that Latin text leaves empty.
+        label.ensurePolished()
+        metrics = QFontMetrics(label.font())
+        ink = metrics.tightBoundingRect("ÀÉQjgpy")
+        top = max(0, metrics.ascent() + ink.top() - 2)
+        bottom = max(0, metrics.descent() - ink.bottom() - 2)
+        label.setContentsMargins(0, -top, 0, -bottom)
+
+    def rule(weight=1):
+        line = QFrame()
+        line.setObjectName("rule")
+        line.setFixedHeight(weight)
+        return line
+
     class Logo(QLabel):
         def __init__(self, path):
             super().__init__()
             self.icon = QIcon(str(path))
-            self.setFixedSize(QSize(78, 68))
+            self.setFixedSize(QSize(52, 44))
             self.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.setAccessibleName("QuillSail logo")
             self.refresh()
 
         def refresh(self):
             # Request physical pixels for the current screen from the SVG engine.
-            self.setPixmap(self.icon.pixmap(QSize(78, 64), self.devicePixelRatioF()))
+            pixmap = self.icon.pixmap(QSize(52, 44), self.devicePixelRatioF())
+            palette = app.palette()
+            if palette.color(QPalette.ColorRole.Window).lightness() < 128:
+                # The brand mark takes the ink color on dark surfaces.
+                painter = QPainter(pixmap)
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+                painter.fillRect(pixmap.rect(), palette.color(QPalette.ColorRole.WindowText))
+                painter.end()
+            self.setPixmap(pixmap)
 
         def event(self, event):
             result = super().event(event)
@@ -110,35 +264,49 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
     class Window(QMainWindow):
         def __init__(self):
             super().__init__()
-            self.runtime = DesktopRuntime(root)
+            self.appearance = appearance
+            self.runtime = self.make_runtime(root)
             self.runtimes = {selected.id: self.runtime}
             self.selected_instance = selected
-            self.busy = self.closing = False
+            self.busy = self.quitting = self.ready_to_quit = False
+            # Like a menu bar app, closing the window leaves publications running.
+            # Without a Dock or tray icon to reopen it, closing quits instead.
+            self.keep_running_on_close = sys.platform == "darwin" or QSystemTrayIcon.isSystemTrayAvailable()
             self.task = self.thread = None
             self.smoke_starts, self.smoke_error = 0, False
             self.available_update = self.update_plan = None
             self.setWindowTitle("QuillSail")
             self.setMinimumSize(460, 600)
-            self.resize(540, 620)
             icon_path = Path(__file__).parent / "static/brand/quillsail.svg"
             self.setWindowIcon(QIcon(str(icon_path)))
             content = QWidget()
             content.setObjectName("launcher-content")
             layout = QVBoxLayout(content)
-            layout.setContentsMargins(32, 28, 32, 28)
-            layout.setSpacing(18)
+            layout.setContentsMargins(36, 20, 36, 18)
+            layout.setSpacing(8)
             brand = QHBoxLayout()
-            image = Logo(icon_path)
-            self.logo_ready = not image.pixmap().isNull()
+            brand.setSpacing(14)
+            self.logo = Logo(icon_path)
+            self.logo_ready = not self.logo.pixmap().isNull()
             if not self.logo_ready:
                 log.error("The packaged QuillSail vector logo could not be rendered.")
-            brand.addWidget(image)
-            title = QLabel("<h1 style='margin:0 0 4px'>QuillSail</h1><p style='margin:0'>Your publication, on your computer.</p>")
-            title.setWordWrap(True)
-            title.setMinimumHeight(title.heightForWidth(240))
+            brand.addWidget(self.logo)
+            # "Quill" stays logo purple; "Sail" takes the ink color.
+            title = QLabel(f'<span style="color: {PURPLE}">Quill</span>Sail')
+            title.setTextFormat(Qt.TextFormat.RichText)
+            title.setAccessibleName("QuillSail")
+            title.setObjectName("masthead")
+            trim_line_box(title)
             brand.addWidget(title, 1)
             layout.addLayout(brand)
-            instance_label = QLabel("Publication instance")
+            layout.addWidget(rule(2))
+            tagline = QLabel("Your publication, on your computer.")
+            tagline.setObjectName("tagline")
+            tagline.setWordWrap(True)
+            layout.addWidget(tagline)
+            layout.addWidget(rule())
+            layout.addSpacing(4)
+            instance_label = kicker("Publication instance")
             self.instance_selector = QComboBox()
             self.instance_selector.setObjectName("instance-selector")
             self.instance_selector.setAccessibleName("Publication instance")
@@ -146,6 +314,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             layout.addWidget(instance_label)
             layout.addWidget(self.instance_selector)
             instance_row = QHBoxLayout()
+            instance_row.setSpacing(8)
             self.new_instance = QPushButton("New instance…")
             self.new_instance.clicked.connect(self.create_instance)
             instance_row.addWidget(self.new_instance)
@@ -159,11 +328,16 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.refresh_instances(selected.id)
             self.instance_selector.currentIndexChanged.connect(self.select_instance)
             self.instance_summary = QLabel("No instances running in this launcher.")
+            self.instance_summary.setProperty("role", "note")
             self.instance_summary.setWordWrap(True)
             layout.addWidget(self.instance_summary)
+            layout.addSpacing(4)
+            layout.addWidget(rule())
+            layout.addWidget(kicker("Status"))
             self.status = QLabel("Starting your publication…")
             self.status.setObjectName("status")
             self.status.setWordWrap(True)
+            trim_line_box(self.status)
             layout.addWidget(self.status)
             self.address = QLabel("The dashboard will open in your browser.")
             self.address.setWordWrap(True)
@@ -175,6 +349,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.open_button.clicked.connect(self.open_dashboard)
             layout.addWidget(self.open_button)
             row = QHBoxLayout()
+            row.setSpacing(8)
             self.toggle = QPushButton("Start")
             self.toggle.clicked.connect(lambda: self.stop() if self.runtime.server else self.start())
             row.addWidget(self.toggle)
@@ -185,8 +360,10 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             files.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.selected_instance.root))))
             row.addWidget(files)
             layout.addLayout(row)
+            layout.addSpacing(4)
+            layout.addWidget(rule())
+            layout.addWidget(kicker("Updates"))
             self.update_button = QPushButton("Check for updates")
-            self.update_button.setMinimumHeight(40)
             self.update_button.setAccessibleName("Check for QuillSail updates")
             self.update_button.clicked.connect(self.check_or_install_update)
             self.update_channel = QComboBox()
@@ -196,6 +373,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             channel_label = QLabel("Update channel")
             channel_label.setBuddy(self.update_channel)
             update_row = QHBoxLayout()
+            update_row.setSpacing(8)
             update_row.addWidget(channel_label)
             update_row.addWidget(self.update_channel)
             update_row.addWidget(self.update_button, 1)
@@ -207,38 +385,162 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             layout.addWidget(self.update_status)
             self.update_progress = QProgressBar()
             self.update_progress.setAccessibleName("Update progress")
+            self.update_progress.setTextVisible(False)
             self.update_progress.hide()
             layout.addWidget(self.update_progress)
-            note = QLabel("Instances can run together. Switching instances keeps the others running.\nClosing QuillSail stops all instances started here; their content stays saved.")
-            note.setWordWrap(True)
-            layout.addWidget(note)
+            layout.addSpacing(4)
+            layout.addWidget(rule())
+            self.appearance_buttons = {}
+            choices = QButtonGroup(self)
+            appearance_row = QHBoxLayout()
+            appearance_row.setSpacing(8)
+            appearance_row.addWidget(kicker("Appearance"))
+            appearance_row.addStretch()
+            for value, name in APPEARANCES.items():
+                choice = QPushButton(name)
+                choice.setProperty("role", "segment")
+                choice.setCheckable(True)
+                choice.setChecked(value == appearance)
+                choice.setAccessibleName(name + " appearance")
+                choice.clicked.connect(lambda _checked, value=value: self.choose_appearance(value))
+                choices.addButton(choice)
+                appearance_row.addWidget(choice)
+                self.appearance_buttons[value] = choice
+            layout.addLayout(appearance_row)
             layout.addStretch()
-            version = QLabel(f"Version {__version__} · Local access only")
+            layout.addWidget(rule())
+            footer = QHBoxLayout()
+            footer.setSpacing(16)
+            notes = QVBoxLayout()
+            notes.setSpacing(4)
+            note = QLabel("Closing this window keeps your publications running. Quit QuillSail to stop them; their content stays saved."
+                          if self.keep_running_on_close else
+                          "Instances can run together. Closing QuillSail stops all instances started here; their content stays saved.")
+            note.setProperty("role", "note")
+            note.setWordWrap(True)
+            notes.addWidget(note)
+            version = kicker(f"Version {__version__} · Local access only")
             version.setObjectName("version")
-            layout.addWidget(version)
+            notes.addWidget(version)
+            footer.addLayout(notes, 1)
+            self.quit_button = QPushButton("Quit QuillSail")
+            self.quit_button.clicked.connect(self.request_quit)
+            footer.addWidget(self.quit_button)
+            layout.addLayout(footer)
             scroll = QScrollArea()
             scroll.setObjectName("launcher-scroll")
             scroll.setWidgetResizable(True)
             scroll.setWidget(content)
             self.setCentralWidget(scroll)
-            self.setStyleSheet("""
-                QMainWindow { background: #faf9fc; }
-                QWidget#launcher-content, QScrollArea#launcher-scroll { background: #faf9fc; border: 0; }
-                QComboBox { background: white; color: #332b40; padding: 7px; border: 1px solid #d8d1e1; border-radius: 7px; }
-                QComboBox QAbstractItemView { background: white; color: #332b40; selection-background-color: #eee8fa; selection-color: #332b40; }
-                QLabel { color: #272331; font-size: 13px; }
-                QLabel#status { background: #eee8fa; border-radius: 8px; padding: 14px; font-weight: 600; }
-                QLabel#version { color: #706879; font-size: 11px; }
-                QPushButton { padding: 9px 12px; border: 1px solid #d8d1e1; border-radius: 7px; background: white; color: #332b40; }
-                QPushButton#primary { background: #7440aa; border-color: #7440aa; color: white; font-weight: 600; }
-                QPushButton:disabled { color: #8c8495; background: #eeeaf2; }
-                QPushButton:focus { border: 2px solid #7440aa; }
-            """)
+            # Fit the content when the screen allows; otherwise the content scrolls.
+            content.ensurePolished()
+            menu_height = 0 if self.menuBar().isNativeMenuBar() else self.menuBar().sizeHint().height()
+            self.resize(540, min(content.sizeHint().height() + menu_height, self.screen().availableGeometry().height() - 40))
+            app.styleHints().colorSchemeChanged.connect(self.appearance_changed)
+            close_action = QAction("Close Window", self)
+            close_action.setShortcut(QKeySequence.StandardKey.Close)
+            close_action.triggered.connect(self.close)
             quit_action = QAction("Quit QuillSail", self)
             quit_action.setShortcut("Ctrl+Q")
-            quit_action.triggered.connect(self.close)
-            self.menuBar().addMenu("QuillSail").addAction(quit_action)
+            quit_action.setMenuRole(QAction.MenuRole.QuitRole)
+            quit_action.triggered.connect(self.request_quit)
+            menu = self.menuBar().addMenu("QuillSail")
+            menu.addAction(close_action)
+            menu.addAction(quit_action)
+            self.tray = None
+            if QSystemTrayIcon.isSystemTrayAvailable():
+                tray_icon = QIcon(str(icon_path))
+                tray_icon.setIsMask(True)  # macOS draws it to match the menu bar.
+                self.tray = QSystemTrayIcon(tray_icon, self)
+                self.tray.setToolTip("QuillSail")
+                tray_menu = QMenu(self)
+                tray_menu.addAction("Open QuillSail", self.show_window)
+                tray_menu.addSeparator()
+                tray_menu.addAction(quit_action)
+                self.tray.setContextMenu(tray_menu)
+                self.tray.activated.connect(self.tray_activated)
+                self.tray.show()
+            # macOS sends a forced activation when someone clicks the Dock icon.
+            app.applicationStateChanged.connect(self.application_state_changed)
+            self.listen_for_commands()
             QTimer.singleShot(0, self.start)
+
+        def listen_for_commands(self):
+            """Accept show and quit requests from `quillsail quit` or a second launch."""
+            self.control = QLocalServer(self)
+            self.control.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
+            address = control_address(registry.root)
+            if not self.control.listen(address):
+                # Nothing answered before this launcher opened, so the socket is stale.
+                QLocalServer.removeServer(address)
+                if not self.control.listen(address):
+                    log.error("QuillSail cannot accept quit requests from the command line: %s", self.control.errorString())
+            self.control.newConnection.connect(self.accept_commands)
+
+        def accept_commands(self):
+            while (connection := self.control.nextPendingConnection()) is not None:
+                connection.readyRead.connect(lambda connection=connection: self.read_command(connection))
+                connection.disconnected.connect(connection.deleteLater)
+
+        def read_command(self, connection):
+            if not connection.canReadLine():
+                return
+            command = bytes(connection.readLine()).decode(errors="replace").strip()
+            connection.write(b"ok\n" if command in COMMANDS else b"unknown\n")
+            connection.flush()
+            connection.disconnectFromServer()
+            if command == "show":
+                self.show_window()
+            elif command == "quit":
+                self.request_quit()
+
+        def show_window(self):
+            self.showNormal()
+            self.raise_()
+            self.activateWindow()
+
+        def tray_activated(self, reason):
+            # The tray menu opens on its own; a plain click opens the window.
+            if reason == QSystemTrayIcon.ActivationReason.Trigger and sys.platform != "darwin":
+                self.show_window()
+
+        def application_state_changed(self, state):
+            if state == Qt.ApplicationState.ApplicationActive and self.isHidden() and not self.quitting:
+                self.show_window()
+
+        def request_quit(self):
+            """Stop every publication this launcher started, then exit."""
+            self.quitting = True
+            self.quit_button.setEnabled(False)
+            if self.busy:
+                return  # The running operation checks self.quitting when it finishes.
+            if any(runtime.server for runtime in self.runtimes.values()):
+                self.stop()
+            else:
+                self.ready_to_quit = True
+                if self.tray:
+                    self.tray.hide()
+                app.quit()
+
+        def appearance_changed(self, _scheme=None):
+            apply_theme(self.appearance)
+            self.logo.refresh()
+
+        def make_runtime(self, directory):
+            runtime = DesktopRuntime(directory)
+            # The browser setup page follows the launcher's appearance.
+            runtime.appearance = self.appearance
+            return runtime
+
+        def choose_appearance(self, value):
+            self.appearance = value
+            for runtime in self.runtimes.values():
+                runtime.appearance = value
+            self.appearance_changed()
+            try:
+                save_appearance(registry.root, value)
+            except OSError:
+                log.exception("The launcher appearance could not be saved for the next launch.")
 
         def refresh_instances(self, selected_id):
             self.instance_selector.blockSignals(True)
@@ -261,7 +563,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.selected_instance = registry.get(self.instance_selector.currentData())
             identifier = self.selected_instance.id
             if identifier not in self.runtimes:
-                self.runtimes[identifier] = DesktopRuntime(self.selected_instance.root)
+                self.runtimes[identifier] = self.make_runtime(self.selected_instance.root)
             self.runtime = self.runtimes[identifier]
             self.setWindowTitle(self.selected_instance.name + " · QuillSail")
             external = running_url(self.selected_instance) if not self.runtime.server else ""
@@ -294,8 +596,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.busy = False
             self.refresh_instances(item.id)
             self.select_instance()
-            if self.closing:
-                QTimer.singleShot(0, self.close)
+            if self.quitting:
+                QTimer.singleShot(0, self.request_quit)
             elif not self.external_url:
                 self.start()
 
@@ -346,7 +648,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                 self.update_progress.setValue(percent)
 
         def check_or_install_update(self):
-            if self.busy or self.closing:
+            if self.busy or self.quitting:
                 return
             if self.available_update is None:
                 self.update_progress_changed("Checking for updates…", -1)
@@ -382,8 +684,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.toggle.setEnabled(True)
             self.open_button.setEnabled(bool(self.runtime.server))
             self.update_progress.hide()
-            if self.closing:
-                QTimer.singleShot(0, self.close)
+            if self.quitting:
+                QTimer.singleShot(0, self.request_quit)
                 return
             self.available_update = update if update.available else None
             self.update_button.setText(f"Install QuillSail {update.version}…" if update.available else "Check for updates")
@@ -395,7 +697,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.finish_operation()
             self.busy = False
             self.update_plan = plan
-            self.closing = True
+            self.quitting = True
             self.update_progress_changed("Finishing background work before updating…", -1)
             self.stop()
 
@@ -410,13 +712,14 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.update_progress.hide()
             self.toggle.setEnabled(True)
             self.open_button.setEnabled(bool(self.runtime.server))
-            if self.closing:
+            if self.quitting:
                 if handoff_failed:
-                    self.closing = False
+                    self.quitting = False
+                    self.quit_button.setEnabled(True)
                     if self.runtime.server is None:
                         QTimer.singleShot(0, self.start)
                 else:
-                    QTimer.singleShot(0, self.close)
+                    QTimer.singleShot(0, self.request_quit)
 
         def start(self):
             if not self.busy:
@@ -439,8 +742,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.refresh_running_labels()
             if smoke:
                 self.smoke_starts += 1
-                QTimer.singleShot(0, self.stop if self.smoke_starts == 1 else self.close)
-            elif self.closing:
+                QTimer.singleShot(0, self.stop if self.smoke_starts == 1 else self.request_quit)
+            elif self.quitting:
                 QTimer.singleShot(0, self.stop)
             elif open_browser:
                 self.open_dashboard()
@@ -454,7 +757,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             if not self.busy:
                 self.status.setText("Finishing background work and stopping…")
                 def stop_and_handoff():
-                    for runtime in self.runtimes.values() if self.closing else (self.runtime,):
+                    for runtime in self.runtimes.values() if self.quitting else (self.runtime,):
                         runtime.stop()
                     if self.update_plan is not None:
                         launch_installer(self.update_plan)
@@ -469,8 +772,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.toggle.setText("Start")
             self.toggle.setEnabled(True)
             self.refresh_running_labels()
-            if self.closing:
-                QTimer.singleShot(0, self.close)
+            if self.quitting:
+                QTimer.singleShot(0, self.request_quit)
             elif smoke:
                 QTimer.singleShot(0, self.start)
 
@@ -483,26 +786,38 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.toggle.setText("Start")
             self.toggle.setEnabled(True)
             if smoke:
-                self.smoke_error, self.closing = True, True
-            if self.closing:
-                app.exit(1 if smoke else 0)
+                self.smoke_error = True
+            if smoke or self.quitting:
+                QTimer.singleShot(0, self.request_quit)
 
         def closeEvent(self, event):  # noqa: N802 - Qt virtual method
-            self.closing = True
-            if self.busy:
-                event.ignore()
-                return
-            if any(runtime.server for runtime in self.runtimes.values()):
-                event.ignore()
-                self.stop()
-            else:
-                # QApplication.quit() sends another close event on macOS.
-                # Accept this one once the worker has stopped instead.
+            if self.ready_to_quit:
                 event.accept()
+                return
+            event.ignore()
+            if self.keep_running_on_close and not self.quitting:
+                # Publications keep running until someone quits QuillSail.
+                self.hide()
+            else:
+                self.request_quit()
+
+    class QuitRequests(QObject):
+        """The Dock's Quit command and logging out arrive as an application Quit event."""
+
+        def eventFilter(self, _watched, event):  # noqa: N802 - Qt virtual method
+            if event.type() == QEvent.Type.Quit and not window.ready_to_quit:
+                window.request_quit()
+                return True  # Quit only after the publications have stopped.
+            return False
 
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName("QuillSail")
     app.setOrganizationName("QuillSail")
+    # Closing the window hides it; QuillSail exits only when someone quits.
+    app.setQuitOnLastWindowClosed(False)
+    if QFontDatabase.addApplicationFont(str(Path(__file__).parent / "static/fonts/Amiri-Bold.ttf")) < 0:
+        log.error("The packaged display font could not be loaded; using a system serif.")
+    apply_theme(appearance)
     guard = None
     installation = installation_path() if getattr(sys, "frozen", False) else None
     if installation:
@@ -515,6 +830,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             logging.getLogger().removeHandler(handler)
             return 1
     window = Window()
+    quit_requests = QuitRequests()
+    app.installEventFilter(quit_requests)
     if installation and (last := last_install_result(installation)) and last.get("status") == "failed":
         window.update_status.setText("The last update could not be installed. " + last.get("error", "Try checking for updates again."))
     window.show()
@@ -522,6 +839,10 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
         result = app.exec()
         return 1 if smoke and (window.smoke_error or window.smoke_starts != 2 or not window.logo_ready) else result
     finally:
+        app.removeEventFilter(quit_requests)
+        window.control.close()
+        if window.tray:
+            window.tray.hide()
         if window.thread is not None:
             window.thread.join()
         for runtime in window.runtimes.values():

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Restyle the desktop launcher in black, white and the logo's purple, with serif headlines and body text and small-capital labels. Headlines use the bundled Amiri Bold typeface (SIL Open Font License). Design guidance for the launcher is in `assets/README.md`.
+- Open the launcher in light mode by default. Choose **Dark**, or **Automatic** to follow the system appearance, under **Appearance**; the choice is remembered. The dark theme softens white text and rules to reduce glare.
+- Size the launcher window to fit its content when the screen allows.
+- Restyle first-time setup to match the launcher, with clearer Publication and Your account sections. Setup opened from the desktop follows the launcher's appearance; other installations show it in light mode.
+- Keep publications running when the launcher window is closed. QuillSail stays in the menu bar or system tray until you quit it with the new **Quit QuillSail** button, ⌘Q, the menu bar icon, or the new `quillsail quit` command. Opening QuillSail again brings the open window forward.
+- Keep text readable in launcher dialogs, such as **New instance**, when macOS uses a dark appearance.
+
 ## 1.9.2 — Beta
 
 - Ship a trusted certificate bundle for desktop update checks and downloads, avoiding missing build-machine certificate paths while preserving HTTPS certificate and signed-release verification.

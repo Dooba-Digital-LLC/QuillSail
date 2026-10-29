@@ -136,6 +136,8 @@ class DesktopRuntime:
         self._proof = secrets.token_urlsafe(32)
         self._tickets: dict[str, float] = {}
         self._ticket_lock = threading.Lock()
+        # The launcher sets this to light, dark or auto; browser setup follows it.
+        self.appearance = "light"
 
     def initialize(self):
         """Prepare a stopped publication without starting HTTP or sending jobs."""

@@ -116,18 +116,18 @@ def test_update_controls_keep_publication_running_until_an_approved_install(tmp_
                     assert not window.update_progress.isVisible()
                     if scenario == 'offline':
                         assert 'Synthetic offline' in window.update_status.text()
-                        window.close()
+                        window.request_quit()
                         state[0] = 3
                     elif scenario == 'current':
                         assert 'up to date' in window.update_status.text()
-                        window.close()
+                        window.request_quit()
                         state[0] = 3
                     elif scenario == 'available':
                         assert '9.0.0' in window.update_button.text()
                         window.update_channel.setCurrentIndex(0)
                         assert window.available_update is None
                         assert window.update_button.text() == 'Check for updates'
-                        window.close()
+                        window.request_quit()
                         state[0] = 3
                     else:
                         state[0] = 2
@@ -211,7 +211,7 @@ def test_instance_switching_keeps_other_publications_running_and_shutdown_stops_
                         assert owned[0].server is None
                         assert requests.get(owned[1].url + '/healthz', timeout=5).status_code == 200
                         phase[0] = 3
-                        window.close()
+                        window.request_quit()
                     elif window.available_update:
                         phase[0] = 3
                         window.update_button.click()
@@ -230,4 +230,169 @@ def test_instance_switching_keeps_other_publications_running_and_shutdown_stops_
     result = subprocess.run([sys.executable, '-c', script, str(tmp_path / 'default'), action],
                             env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'}, capture_output=True,
                             text=True, timeout=35)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_launcher_defaults_to_light_and_dialogs_stay_readable_in_each_appearance(tmp_path):
+    pytest.importorskip("PySide6")
+    script = textwrap.dedent("""
+        import sys
+        from pathlib import Path
+        from PySide6.QtCore import QPoint, QTimer
+        from PySide6.QtGui import QColor, QPalette
+        from PySide6.QtWidgets import QApplication, QInputDialog, QLabel, QMainWindow, QMessageBox
+        from copydesk import desktop_ui
+
+        class Runtime:
+            def __init__(self, root):
+                self.server = None
+            def start(self):
+                self.server = True
+                return 'http://127.0.0.1:5080'
+            def stop(self):
+                self.server = None
+
+        def luminance(rgb):
+            channels = [value / 255 for value in ((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255)]
+            r, g, b = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+        def contrast(dialog, label):
+            dialog.resize(380, dialog.sizeHint().height())
+            image = dialog.grab().toImage()
+            origin = label.mapTo(dialog, QPoint(0, 0))
+            values = [luminance(image.pixel(origin.x() + x, origin.y() + y))
+                      for x in range(label.width()) for y in range(label.height())]
+            return (max(values) + 0.05) / (min(values) + 0.05)
+
+        def assert_dialogs_readable(window):
+            prompt = QInputDialog(window)
+            prompt.setLabelText('Instance name')
+            assert contrast(prompt, prompt.findChild(QLabel)) >= 4.5
+            message = QMessageBox(window)
+            message.setText('Download and install QuillSail 9.0.0?')
+            assert contrast(message, message.findChild(QLabel, 'qt_msgbox_label')) >= 4.5
+
+        root = Path(sys.argv[1]) / 'default'
+        registry = root.with_name('default-instances')
+        desktop_ui.DesktopRuntime = Runtime
+        app = QApplication([])
+        # Stand in for the system palette under macOS dark appearance.
+        app.setPalette(QPalette(QColor('#323232'), QColor('#1e1e1e')))
+        errors = []
+
+        def inspect():
+            windows = [w for w in app.topLevelWidgets() if isinstance(w, QMainWindow)]
+            if not windows or windows[0].busy or not windows[0].runtime.server:
+                return
+            timer.stop()
+            window = windows[0]
+            try:
+                # Light is the default even when the system appearance is dark.
+                assert app.palette().color(QPalette.ColorRole.Window).name() == '#ffffff'
+                assert window.appearance_buttons['light'].isChecked()
+                assert window.runtime.appearance == 'light'
+                # The bundled display face loads instead of a system fallback.
+                assert window.findChild(QLabel, 'masthead').font().family() == 'Amiri'
+                # "Quill" is logo purple and "Sail" takes the ink color.
+                masthead = window.findChild(QLabel, 'masthead')
+                assert '>Quill</span>Sail' in masthead.text() and '#6e4cc2' in masthead.text()
+                assert masthead.palette().color(masthead.foregroundRole()).name() == '#000000'
+                assert_dialogs_readable(window)
+                window.appearance_buttons['dark'].click()
+                # Running publications follow, so browser setup matches the launcher.
+                assert all(runtime.appearance == 'dark' for runtime in window.runtimes.values())
+                assert app.palette().color(QPalette.ColorRole.Window).name() == '#000000'
+                assert desktop_ui.saved_appearance(registry) == 'dark'
+                assert_dialogs_readable(window)
+            except BaseException as exc:
+                errors.append(repr(exc))
+            window.request_quit()
+
+        timer = QTimer()
+        timer.timeout.connect(inspect)
+        timer.start(10)
+        QTimer.singleShot(10_000, lambda: (errors.append('GUI test timed out'), app.exit(1)))
+        assert desktop_ui.run(data_dir=root, open_browser=False) == 0, errors
+        assert not errors, errors
+    """)
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path)],
+                            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"}, capture_output=True,
+                            text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_closing_the_window_keeps_publications_running_until_quit(tmp_path):
+    pytest.importorskip("PySide6")
+    script = textwrap.dedent("""
+        import sys
+        import threading
+        from pathlib import Path
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMainWindow
+        from copydesk import desktop_ui
+        from copydesk.launcher import send_command
+
+        root = Path(sys.argv[1]) / 'default'
+        registry = root.with_name('default-instances')
+        calls, replies, errors, threads = [], {}, [], []
+        phase = [0]
+
+        class Runtime:
+            def __init__(self, root):
+                self.server = None
+            def start(self):
+                calls.append('start')
+                self.server = True
+                return 'http://127.0.0.1:5080'
+            def stop(self):
+                if self.server:
+                    calls.append('stop')
+                self.server = None
+
+        def ask(command):
+            # The launcher answers on the GUI thread, so ask from another one.
+            thread = threading.Thread(target=lambda: replies.__setitem__(command, send_command(registry, command)))
+            threads.append(thread)
+            thread.start()
+
+        desktop_ui.DesktopRuntime = Runtime
+        app = QApplication([])
+
+        def inspect():
+            try:
+                windows = [w for w in app.topLevelWidgets() if isinstance(w, QMainWindow)]
+                if not windows or windows[0].busy:
+                    return
+                window = windows[0]
+                if phase[0] == 0 and window.runtime.server:
+                    window.keep_running_on_close = True  # As with a Dock or tray icon.
+                    window.close()
+                    assert window.isHidden() and window.runtime.server and calls == ['start']
+                    phase[0] = 1
+                    ask('show')
+                elif phase[0] == 1 and replies.get('show') == 'ok' and window.isVisible():
+                    assert window.quit_button.isEnabled()
+                    phase[0] = 2
+                    ask('quit')
+            except BaseException as exc:
+                errors.append(repr(exc))
+                app.exit(1)
+
+        timer = QTimer()
+        timer.timeout.connect(inspect)
+        timer.start(10)
+        QTimer.singleShot(10_000, lambda: (errors.append(f'Timed out in phase {phase[0]}'), app.exit(1)))
+        assert desktop_ui.run(data_dir=root, open_browser=False) == 0, errors
+        for thread in threads:
+            thread.join(5)
+        assert not errors and phase[0] == 2, errors
+        assert replies == {'show': 'ok', 'quit': 'ok'}, replies
+        assert calls == ['start', 'stop'], calls
+        # The launcher stops listening when it exits.
+        assert send_command(registry, 'ping') is None
+    """)
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path)],
+                            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"}, capture_output=True,
+                            text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr

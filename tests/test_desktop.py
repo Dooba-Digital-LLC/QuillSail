@@ -50,6 +50,21 @@ def test_launcher_creates_private_empty_instance_and_completes_browser_setup(run
     assert not list(config.mail.file_dir.iterdir())
 
 
+
+@pytest.mark.parametrize("appearance", ["light", "dark", "auto"])
+def test_browser_setup_follows_the_launcher_appearance(runtime, appearance):
+    runtime.appearance = appearance
+    with requests.Session() as browser:
+        page = html.fromstring(browser.get(runtime.launch_url()).content)
+        assert page.get("data-default-theme") == appearance and page.get("data-theme-locked") is not None
+        # Light and dark render without JavaScript; automatic follows the browser's preference.
+        assert page.get("data-theme") == (None if appearance == "auto" else appearance)
+        assert page.xpath('//link[contains(@href, "css/setup.css")]')
+        assert browser.get(runtime.url + "/static/fonts/Amiri-Bold.ttf").status_code == 200
+        claim(browser, runtime)
+        dashboard = html.fromstring(browser.get(runtime.url + "/dashboard/").content)
+        assert dashboard.get("data-theme-locked") is None
+
 def test_setup_ticket_is_one_use_expiring_and_does_not_replace_csrf(runtime):
     ticket = runtime.launch_url()
     browser = requests.Session()
@@ -193,3 +208,18 @@ def test_desktop_upgrade_backs_up_old_database_config_and_uploaded_files(tmp_pat
         assert (config.uploads_dir / "preserved.txt").read_text() == "old upload"
     finally:
         instance.stop()
+
+
+def test_launcher_appearance_defaults_to_light_and_ignores_invalid_values(tmp_path):
+    from copydesk.desktop_ui import save_appearance, saved_appearance
+
+    assert saved_appearance(tmp_path) == "light"
+    save_appearance(tmp_path, "auto")
+    assert saved_appearance(tmp_path) == "auto"
+    assert (tmp_path / "launcher.json").stat().st_mode & 0o077 == 0
+    (tmp_path / "launcher.json").write_text('{"appearance": "sepia"}')
+    assert saved_appearance(tmp_path) == "light"
+    (tmp_path / "launcher.json").write_text("not json")
+    assert saved_appearance(tmp_path) == "light"
+    with pytest.raises(ValueError):
+        save_appearance(tmp_path, "sepia")

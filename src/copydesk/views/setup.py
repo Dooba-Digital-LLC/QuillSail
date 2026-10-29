@@ -97,7 +97,11 @@ def index():
             db.session.commit()
             flash(f"Welcome to {site_name}! Here's your dashboard. The checklist below walks you through the rest.", "success")
             return redirect(url_for("dash.overview"))
-    return render_template("setup/index.html", form=form, errors=errors, desktop_setup=desktop_setup), (422 if errors else 200)
+    # Setup uses the QuillSail interface style, so it follows the desktop
+    # launcher's appearance instead of a theme saved in the browser.
+    theme_lock = getattr(desktop, "appearance", "light") if desktop else "light"
+    return render_template("setup/index.html", form=form, errors=errors, desktop_setup=desktop_setup,
+                           theme_lock=theme_lock), (422 if errors else 200)
 
 
 def create_admin(*, email: str, name: str, password: str) -> User:

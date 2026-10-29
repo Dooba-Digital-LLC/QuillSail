@@ -3,11 +3,14 @@
 
 {% block title %}Set up QuillSail{% endblock %}
 {% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/setup.css', v=version) }}">{% endblock %}
+{% block body_class %}setup-page{% endblock %}
 
 {% block body %}
-<main id="cd-main" class="auth-page">
-  <div class="auth-card wide">
-    <div class="setup-brand">{% include 'partials/brand.html' %}<span class="small muted">{{ version }}</span></div>
+<main id="cd-main" class="setup">
+  <div class="setup-sheet">
+    <header class="setup-masthead">{% include 'partials/brand.html' %}</header>
+    <p class="setup-folio"><span>First-time setup</span><span class="setup-version">Version {{ version }}</span></p>
     <h1>Let's set up your publication</h1>
     <p class="lead">Create the first administrator account. You'll set everything else up from the dashboard.</p>
 
@@ -17,11 +20,12 @@
       {{ forms.csrf() }}
       {% if not desktop_setup %}{{ forms.input("code", "Setup code", form.get("code"), errors=errors, required=True, autocomplete="off",
                      help="So nobody else can claim your site first. It's in the server log, and in data/setup-code.txt next to your copydesk.toml.") }}
-      {% else %}<p class="help">QuillSail opened this setup securely from your desktop. Your publication and account will be saved on this computer.</p>{% endif %}
+      {% else %}<p class="setup-note">QuillSail opened this setup securely from your desktop. Your publication and account will be saved on this computer.</p>{% endif %}
+      <h2 class="setup-section">Publication</h2>
       {{ forms.input("site_name", "Publication name", form.get("site_name"), errors=errors, required=True,
                      placeholder="Example Newsletter") }}
       {{ forms.select('site_mode', 'Publication type', [('newsletter', 'Newsletter'), ('blog', 'Blog'), ('hybrid', 'Blog + newsletter')], form.get('site_mode', 'newsletter'), errors=errors, help='You can change this later in Settings → General.') }}
-      <hr>
+      <h2 class="setup-section">Your account</h2>
       {{ forms.input("display_name", "Your name", form.get("display_name"), errors=errors, required=True, autocomplete="name") }}
       {{ forms.input("email", "Your email address", form.get("email"), type="email", errors=errors, required=True, autocomplete="email") }}
       {{ forms.input("password", "Choose a password", "", type="password", errors=errors, required=True, autocomplete="new-password",
