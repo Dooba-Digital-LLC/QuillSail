@@ -168,3 +168,37 @@ def test_download_detection(agent, expected):
 def test_size_labels():
     assert Build("server", "1.0.0", "a", 658068, "0" * 64, "https://x").size_label == "658 KB"
     assert Build("macos-arm64", "1.0.0", "a", 65264665, "0" * 64, "https://x").size_label == "65 MB"
+
+
+def test_graphical_downloads_are_separately_verified_and_preserve_archive_api(feed, docs):
+    from quillsail_site.platforms import INSTALLER_SUFFIXES
+    from quillsail_site.views.site import create_site_app
+
+    entries = every_platform("2.0.0")
+    for target, suffix in INSTALLER_SUFFIXES.items():
+        entries.append({"target": target, "version": "2.0.0", "installer": True,
+                        "custom": {"archive": f"QuillSail-2.0.0-{target}{suffix}", "purpose": "installer"}})
+    feed.publish(entries)
+    catalog, _ = catalog_for(feed)
+    release = catalog.release()
+    assert len(release.installers) == 4
+    site = create_site_app(feed.config(), catalog, docs).test_client()
+    assert site.get("/download/windows-x86_64").location.endswith("-setup.exe")
+    assert site.get("/api/v1/releases/latest/windows-x86_64").json["archive"].endswith(".zip")
+    assert site.get("/api/v1/releases/latest/windows-x86_64/installer").json["archive"].endswith("-setup.exe")
+    assert len(site.get("/api/v1/releases/latest").json["installers"]) == 4
+    page = site.get("/download").text
+    assert "setup wizard" in page and ".deb" in page and "Applications" in page
+    assert "Extract All" not in page
+
+
+@pytest.mark.parametrize("custom", [
+    {"archive": "wrong.dmg", "purpose": "installer"},
+    {"archive": "QuillSail-2.0.0-macos-arm64.dmg", "purpose": "update"},
+    {"archive": "QuillSail-3.0.0-macos-arm64.dmg", "purpose": "installer", "version": "3.0.0"},
+])
+def test_invalid_or_mismatched_graphical_installer_is_rejected(feed, custom):
+    feed.publish(every_platform("2.0.0") + [{"target": "macos-arm64", "version": "2.0.0",
+                                           "installer": True, "custom": custom}])
+    catalog, _ = catalog_for(feed)
+    assert catalog.releases() == {}

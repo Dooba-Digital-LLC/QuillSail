@@ -79,7 +79,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 libxcb-xfixes0
+          sudo apt-get install -y dpkg desktop-file-utils xvfb libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 libxcb-xfixes0
+      - name: Install Windows graphical installer builder
+        if: runner.os == 'Windows'
+        run: choco install innosetup --no-progress -y
       - run: python -m pip install build
       - run: python -m build --wheel
       - name: Install only the wheel and desktop build dependencies
@@ -98,6 +101,9 @@ jobs:
         with:
           name: desktop-${{ matrix.target }}
           path: |
+            dist/desktop/*.dmg
+            dist/desktop/*-setup.exe
+            dist/desktop/*.deb
             dist/desktop/*.zip
             dist/desktop/*.tar.gz
             dist/desktop/*.json

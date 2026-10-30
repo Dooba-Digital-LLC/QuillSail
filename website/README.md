@@ -134,3 +134,19 @@ ruff check .
 ```
 
 The tests build signed TUF repositories with throwaway keys to check release verification, render every page, check every docs link, and run `install.sh` end to end against a local copy of the site with a synthetic app. `install.ps1` needs PowerShell to run its tests.
+
+## Graphical desktop downloads
+
+New signed releases can include separate first-install targets at
+`CHANNEL/installers/TARGET`: macOS `.dmg` (Apple Silicon and Intel), Windows x64
+`-setup.exe`, and Linux x86-64 `.deb` for Ubuntu 22.04 and compatible Debian desktops.
+The website verifies their signed names, versions, sizes and SHA-256 hashes and
+prefers them for download buttons and `/download/TARGET`. Until available it
+continues offering verified updater archives.
+
+The release API keeps `downloads` and `/api/v1/releases/latest/TARGET` as updater
+archives for existing terminal installers. `installers` in the release JSON and
+`/api/v1/releases/latest/TARGET/installer` expose graphical installers separately.
+Missing installer API entries return 503; they never fall back to unsigned assets.
+Application removal preserves publication data. See the desktop guide for native
+build dependencies, installation steps and signing limitations.

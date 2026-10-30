@@ -17,6 +17,8 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+INSTALLERS = {"macos-arm64": ".dmg", "macos-x86_64": ".dmg", "windows-x86_64": "-setup.exe", "linux-x86_64": ".deb"}
+
 TARGETS = {"macos-arm64": ".zip", "macos-x86_64": ".zip", "windows-x86_64": ".zip", "linux-x86_64": ".tar.gz"}
 
 
@@ -52,6 +54,17 @@ def validate_downloads(folder, version, commit, *, include_server=False):
             raise ValueError(f"The {target} archive is missing, empty or has the wrong checksum.")
         reports.append(report)
         files.append(archive)
+    installers = []
+    for report in reports:
+        target = report["target"]
+        name = f"QuillSail-{version}-{target}{INSTALLERS[target]}"
+        installer = folder / name
+        if (report.get("installer") != name or report.get("installer_lifecycle_check") is not True
+                or not installer.is_file() or installer.is_symlink() or not installer.stat().st_size
+                or digest(installer) != report.get("installer_sha256")):
+            raise ValueError(f"The {target} installer is missing or has not passed native verification.")
+        installers.append(installer)
+    files.extend(installers)
     expected_names = {file.name for file in files}
     if include_server:
         report_path = folder / "server-build.json"
@@ -65,7 +78,7 @@ def validate_downloads(folder, version, commit, *, include_server=False):
             raise ValueError("The server package changed after verification.")
         files.extend([wheel, source, report_path])
         expected_names.update((source.name, wheel.name))
-    actual_names = {file.name for pattern in ("*.zip", "*.tar.gz", "*.whl") for file in folder.glob(pattern)}
+    actual_names = {file.name for pattern in ("*.zip", "*.tar.gz", "*.whl", "*.dmg", "*.exe", "*.deb") for file in folder.glob(pattern)}
     if actual_names != expected_names:
         raise ValueError("Unexpected or outdated desktop downloads are present.")
     checksums = folder / "SHA256SUMS.txt"
@@ -122,15 +135,15 @@ def publish(client, version, commit, files):
         if target["type"] != "commit" or target["sha"] != commit:
             raise ValueError("The existing version tag points to a different commit.")
     labels = ["Mac — Apple Silicon", "Mac — Intel", "Windows — x64", "Linux — x64"]
-    archives = files[:4]
+    archives = files[4:8]
     rows = [f"| {label} | [{file.name}](https://github.com/{client.repository}/releases/download/{tag}/{file.name}) |" for label, file in zip(labels, archives, strict=True)]
     body = "\n".join([
-        "Download the bundle for your computer, extract it, and open QuillSail. Python and Docker are not required.", "",
+        "Download the graphical installer for your computer and open it. Python and Docker are not required.", "",
         "| Platform | Download |", "| --- | --- |", *rows, "",
         "The app opens localhost automatically. Create your publication and administrator on first launch; later launches preserve your data.", "",
         "Each native build passed browser setup/restart and GUI start/stop/restart checks using disposable data. No test email was sent.", "",
         "These are beta builds. macOS bundles are ad-hoc signed; Developer ID signing/notarization and Windows code signing are not configured.",
-        "Linux builds target Ubuntu 22.04 or newer with a desktop environment. See the desktop guide for required desktop libraries.", "",
+        "Linux .deb installers target Ubuntu 22.04 or newer and compatible Debian-based desktops. Updater archives remain available for terminal installations. See the desktop guide for required desktop libraries.", "",
         f"[Desktop guide](https://github.com/{client.repository}/blob/{tag}/docs/desktop.md) · Source commit: `{commit}`", "",
         "SHA256SUMS.txt and desktop-builds.json contain the download checksums and native build reports.",
     ])

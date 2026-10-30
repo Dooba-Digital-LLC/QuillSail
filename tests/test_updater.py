@@ -466,3 +466,25 @@ def test_update_https_uses_bundled_ca_without_system_roots(tmp_path, monkeypatch
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_signed_graphical_installer_is_separate_from_update_archive(tmp_path):
+    from copydesk.update_metadata import release_targets
+
+    archive = tmp_path / "QuillSail-2.0.0-macos-arm64.zip"
+    installer = tmp_path / "QuillSail-2.0.0-macos-arm64.dmg"
+    archive.write_bytes(b"synthetic updater archive")
+    installer.write_bytes(b"synthetic graphical installer")
+    report = {"version": "2.0.0", "target": "macos-arm64", "commit": "a" * 40,
+              "archive": archive.name, "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+              "installer": installer.name, "installer_sha256": hashlib.sha256(installer.read_bytes()).hexdigest(),
+              "setup_restart_check": True, "gui_lifecycle_check": True, "updater_install_check": True,
+              "installer_lifecycle_check": True}
+    targets = release_targets(tmp_path, [report], "beta")
+    assert targets["beta/macos-arm64"].unrecognized_fields["custom"]["archive"] == archive.name
+    graphical = targets["beta/installers/macos-arm64"]
+    assert graphical.unrecognized_fields["custom"]["purpose"] == "installer"
+    assert graphical.hashes["sha256"] == report["installer_sha256"]
+    installer.write_bytes(b"changed after testing")
+    with pytest.raises(ValueError, match="changed"):
+        release_targets(tmp_path, [report], "beta")

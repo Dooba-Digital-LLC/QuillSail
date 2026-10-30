@@ -20,7 +20,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -33,7 +33,7 @@ from tuf.ngclient import Updater, UpdaterConfig
 from tuf.ngclient.fetcher import FetcherInterface
 
 from quillsail_site.config import CHANNELS, Config
-from quillsail_site.platforms import PLATFORMS, archive_name
+from quillsail_site.platforms import INSTALLER_SUFFIXES, PLATFORMS, archive_name
 
 log = logging.getLogger(__name__)
 
@@ -69,6 +69,11 @@ class Release:
     notes_url: str
     checked_at: datetime
     source: str  # "signed feed" or "fixture"
+    installers: dict[str, Build] = field(default_factory=dict)
+
+    @property
+    def downloads(self) -> dict[str, Build]:
+        return {**self.builds, **self.installers}
 
 
 class ReleaseError(RuntimeError):
@@ -113,13 +118,17 @@ def _strict_version(value: object) -> str:
     return str(value)
 
 
-def validate_target(info: TargetFile, channel: str, target: str, base_url: str) -> Build:
+def validate_target(info: TargetFile, channel: str, target: str, base_url: str, *, installer: bool = False) -> Build:
     """Check one signed target the way copydesk.updater.UpdateClient._info does."""
     custom = info.unrecognized_fields.get("custom", {})
     if not isinstance(custom, dict):
         raise ReleaseError(f"The signed {channel}/{target} entry has no release details.")
     version = _strict_version(custom.get("version", ""))
     archive = f"copydesk-{version}-py3-none-any.whl" if target == "server" else archive_name(version, target)
+    if installer:
+        archive = f"QuillSail-{version}-{target}{INSTALLER_SUFFIXES[target]}"
+        if custom.get("purpose") != "installer":
+            raise ReleaseError("The signed installer entry has the wrong purpose.")
     digest = info.hashes.get("sha256", "")
     if (custom.get("archive") != archive or custom.get("target") != target or custom.get("channel") != channel
             or custom.get("updater_protocol") != UPDATER_PROTOCOL
@@ -148,15 +157,22 @@ def load_signed(config: Config, fetcher: FetcherInterface, metadata_dir: Path) -
     updater.refresh()
     releases = {}
     for channel in CHANNELS:
-        builds = {}
+        builds, installers = {}, {}
         for target in PLATFORMS:
             info = updater.get_targetinfo(f"{channel}/{target}")
             if info is not None:
                 builds[target] = validate_target(info, channel, target, config.releases_url)
+            info = updater.get_targetinfo(f"{channel}/installers/{target}")
+            if info is not None:
+                installer = validate_target(info, channel, target, config.releases_url, installer=True)
+                if target not in builds or installer.version != builds[target].version:
+                    raise ReleaseError("Installer and updater versions do not match.")
+                installers[target] = installer
         info = updater.get_targetinfo(f"{channel}/server")
         server = validate_target(info, channel, "server", config.releases_url) if info is not None else None
         release = _release(channel, builds, server, config, "signed feed")
         if release:
+            release.installers.update(installers)
             releases[channel] = release
     return releases
 

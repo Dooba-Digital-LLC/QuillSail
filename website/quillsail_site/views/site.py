@@ -53,7 +53,7 @@ def requested_channel() -> str:
 
 def page_context(release: Release | None) -> dict:
     detected = detect(request.user_agent.string)
-    build = release.builds.get(detected) if release and detected else None
+    build = release.downloads.get(detected) if release and detected else None
     return {"release": release, "detected": detected, "build": build,
             "platform": PLATFORMS.get(detected) if build else None}
 
@@ -77,7 +77,7 @@ def downloads():
                              url=config.site.join("/download"), release=release, download=True)
     context = page_context(release)
     started = request.args.get("started")
-    started_build = release.builds.get(started) if release and started in PLATFORMS else None
+    started_build = release.downloads.get(started) if release and started in PLATFORMS else None
     response = current_app.make_response(render_template(
         "site/download.html", started=started_build, started_platform=PLATFORMS.get(started) if started_build else None,
         **context, **metadata))
@@ -91,7 +91,7 @@ def download(target: str):
     if target not in PLATFORMS and target != "server":
         abort(404)
     release = catalog().release(requested_channel())
-    build = (release.server if target == "server" else release.builds.get(target)) if release else None
+    build = (release.server if target == "server" else release.downloads.get(target)) if release else None
     response = redirect(build.url if build else current_app.config["QUILLSAIL"].releases_url, 302)
     response.cache_control.public = True
     response.cache_control.max_age = 60
@@ -142,10 +142,12 @@ def latest_release():
         "checked_at": release.checked_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
         "verified_by": release.source,
         "downloads": {target: build_json(build) for target, build in release.builds.items()},
+        "installers": {target: build_json(build) for target, build in release.installers.items()},
         "server": build_json(release.server) if release.server else None,
     })
 
 
+@bp.get("/api/v1/releases/latest/<name>/installer")
 @bp.get("/api/v1/releases/latest/<name>")
 def latest_build(name: str):
     """One download. The `.txt` form is easy to read from a shell script."""
@@ -154,6 +156,8 @@ def latest_build(name: str):
         abort(404)
     release = catalog().release(requested_channel())
     build = (release.server if target == "server" else release.builds.get(target)) if release else None
+    if request.path.endswith("/installer"):
+        build = release.installers.get(target) if release else None
     if build is None:
         if text:
             response = text_response("error Release information is unavailable right now. Try again in a few minutes.\n",
