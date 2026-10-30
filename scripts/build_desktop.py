@@ -170,7 +170,11 @@ def main():
         assert read_install(extracted)["version"] == copydesk.__version__
         if sys.platform == "darwin":
             subprocess.run(["codesign", "--verify", "--deep", "--strict", str(extracted)], check=True)
-    report = {"version": copydesk.__version__, "target": target, "archive": artifact.name,
+    from desktop_installers import build
+
+    installer = build(output, app_root, target, copydesk.__version__, icon if sys.platform != "linux" else logo, artifact)
+    report = {"installer": installer.name, "installer_sha256": hashlib.sha256(installer.read_bytes()).hexdigest(),
+              "installer_lifecycle_check": True, "version": copydesk.__version__, "target": target, "archive": artifact.name,
               "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "setup_restart_check": True,
               "gui_lifecycle_check": True, "updater_install_check": True, "commit": os.environ.get("GITHUB_SHA", "local")}
     (output / (name + ".json")).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

@@ -1,5 +1,5 @@
 {# The primary download, picked from the browser. site.js switches Macs to Intel when the browser says so. #}
-{% set intel = release.builds.get('macos-x86_64') if release else None %}
+{% set intel = release.downloads.get('macos-x86_64') if release else None %}
 {% set mac_switch = build and build.target == 'macos-arm64' and intel %}
 <div class="download-cta"{% if mac_switch %} data-mac-switch
      data-downloads-href="{{ url_for('site.downloads') }}"

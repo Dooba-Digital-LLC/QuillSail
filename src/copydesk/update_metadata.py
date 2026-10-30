@@ -112,6 +112,19 @@ def release_targets(folder: Path, reports: list[dict], channel: str):
         target.unrecognized_fields["custom"] = {key: report[key] for key in ("version", "archive", "target", "commit")}
         target.unrecognized_fields["custom"].update(channel=channel, updater_protocol=1)
         result[target.path] = target
+        if "installer" in report:
+            suffixes = {"macos-arm64": ".dmg", "macos-x86_64": ".dmg", "windows-x86_64": "-setup.exe", "linux-x86_64": ".deb"}
+            name = f"QuillSail-{report['version']}-{report['target']}{suffixes[report['target']]}"
+            if report["installer"] != name or report.get("installer_lifecycle_check") is not True:
+                raise ValueError("Only tested graphical installers can enter the signed feed.")
+            path = folder / name
+            if path.is_symlink():
+                raise ValueError("Installer must be a regular file.")
+            installer = TargetFile.from_file(f"{channel}/installers/{report['target']}", str(path), ["sha256"])
+            if installer.hashes["sha256"] != report.get("installer_sha256"):
+                raise ValueError("The installer changed after native verification.")
+            installer.unrecognized_fields["custom"] = dict(target.unrecognized_fields["custom"], archive=name, purpose="installer")
+            result[installer.path] = installer
     return result
 
 

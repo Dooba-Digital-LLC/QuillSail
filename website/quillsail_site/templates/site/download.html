@@ -44,8 +44,8 @@
         <caption class="visually-hidden">QuillSail {{ release.version }} downloads, with file sizes and SHA-256 checksums</caption>
         <thead><tr><th scope="col">Computer</th><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th><th scope="col"><span class="visually-hidden">Download</span></th></tr></thead>
         <tbody>
-          {% for key, platform in platforms.items() if release.builds.get(key) %}
-          {% set item = release.builds[key] %}
+          {% for key, platform in platforms.items() if release.downloads.get(key) %}
+          {% set item = release.downloads[key] %}
           <tr{% if key == detected %} class="is-detected"{% endif %}>
             <th scope="row"><span class="platform-name">{{ platform.system }}</span> <span class="platform-variant">{{ platform.variant }}</span></th>
             <td><code>{{ item.archive }}</code></td>

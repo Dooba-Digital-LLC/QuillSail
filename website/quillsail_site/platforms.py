@@ -48,3 +48,6 @@ def detect(user_agent: str | None) -> str | None:
     if "linux" in agent and "cros" not in agent:
         return "linux-x86_64"
     return None
+
+
+INSTALLER_SUFFIXES = {"macos-arm64": ".dmg", "macos-x86_64": ".dmg", "windows-x86_64": "-setup.exe", "linux-x86_64": ".deb"}

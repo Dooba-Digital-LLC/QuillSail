@@ -29,6 +29,9 @@ def downloads(folder):
         report = {"version": VERSION, "target": target, "archive": archive.name, "commit": COMMIT,
                   "sha256": release.digest(archive), "setup_restart_check": True, "gui_lifecycle_check": True,
                   "updater_install_check": True}
+        installer = folder / (stem + release.INSTALLERS[target])
+        installer.write_bytes(b"synthetic-installer:" + target.encode())
+        report.update(installer=installer.name, installer_sha256=release.digest(installer), installer_lifecycle_check=True)
         (folder / (stem + ".json")).write_text(json.dumps(report))
 
 
@@ -48,11 +51,11 @@ def test_other_architectures_are_not_mislabeled_as_supported_downloads():
 def test_release_requires_four_tested_archives_with_matching_checksums_and_commit(tmp_path):
     downloads(tmp_path)
     files = release.validate_downloads(tmp_path, VERSION, COMMIT)
-    assert len(files) == 6
+    assert len(files) == 10
     manifest = json.loads((tmp_path / "desktop-builds.json").read_text())
     assert {report["target"] for report in manifest["builds"]} == set(release.TARGETS)
     assert all(release.digest(tmp_path / report["archive"]) == report["sha256"] for report in manifest["builds"])
-    assert len((tmp_path / "SHA256SUMS.txt").read_text().splitlines()) == 4
+    assert len((tmp_path / "SHA256SUMS.txt").read_text().splitlines()) == 8
 
 
 def test_combined_release_requires_tested_matching_server_package(tmp_path):
@@ -65,7 +68,7 @@ def test_combined_release_requires_tested_matching_server_package(tmp_path):
               "package_install_check": True, "server_update_check": True, "server_update_protocol": 1}
     (tmp_path / "server-build.json").write_text(json.dumps(report))
     files = release.validate_downloads(tmp_path, VERSION, COMMIT, include_server=True)
-    assert len(files) == 9 and wheel in files and source in files
+    assert len(files) == 13 and wheel in files and source in files
     wheel.write_bytes(b"changed after verification")
     with pytest.raises(ValueError, match="changed"):
         release.validate_downloads(tmp_path, VERSION, COMMIT, include_server=True)
@@ -120,7 +123,7 @@ class FakeGitHub:
         if method == "POST":
             self.release = {**payload, "id": 7, "assets": [], "html_url": "https://example.test/release"}
         elif method == "PATCH":
-            assert len(self.release["assets"]) == 6
+            assert len(self.release["assets"]) == 10
             self.release.update(payload)
         elif method == "DELETE":
             self.deleted.append(endpoint)
@@ -139,7 +142,7 @@ def test_publishing_waits_for_all_uploads_and_resumes_the_same_draft(tmp_path):
     assert result == "https://example.test/release"
     assert client.release["draft"] is False and client.release["prerelease"] is True
     assert not client.deleted
-    assert len(client.release["assets"]) == 6
+    assert len(client.release["assets"]) == 10
     uploads = client.uploads
     assert release.publish(client, VERSION, COMMIT, files) == result
     assert client.uploads == uploads
@@ -174,3 +177,27 @@ def test_an_existing_tag_cannot_publish_downloads_from_a_different_commit(tmp_pa
     with pytest.raises(ValueError, match="version tag"):
         release.publish(client, VERSION, COMMIT, files)
     assert not client.uploads and client.release is None
+
+
+@pytest.mark.parametrize("problem", ["missing", "tampered", "untested", "wrong-name", "symlink"])
+def test_graphical_installers_must_pass_native_checks(tmp_path, problem):
+    downloads(tmp_path)
+    stem = f"QuillSail-{VERSION}-linux-x86_64"
+    path = tmp_path / (stem + ".deb")
+    report_path = tmp_path / (stem + ".json")
+    report = json.loads(report_path.read_text())
+    if problem == "missing":
+        path.unlink()
+    elif problem == "tampered":
+        path.write_bytes(b"tampered")
+    elif problem == "untested":
+        report["installer_lifecycle_check"] = False
+    elif problem == "wrong-name":
+        report["installer"] = "../other.deb"
+    else:
+        real = tmp_path / "real"
+        path.rename(real)
+        path.symlink_to(real)
+    report_path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="installer"):
+        release.validate_downloads(tmp_path, VERSION, COMMIT)

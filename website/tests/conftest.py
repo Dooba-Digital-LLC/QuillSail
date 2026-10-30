@@ -120,7 +120,8 @@ class Feed:
         for entry in entries:
             target, version, channel = entry["target"], entry["version"], entry.get("channel", "beta")
             archive = f"copydesk-{version}-py3-none-any.whl" if target == "server" else archive_name(version, target)
-            info = TargetFile.from_data(f"{channel}/{target}", entry.get("data", b"archive bytes"), ["sha256"])
+            kind = "installers/" if entry.get("installer") else ""
+            info = TargetFile.from_data(f"{channel}/{kind}{target}", entry.get("data", b"archive bytes"), ["sha256"])
             custom = {"version": version, "archive": archive, "target": target, "channel": channel,
                       "commit": "a" * 40, "updater_protocol": 1}
             if target == "server":
