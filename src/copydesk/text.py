@@ -18,6 +18,7 @@ import re
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urljoin
 
 import nh3
 from flask import current_app, has_app_context
@@ -147,9 +148,22 @@ def sanitize(html: str) -> str:
     )
 
 
-def render_markdown(text: str | None) -> Markup:
+def render_markdown(text: str | None, *, base_url: str = "") -> Markup:
     """Markdown to sanitized HTML for the website."""
-    html = _markdown().render(text or "")
+    md = _markdown()
+    env: dict = {}
+    tokens = md.parse(text or "", env)
+    if base_url:
+        def resolve_links(tokens):
+            for token in tokens:
+                for attr in ("href", "src"):
+                    value = token.attrGet(attr)
+                    if value and not value.startswith("#"):
+                        token.attrSet(attr, urljoin(base_url, value))
+                if token.children:
+                    resolve_links(token.children)
+        resolve_links(tokens)
+    html = md.renderer.render(tokens, md.options, env)
     html = _ALIGN_RE.sub(r'class="align-\1"', html)
     html = sanitize(html)
     if has_app_context() and "copydesk" in current_app.extensions:

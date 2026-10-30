@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.0 — Beta
+
+- Transfer a published public blog article's full text to another QuillSail newsletter for review, preserving sign-in, permissions and explicit submission. Keep the receiving server from fetching arbitrary source URLs and retain manual pasting when browser transfer is unavailable.
+- Let creators submit a separate newsletter blurb. Editors can choose the full article, the creator's blurb and a link, or their own custom summary in each issue's web and email versions. Preserve attribution and restricted-content safeguards.
+- Resolve transferred article images and relative links against the original post. Document the issue, contributor branch, pull request, rebase, merge and requested-release workflow.
+
 ## 1.10.3 — Beta
 
 - Refine the public website hero with a smaller headline, roomier spacing and a desktop app preview that fits laptop and desktop screens.

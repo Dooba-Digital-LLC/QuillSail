@@ -373,6 +373,7 @@ class Article(Base):
     title: Mapped[str] = mapped_column(String(200), default="")
     source_url: Mapped[str] = mapped_column(String(2048), default="")
     source_author: Mapped[str] = mapped_column(String(200), default="")
+    newsletter_blurb: Mapped[str] = mapped_column(String(5000), default="")
     subtitle: Mapped[str] = mapped_column(String(300), default="")
     body: Mapped[str] = mapped_column(Text, default="")
     excerpt: Mapped[str] = mapped_column(Text, default="")

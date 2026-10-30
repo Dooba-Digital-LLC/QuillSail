@@ -122,6 +122,9 @@
                           help="Sent to your editor along with the new version when you resubmit.") }}
         {% endif %}
 
+        {% if article.source_url and not is_editor %}
+        {{ forms.textarea('newsletter_blurb', 'Your newsletter blurb', request.form.get('newsletter_blurb', article.newsletter_blurb), errors=errors, optional=True, rows=4, attrs='maxlength="5000"', help='A separate plain-text blurb the editors can choose for the newsletter.') }}
+        {% endif %}
         {{ forms.input("summary", "Describe this edit", "", optional=True,
                        help="A short note for the version history, like “Tightened the intro”.") }}
 

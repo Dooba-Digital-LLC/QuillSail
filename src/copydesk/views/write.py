@@ -93,8 +93,16 @@ def post_newsletter(article_id):
 
 
 @bp.route("/from-blog", methods=["GET", "POST"])
-@verified_required
 def from_blog():
+    if request.method == "GET" and not (
+        current_user.is_authenticated and current_user.is_verified
+    ):
+        return render_template("write/blog_signin.html")
+    return _from_blog()
+
+
+@verified_required
+def _from_blog():
     if not (perms.has(current_user, "submit") or perms.has(current_user, "publish")):
         abort(403)
     if not settings.get("submissions.enabled") and not perms.has(current_user, "publish"):
@@ -118,6 +126,7 @@ def from_blog():
         title = str(values.get("title") or "").strip()
         body = str(values.get("body") or "").replace("\r\n", "\n")
         author = str(values.get("source_author") or "").strip()
+        blurb = str(values.get("newsletter_blurb") or "").strip()
         if not publication.valid_web_url(source):
             errors["source_url"] = (
                 "Enter the public http:// or https:// URL of the original post without credentials."
@@ -128,6 +137,8 @@ def from_blog():
             errors["source_author"] = "Add an author credit of up to 200 characters."
         if word_count(body) < 20 or len(body) > MAX_BODY:
             errors["body"] = "Share at least 20 words, up to 200,000 characters."
+        if len(blurb) > publication.MAX_NEWSLETTER_BLURB:
+            errors["newsletter_blurb"] = "Keep the newsletter blurb under 5,000 characters."
         if values.get("permission") not in {"1", "on", "true"}:
             errors["permission"] = (
                 "Confirm that the original is public and you have permission to submit it."
@@ -158,6 +169,7 @@ def from_blog():
             article = workflow.create_draft(current_user, title)
             workflow.save(article, current_user, title=title, subtitle="", body=body)
             article.source_url, article.source_author = source, author
+            article.newsletter_blurb = blurb
             workflow.set_section(article, parse_int(values.get("section_id")))
             try:
                 workflow.transition(article, "submit", current_user)
@@ -300,6 +312,8 @@ def edit(article_id: int):
             errors["subtitle"] = "Keep the subtitle under 300 characters."
         if len(body) > MAX_BODY:
             errors["body"] = "This piece is too long to save. Split it into parts."
+        if article.source_url and not is_editor and len(form.get("newsletter_blurb", "")) > publication.MAX_NEWSLETTER_BLURB:
+            errors["newsletter_blurb"] = "Keep the newsletter blurb under 5,000 characters."
         if submitting and settings.get("submissions.require_section") and not section_id:
             errors["section_id"] = "Choose a section before you submit."
         coauthors, missing = _find_coauthors(parse_lines(form.get("coauthors")))
@@ -335,6 +349,8 @@ def edit(article_id: int):
             if not is_editor:
                 workflow.set_coauthors(article, coauthors)
             article.author_note = (form.get("author_note") or "").strip()[:2000]
+            if article.source_url and not is_editor and "newsletter_blurb" in form:
+                article.newsletter_blurb = form["newsletter_blurb"].strip()
             if form.get("remove_cover") and not (cover and cover.filename):
                 article.cover_image = ""
             article.cover_alt = cover_alt

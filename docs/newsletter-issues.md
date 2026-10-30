@@ -14,7 +14,7 @@ Create an issue, then fill in **About this issue**:
 
 Then add **contents**:
 
-- **Articles**: accepted or published articles. Choose whether each one shows a summary and link, or the full text. Use a custom summary where the excerpt doesn't fit.
+- **Articles**: accepted or published articles. Choose a summary and link, the full text, or the creator's newsletter blurb and link when one was submitted with a [blog article](publication-modes.md#offering-a-post-to-another-newsletter). For the summary option, write a custom summary or leave it blank for the article's usual summary. Custom summaries do not overwrite creator blurbs or full articles. These choices apply to the web issue and email.
 - **Section headings**, to divide the issue.
 - **Text blocks**, in Markdown, for announcements and notes.
 

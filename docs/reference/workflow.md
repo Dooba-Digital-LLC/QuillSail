@@ -35,4 +35,4 @@ Each move is recorded on the article's timeline, written to the activity log, em
 
 ---
 
-*Generated from the QuillSail 1.10.3 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.11.0 source code by `scripts/build_reference_docs.py`.*

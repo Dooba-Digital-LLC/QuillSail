@@ -33,7 +33,7 @@ As far as we could find, no self-hosted newsletter or blog tool does this. Ghost
 - **Writes and checks run as jobs** (`jobs.enqueue`), and every step can be retried safely. Only the reads needed to show a choice, such as the list of domains, run inside the request, with a short timeout.
 - **Project conventions apply:** `audit.record(...)` for admin actions, new events added to `hooks.EVENTS`, plain-English copy, the form macros, no inline styles or scripts (strict CSP), and pages that work without JavaScript.
 - **Tests** mock every Cloudflare call with `responses` and use a fake `cloudflared` script. Tests never touch the network.
-- **The schema change is migration `0006_domains.py`.** It adds `HostingConnection` (encrypted provider credentials and state) and `ManagedRecord` (each DNS record QuillSail created or changed, with the provider's record ID and the previous value).
+- **The schema change needs the next available migration number** (`0006` already stores newsletter blurbs). It adds `HostingConnection` (encrypted provider credentials and state) and `ManagedRecord` (each DNS record QuillSail created or changed, with the provider's record ID and the previous value).
 
 ## Phase 0: Things to confirm first
 

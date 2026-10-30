@@ -73,4 +73,4 @@ New sites start with these groups. Rename, change or remove the reader groups un
 
 ---
 
-*Generated from the QuillSail 1.10.3 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.11.0 source code by `scripts/build_reference_docs.py`.*

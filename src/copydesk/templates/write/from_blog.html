@@ -3,13 +3,15 @@
 {% block title %}Offer a blog post · {{ site.name }}{% endblock %}
 {% block content %}
 <div class="container container-narrow">
-  <header class="page-intro"><h1>Offer a blog post to {{ site.name }}</h1><p class="lead">Share an excerpt of a public post. The editors will review it as an article submission, with a link and credit to the original.</p></header>
+  <header class="page-intro"><h1>Offer a blog post to {{ site.name }}</h1><p class="lead">Submit your public article and a separate newsletter blurb. The editors can use the full article, your blurb, or their own summary, with a link and credit to the original.</p></header>
   {{ forms.error_summary(errors) }}
-  <form method="post" class="form" data-warn-unsaved>{{ forms.csrf() }}
+  <form method="post" class="form" data-warn-unsaved data-blog-transfer{% if request.method == 'GET' %} data-transfer-fill="true"{% endif %}>{{ forms.csrf() }}
+    <p data-transfer-status role="status">Review the article below. If it wasn't transferred, paste the text you want to submit.</p>
     {{ forms.input('source_url', 'Original public blog post URL', values.get('source_url', ''), type='url', required=True, errors=errors, attrs='maxlength="2048"') }}
     {{ forms.input('title', 'Article title', values.get('title', ''), required=True, errors=errors, attrs='maxlength="200"') }}
     {{ forms.input('source_author', 'Original author credit', values.get('source_author', current_user.display_name), required=True, errors=errors, attrs='maxlength="200"') }}
-    {{ forms.textarea('body', 'Excerpt or article to review', values.get('body', ''), errors=errors, rows=12, attrs='required maxlength="200000"', help='Paste at least 20 words. Markdown is supported. Include only content you want to submit to this publication.') }}
+    {{ forms.textarea('body', 'Full article to review', values.get('body', ''), errors=errors, rows=12, attrs='required maxlength="200000"', help='At least 20 words. Markdown is supported. Include only content you want to submit to this publication.') }}
+    {{ forms.textarea('newsletter_blurb', 'Your newsletter blurb', values.get('newsletter_blurb', ''), errors=errors, rows=4, optional=True, attrs='maxlength="5000"', help='Write a short plain-text introduction or selected passage for the newsletter. This stays separate from the full article; editors decide whether to use it.') }}
     {% set choices = [('', 'Choose a section…')] %}{% for section in sections %}{% set _ = choices.append((section.id|string, section.name)) %}{% endfor %}
     {{ forms.select('section_id', 'Section', choices, values.get('section_id', ''), errors=errors) }}
     {{ forms.checkbox('permission', 'I wrote this post or have permission to submit it, and the original is public.', values.get('permission'), help='Submission does not guarantee publication.') }}
@@ -18,3 +20,4 @@
   </form>
 </div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/blog-transfer.js', v=version) }}" defer></script>{% endblock %}

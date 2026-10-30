@@ -125,6 +125,6 @@ def test_upgrade_from_previous_schema_preserves_issues(tmp_path):
         assert {"issue_previews", "business_inquiries"} <= set(inspect(engine).get_table_names())
         with engine.connect() as connection:
             assert connection.scalar(text("SELECT value FROM settings WHERE key = 'upgrade-marker'")) == '"kept"'
-        assert migrate.current_revision(engine) == "0005"
+        assert migrate.current_revision(engine) == migrate.head_revision()
     finally:
         engine.dispose()

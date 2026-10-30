@@ -1,5 +1,7 @@
 """Host-selected publication modes; changing mode preserves existing content."""
 
+import base64
+import json
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from copydesk import settings
@@ -10,6 +12,7 @@ MODES = {
     "blog": "Blog",
     "hybrid": "Blog + newsletter",
 }
+MAX_NEWSLETTER_BLURB = 5_000
 
 
 def is_blog():
@@ -60,6 +63,15 @@ def external_submission_url(article):
             "author": ", ".join(user.display_name for user in article.authors)[:200],
         }
     )
-    return urlunsplit(
-        (url.scheme, url.netloc, url.path.rstrip("/") + "/write/from-blog", query, "")
-    )
+    # Fragments stay in the browser: neither server logs nor the sign-in URL
+    # receive the article body. The destination still requires a normal,
+    # authenticated, CSRF-protected submission after the writer reviews it.
+    transfer = base64.urlsafe_b64encode(json.dumps({
+        "version": 1,
+        "source": external_url("public.article", slug=article.slug),
+        "body": article.body,
+    }, ensure_ascii=False).encode("utf-8")).decode("ascii")
+    return urlunsplit((
+        url.scheme, url.netloc, url.path.rstrip("/") + "/write/from-blog",
+        query, "quillsail=" + transfer,
+    ))

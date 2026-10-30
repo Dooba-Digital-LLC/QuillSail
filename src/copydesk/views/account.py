@@ -342,6 +342,7 @@ def export():
         "articles": [
             {"title": a.title, "subtitle": a.subtitle, "status": a.status, "body": a.body,
              "source_url": a.source_url, "source_author": a.source_author,
+             "newsletter_blurb": a.newsletter_blurb,
              "created_at": a.created_at.isoformat(),
              "published_at": a.published_at.isoformat() if a.published_at else None}
             for a in articles

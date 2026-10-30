@@ -35,6 +35,9 @@
           {% endfor %}
         </div>
 
+        {% if article.newsletter_blurb %}
+        <section class="card"><h3>Creator's newsletter blurb</h3><p>{{ article.newsletter_blurb }}</p></section>
+        {% endif %}
         {% if article.author_note %}
         <div class="alert">
           {{ icon("message") }}
@@ -52,7 +55,7 @@
             <figcaption>Alt text: {{ article.cover_alt or "missing" }}</figcaption>
           </figure>
           {% endif %}
-          <div class="prose">{{ article.body|markdown }}</div>
+          <div class="prose">{{ article.body|markdown(base_url=article.source_url) }}</div>
         </article>
       </div>
     </section>

@@ -19,7 +19,7 @@
   {% endif %}
   <section class="panel"><div class="panel-header"><h2>A separate newsletter</h2></div><div class="panel-body stack">
     {% if article.visibility != 'public' %}<p>Only public posts can be offered to another newsletter. This post's visibility is restricted.</p>
-    {% elif external_target %}<p>Continue to the newsletter website, sign in there, and review the submission form. Its editors decide whether to include your post. The form carries your public post's URL, title, author credit and excerpt.</p><a class="button" href="{{ external_target }}" target="_blank" rel="noopener noreferrer">Continue to newsletter {{ icon('external') }}</a>
+    {% elif external_target %}<p>Continue to the newsletter website, sign in there, and review your full article. Add a newsletter blurb for its editors to consider alongside the full text. Nothing is submitted until you confirm on the newsletter's website.</p><a class="button" href="{{ external_target }}" target="_blank" rel="noopener noreferrer">Continue to newsletter {{ icon('external') }}</a><noscript><p>With JavaScript off, paste your full article on the newsletter's submission form.</p></noscript>
     {% else %}<p>Give the newsletter's editors this post's public URL, or configure the other QuillSail newsletter's website{% if can('manage_settings') %} in <a href="{{ url_for('dash.settings') }}">Settings → General</a>{% endif %} for a direct submission link.</p>{% if article.visibility == 'public' %}<p class="blog-share-url">{{ external_url('public.article', slug=article.slug) }}</p>{% endif %}{% endif %}
   </div></section>
 </div>
