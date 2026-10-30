@@ -44,7 +44,7 @@ def build(output, app, target, version, icon, archive):
             stage.mkdir()
             run("ditto", app, stage / "QuillSail.app")
             (stage / "Applications").symlink_to("/Applications", target_is_directory=True)
-            run("hdiutil", "create", "-volname", "QuillSail", "-srcfolder", stage, "-format", "UDZO", artifact)
+            run("hdiutil", "create", "-ov", "-volname", "QuillSail", "-srcfolder", stage, "-format", "UDZO", artifact)
             mount = work / "mounted"
             run("hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mount, artifact)
             try:
