@@ -132,3 +132,20 @@ def test_a_busy_new_disk_image_is_attached_again(tmp_path, monkeypatch, failures
             installers.attach(tmp_path / "QuillSail.dmg", tmp_path / "mounted")
     assert len(attempts) == 4
     assert all(call[:2] == ("hdiutil", "attach") for call in attempts)
+
+
+def test_a_missing_timestamp_is_retried_when_signing(tmp_path, monkeypatch):
+    monkeypatch.setenv("QUILLSAIL_MACOS_IDENTITY", "Developer ID Application: Example (TEAMID1234)")
+    image = tmp_path / "QuillSail.dmg"
+    calls = []
+
+    def timestamp_server_drops_once(*args, **_):
+        calls.append(args)
+        if len(calls) == 1:
+            raise signing.subprocess.CalledProcessError(1, list(args))
+
+    monkeypatch.setattr(signing, "run", timestamp_server_drops_once)
+    monkeypatch.setattr(signing.time, "sleep", lambda _: None)
+    signing.sign_disk_image(image)
+    assert len(calls) == 2
+    assert calls[0] == calls[1] and "--force" in calls[0] and "--timestamp" in calls[0]

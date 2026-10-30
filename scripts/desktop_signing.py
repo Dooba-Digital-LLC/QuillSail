@@ -45,16 +45,20 @@ def run(*args, timeout=600):
     subprocess.run([str(arg) for arg in args], check=True, timeout=timeout)
 
 
-def stapler(action, path, attempts=3):
-    """Apple's ticket service sometimes drops connections, so retry before failing."""
+def retry(*args, attempts=3):
+    """Apple's timestamp and ticket services sometimes drop requests, so retry before failing."""
     for attempt in range(1, attempts + 1):
         try:
-            return run("xcrun", "stapler", action, path)
+            return run(*args)
         except subprocess.CalledProcessError:
             if attempt == attempts:
                 raise
-            print(f"stapler {action} failed; retrying ({attempt} of {attempts - 1}).")
+            print(f"{Path(str(args[0])).name} failed; retrying ({attempt} of {attempts - 1}).")
             time.sleep(20 * attempt)
+
+
+def stapler(action, path):
+    retry("xcrun", "stapler", action, path)
 
 
 def macho_type(path):
@@ -85,7 +89,8 @@ def _sign(paths, *, entitlements=False, runtime=True):
     if entitlements:
         command += ["--entitlements", ENTITLEMENTS]
     for start in range(0, len(paths), 100):
-        run(*command, *paths[start:start + 100])
+        # --force makes a repeated signature safe after a missing timestamp.
+        retry(*command, *paths[start:start + 100])
 
 
 def sign_app(app):
