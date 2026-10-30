@@ -23,7 +23,9 @@ GitHub settings depend on account/repository capabilities and must be configured
 
 ## CI
 
-`.github/workflows/tests.yml` runs on pushes and pull requests. It checks Python 3.11–3.14, PostgreSQL/MariaDB, lint, public-file boundaries, wheel/sdist metadata, a clean wheel installation, and a Docker/Compose smoke deployment. Action versions are pinned to commit hashes; Dependabot proposes updates for actions, Python dependencies and the base image.
+`.github/workflows/tests.yml` runs on pull requests, pushes to `main`, and manual dispatch. Development-branch pushes are checked through their pull requests, avoiding duplicate runs. It checks Python 3.11–3.14, PostgreSQL/MariaDB, lint, public-file boundaries, wheel/sdist metadata, a clean wheel installation, and a Docker/Compose smoke deployment. Each database job starts only its own database service. Action versions are pinned to commit hashes; Dependabot proposes updates for actions, Python dependencies and the base image.
+
+Python jobs cache pip downloads using their dependency manifests. Desktop builds use a separate cache for their larger native dependencies, including compiled cryptography wheels; macOS keeps `OPENSSL_STATIC=1` and checks OpenSSL linkage before packaging. Obsolete pull-request desktop builds are canceled, while release publishing and signed-feed updates are never canceled by this policy. All four native lifecycle and updater checks still run for desktop changes and every published desktop release.
 
 Pull-request CI has read-only repository permission and no production credentials. The container test uses its own disposable Compose project/volume and synthetic first-run setup. The default source build and all release archives exclude local secrets and instance data.
 

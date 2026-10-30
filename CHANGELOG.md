@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.3 — Beta
+
+- Refine the public website hero with a smaller headline, roomier spacing and a desktop app preview that fits laptop and desktop screens.
+- Improve search metadata, social previews, canonical HTTPS addresses, structured data, documentation breadcrumbs and crawler directives. Keep documentation titles distinct and font caching consistent.
+- Fix horizontal overflow on the mobile download page.
+- Reduce duplicate CI runs, cache build dependencies, cancel obsolete pull-request desktop builds and start only the database needed by each integration job. Preserve native desktop lifecycle tests, package checks and macOS OpenSSL linkage checks.
+
 ## 1.10.2 — Beta
 
 - Allow deleting Default publication and running instances owned by the launcher. After confirmation, finish background work and stop the selected instance before removing it. Keeping files remains the default.

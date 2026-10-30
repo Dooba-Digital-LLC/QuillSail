@@ -33,6 +33,13 @@ class HostDispatcher:
             if host != address.host:
                 continue
             prefix = address.prefix
+            matches = not prefix or path == prefix or path.startswith(prefix + "/")
+            if matches and address.scheme == "https" and environ.get("wsgi.url_scheme") == "http" and path != "/healthz":
+                from werkzeug.utils import redirect
+
+                query = environ.get("QUERY_STRING", "")
+                target = f"https://{address.host}{environ.get('SCRIPT_NAME', '')}{path}"
+                return redirect(target + (f"?{query}" if query else ""), code=308)(environ, start_response)
             if not prefix:
                 return app(environ, start_response)
             if path == prefix or path.startswith(prefix + "/"):
@@ -69,7 +76,9 @@ def create_app(config=None, *, catalog=None, docs=None):
 
     @fallback.route("/healthz")
     def health():
-        return jsonify(status="ok")
+        response = jsonify(status="ok")
+        response.headers["X-Robots-Tag"] = "noindex"
+        return response
 
     @fallback.route("/", defaults={"path": ""})
     @fallback.route("/<path:path>")

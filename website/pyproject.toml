@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "quillsail-website"
 dynamic = ["version"]
 description = "quillsail.blog: the QuillSail website, documentation site and download service."
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "The QuillSail contributors" }]

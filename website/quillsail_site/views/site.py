@@ -11,6 +11,13 @@ from quillsail_site.config import CHANNELS, Config
 from quillsail_site.docs import Docs
 from quillsail_site.platforms import PLATFORMS, detect
 from quillsail_site.releases import Build, Catalog, Release
+from quillsail_site.seo import (
+    DOWNLOAD_DESCRIPTION,
+    DOWNLOAD_TITLE,
+    HOME_DESCRIPTION,
+    HOME_TITLE,
+    page_metadata,
+)
 from quillsail_site.web import make_app, static_file, text_response
 
 INSTALLERS = Path(__file__).resolve().parents[1] / "install"
@@ -54,7 +61,10 @@ def page_context(release: Release | None) -> dict:
 @bp.get("/")
 def home():
     release = catalog().release()
-    response = current_app.make_response(render_template("site/home.html", **page_context(release)))
+    config = current_app.config["QUILLSAIL"]
+    metadata = page_metadata(config, title=HOME_TITLE, summary=HOME_DESCRIPTION,
+                             url=config.site.join("/"), release=release)
+    response = current_app.make_response(render_template("site/home.html", **page_context(release), **metadata))
     response.vary.add("User-Agent")
     return response
 
@@ -62,12 +72,15 @@ def home():
 @bp.get("/download")
 def downloads():
     release = catalog().release()
+    config = current_app.config["QUILLSAIL"]
+    metadata = page_metadata(config, title=DOWNLOAD_TITLE, summary=DOWNLOAD_DESCRIPTION,
+                             url=config.site.join("/download"), release=release, download=True)
     context = page_context(release)
     started = request.args.get("started")
     started_build = release.builds.get(started) if release and started in PLATFORMS else None
     response = current_app.make_response(render_template(
         "site/download.html", started=started_build, started_platform=PLATFORMS.get(started) if started_build else None,
-        **context))
+        **context, **metadata))
     response.vary.add("User-Agent")
     return response
 
@@ -175,8 +188,10 @@ def health():
 
 @bp.get("/robots.txt")
 def robots():
-    site = current_app.config["QUILLSAIL"].site
-    return text_response(f"User-agent: *\nDisallow: /api/\nSitemap: {site.join('/sitemap.xml')}\n", max_age=86_400)
+    config = current_app.config["QUILLSAIL"]
+    return text_response(
+        f"User-agent: *\nAllow: /\nSitemap: {config.site.join('/sitemap.xml')}\n"
+        f"Sitemap: {config.docs.join('/sitemap.xml')}\n", max_age=86_400)
 
 
 @bp.get("/sitemap.xml")

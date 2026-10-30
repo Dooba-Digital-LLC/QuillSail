@@ -71,3 +71,9 @@ def health():
     response = jsonify(status="ok")
     response.cache_control.no_store = True
     return response
+
+
+@bp.get("/robots.txt")
+def robots():
+    # Allow crawlers to see the noindex header on this technical service.
+    return text_response("User-agent: *\nAllow: /\n", max_age=86_400)

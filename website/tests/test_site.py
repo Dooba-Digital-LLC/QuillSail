@@ -247,7 +247,8 @@ def test_assets_are_fingerprinted_and_cached(site):
 
 def test_structured_data_describes_the_app(site):
     html = page(site, "/")
-    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
+    graph = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
+    data = next(node for node in graph["@graph"] if node["@type"] == "SoftwareApplication")
     assert data["@type"] == "SoftwareApplication" and data["softwareVersion"] == "2.3.4"
     assert data["offers"]["price"] == "0"
 
@@ -258,7 +259,8 @@ def test_robots_sitemap_and_icons(site, docs_client):
     assert "<loc>https://quillsail.test/download</loc>" in sitemap
     docs_sitemap = docs_client.get("/sitemap.xml").get_data(as_text=True)
     assert "<loc>https://docs.quillsail.test/install-script</loc>" in docs_sitemap
-    assert "Disallow: /search" in docs_client.get("/robots.txt").get_data(as_text=True)
+    assert "Allow: /" in docs_client.get("/robots.txt").get_data(as_text=True)
+    assert "noindex" in docs_client.get("/search?q=install").headers["X-Robots-Tag"]
     for path in ("/favicon.ico", "/apple-touch-icon.png"):
         assert site.get(path).status_code == 200
 

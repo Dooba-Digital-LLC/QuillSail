@@ -102,6 +102,19 @@ quillsail.blog, www.quillsail.blog, docs.quillsail.blog, updates.quillsail.blog 
 
 The site sends its own security and caching headers: fingerprinted assets are cached for a year, pages for five minutes, and the release API for a minute. Rebuild and redeploy when `docs/` or the website changes; releases need no deploy.
 
+## Search visibility
+
+Set the three public URL variables to their final HTTPS addresses. The site redirects HTTP requests to those addresses, and pages use query-free canonical URLs, descriptive titles and summaries, social cards, and connected Schema.org data. Documentation and download pages include visible breadcrumbs. Release versions in the software metadata come from the verified feed.
+
+The main site and docs each serve `/sitemap.xml` and advertise their sitemaps in `/robots.txt`. Search results, installers, release APIs, update feeds, health checks and errors carry `noindex` directives; crawlers can still fetch those URLs to read the directives. Static images remain indexable. HTML uses `Cache-Control: no-transform` to prevent proxy-injected scripts from conflicting with the site's security policy.
+
+After deployment, verify the domain in [Google Search Console](https://search.google.com/search-console) and submit both public sitemaps:
+
+- `https://quillsail.blog/sitemap.xml`
+- `https://docs.quillsail.blog/sitemap.xml`
+
+Use URL Inspection to check the homepage, download page and a documentation article. Search Console reports actual indexing and search traffic; analytics tools can help measure visitor behavior but do not directly improve rankings. Do not invent reviews, ratings or publication dates in structured data.
+
 ## Rebuild the font and images
 
 The committed assets are generated from the repository's masters:
