@@ -1,0 +1,36 @@
+{# The primary download, picked from the browser. site.js switches Macs to Intel when the browser says so. #}
+{% set intel = release.builds.get('macos-x86_64') if release else None %}
+{% set mac_switch = build and build.target == 'macos-arm64' and intel %}
+<div class="download-cta"{% if mac_switch %} data-mac-switch
+     data-downloads-href="{{ url_for('site.downloads') }}"
+     data-arm-href="{{ url_for('site.downloads', started='macos-arm64') }}"
+     data-arm-meta="Apple silicon · Version {{ build.version }} {{ release.channel }} · {{ build.size_label }}"
+     data-intel-href="{{ url_for('site.downloads', started='macos-x86_64') }}"
+     data-intel-meta="Intel · Version {{ intel.version }} {{ release.channel }} · {{ intel.size_label }}"{% endif %}>
+  {% if build %}
+  <a class="button button-primary button-large" href="{{ url_for('site.downloads', started=build.target) }}" data-download-link>
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+    <span>Download for {{ platform.system }}</span>
+  </a>
+  <p class="download-meta" data-download-meta>{{ platform.variant }} · Version {{ build.version }} {{ release.channel }} · {{ build.size_label }}</p>
+  <p class="download-more">
+    {% if mac_switch %}
+    <a href="{{ url_for('site.downloads', started='macos-x86_64') }}" data-download-alt>Download for Intel Mac</a>
+    <span class="dot" aria-hidden="true">·</span>
+    {% endif %}
+    <a href="{{ url_for('site.downloads') }}">Other platforms</a>
+  </p>
+  {% elif release %}
+  <a class="button button-primary button-large" href="{{ url_for('site.downloads') }}">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+    <span>Download QuillSail</span>
+  </a>
+  <p class="download-meta">For Mac, Windows and Linux computers · Version {{ release.version }} {{ release.channel }}</p>
+  {% else %}
+  <a class="button button-primary button-large" href="{{ config.releases_url }}">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+    <span>Download from GitHub</span>
+  </a>
+  <p class="download-meta">Release details are unavailable right now. GitHub lists every version.</p>
+  {% endif %}
+</div>

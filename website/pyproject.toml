@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quillsail-website"
+dynamic = ["version"]
+description = "quillsail.blog: the QuillSail website, documentation site and download service."
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "The QuillSail contributors" }]
+dependencies = [
+    "Flask>=3.1",
+    "markdown-it-py>=3.0",
+    "mdit-py-plugins>=0.4",
+    "Pygments>=2.17",
+    "tuf>=7.0.1,<8",
+    "cryptography>=43",
+    "urllib3>=2.2",
+    "certifi>=2024.7.4",
+    "packaging>=24",
+]
+
+[project.optional-dependencies]
+server = ["gunicorn>=22"]
+dev = ["pytest>=8", "ruff>=0.5"]
+# Only for rebuilding the committed font and images; see scripts/.
+assets = ["fonttools[woff]>=4.50", "PySide6-Essentials>=6.8,<7", "Pillow>=10.3"]
+
+[tool.setuptools.dynamic]
+version = { attr = "quillsail_site.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["quillsail_site*"]
+
+[tool.setuptools.package-data]
+quillsail_site = ["templates/**/*", "static/**/*", "install/*", "trust/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = [".", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4"]
+ignore = ["E501", "B008", "SIM108"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["quillsail_site", "conftest"]

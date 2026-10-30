@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Something went wrong · QuillSail{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block main %}
+<main id="main" class="container page error-page">
+  <header class="page-head">
+    <p class="kicker">Error 500</p>
+    <h1 class="display-medium">Something went wrong on our side</h1>
+    <p class="lead">The problem has been logged. Try again in a minute. Downloads are also available from <a href="{{ config.releases_url }}">GitHub Releases</a>.</p>
+  </header>
+  <p class="error-actions"><a class="button button-primary" href="{{ site_url('/') }}">Go to the homepage</a></p>
+</main>
+{% endblock %}

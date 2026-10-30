@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme="light" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% set page_title %}{% block title %}QuillSail — Where readers write{% endblock %}{% endset %}
+  {% set page_description %}{% block description %}QuillSail is open-source, self-hosted blog and newsletter software for publications written by their readers: submissions, editorial review, reader groups and email delivery.{% endblock %}{% endset %}
+  <title>{{ page_title }}</title>
+  <meta name="description" content="{{ page_description }}">
+  {% block canonical %}{% endblock %}
+  {% block robots %}{% endblock %}
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="QuillSail">
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ page_description }}">
+  <meta property="og:image" content="{{ site_url('/static/img/og.png') }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="QuillSail. Where readers write.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="{{ asset('img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/Amiri-Bold-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ asset('css/site.css') }}">
+  {% block styles %}{% endblock %}
+  <script src="{{ asset('js/theme.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% include "partials/symbols.html" %}
+  {% block header %}{% endblock %}
+  {% block main %}{% endblock %}
+  {% block footer %}{% endblock %}
+  <script src="{{ asset('js/site.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

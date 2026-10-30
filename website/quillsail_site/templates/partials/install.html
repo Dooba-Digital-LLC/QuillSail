@@ -1,0 +1,28 @@
+{# Terminal install. Without JavaScript both commands show; site.js turns them into tabs with copy buttons. #}
+{% set windows_first = detected == 'windows-x86_64' %}
+{% set id = install_id|default('install') %}
+<div class="install" data-tabs>
+  <h2 class="kicker install-title" id="{{ id }}-title">{{ install_title|default('Or install from the terminal') }}</h2>
+  <div class="terminal">
+    <div class="terminal-tabs" role="tablist" aria-labelledby="{{ id }}-title" hidden>
+      <button type="button" role="tab" id="{{ id }}-tab-sh" aria-controls="{{ id }}-sh" aria-selected="{{ 'false' if windows_first else 'true' }}"{% if windows_first %} tabindex="-1"{% endif %}>macOS and Linux</button>
+      <button type="button" role="tab" id="{{ id }}-tab-ps1" aria-controls="{{ id }}-ps1" aria-selected="{{ 'true' if windows_first else 'false' }}"{% if not windows_first %} tabindex="-1"{% endif %}>Windows</button>
+    </div>
+    {% for key, label, prompt in [('sh', 'macOS and Linux', '$'), ('ps1', 'Windows PowerShell', 'PS>')] %}
+    <div class="terminal-panel" id="{{ id }}-{{ key }}" role="tabpanel" aria-labelledby="{{ id }}-tab-{{ key }}" data-selected="{{ 'true' if (key == 'ps1') == windows_first else 'false' }}">
+      <p class="terminal-label">{{ label }}</p>
+      <div class="terminal-line">
+        <span class="prompt" aria-hidden="true">{{ prompt }}</span>
+        <code>{{ install_commands[key] }}</code>
+        <button type="button" class="copy" data-copy="{{ install_commands[key] }}" hidden>
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-copy"/></svg>
+          <span data-copy-label>Copy</span>
+          <span class="visually-hidden"> the {{ label }} command</span>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="install-note">The installer checks every download against QuillSail's signed release list, then adds a <code>quillsail</code> command. <a href="{{ docs_url('/install-script') }}">What it does</a></p>
+  <p class="visually-hidden" role="status" data-copy-status></p>
+</div>

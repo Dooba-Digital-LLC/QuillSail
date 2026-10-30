@@ -1,0 +1,38 @@
+{% extends "docs/layout.html" %}
+
+{% block title %}{% if query %}{{ query }} · Search{% else %}Search{% endif %} · QuillSail Docs{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<article class="docs-article">
+  <header class="docs-article-head">
+    <p class="kicker">Search</p>
+    <h1>{% if query %}Results for “{{ query }}”{% else %}Search the documentation{% endif %}</h1>
+  </header>
+  <form class="search-form" role="search" action="{{ url_for('docs.search') }}" method="get">
+    <label for="search-page-input">Search for</label>
+    <div class="search-form-row">
+      <input id="search-page-input" type="search" name="q" value="{{ query }}" autocomplete="off" spellcheck="false">
+      <button class="button" type="submit">Search</button>
+    </div>
+  </form>
+  {% if query %}
+  <p class="results-count">{{ results|length }} {{ 'result' if results|length == 1 else 'results' }}{% if results|length == 20 %} (the top 20){% endif %}</p>
+  {% if results %}
+  <ol class="search-list">
+    {% for result in results %}
+    <li>
+      <a href="{{ url_for('docs.page', slug=result.page.slug) }}{% if result.anchor %}#{{ result.anchor }}{% endif %}">
+        <span class="kicker">{{ result.page.section }} · {{ result.page.title }}</span>
+        <span class="result-title">{{ result.heading }}</span>
+      </a>
+      <p>{{ result.snippet }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>Nothing matched. Try fewer or different words, or browse the menu.</p>
+  {% endif %}
+  {% endif %}
+</article>
+{% endblock %}

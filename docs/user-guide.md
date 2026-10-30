@@ -1,51 +1,46 @@
 # Publication guide
 
-## Set up your publication
+This guide is for the people who run a publication day to day: administrators, editors and the members who help them. Each part has its own page.
 
-Sign in as the administrator created during installation. Set your publication name and identify its publisher or organization. Choose its accent color and theme under Settings. Edit About, Writing guidelines, and Privacy under Pages. Configure timezone, contact details, registration policy, and email defaults.
+## Getting set up
 
-Students, Staff, and Alumni are starter groups. Rename, replace, or add groups under Groups. Each has a membership policy, custom fields, badge, optional domain rules, and permissions. Open groups allow self-joining; approval groups create requests; closed groups require an administrator. A verified matching email domain can grant automatic membership where configured. Only use domain rules for domains that reliably identify the intended audience.
+- [Set up your publication](publication-setup.md): name, time zone, pages, sections, sign-up rules and email defaults.
+- [Groups and permissions](groups-and-permissions.md): reader groups such as Students, Staff and Alumni, and who can review, publish and send.
+- [Blog and newsletter modes](publication-modes.md): choosing Newsletter, Blog, or Blog + newsletter, and offering blog posts to another newsletter.
+- [Design and themes](theming.md): the publication designer, logos, the homepage hero, custom CSS and template themes.
 
-Everyone represents all visitors. Members represents confirmed accounts. Editors can review and publish, compose issues, and manage subscribers and pages. Administrators have all permissions. Grant member-management permission separately when editors should approve membership requests. Group permissions accumulate; subscriber audience preferences do not grant account permissions.
+## Every week
 
-## Blog mode and newsletter reuse
+- [Writing and review](writing-and-review.md): how members write, and how editors review, request changes, accept and publish.
+- [Newsletter issues](newsletter-issues.md): putting an issue together, aiming parts of it at groups, testing, scheduling and delivery reports.
+- [Subscribers and accounts](subscribers.md): sign-ups, imports and exports, unsubscribes, and what members can do with their accounts.
 
-Hosts choose **Newsletter**, **Blog**, or **Blog + newsletter** during browser setup, with `quillsail init --mode blog` / `--mode hybrid`, or later under **Settings → General → Publication type**. The default remains Newsletter. Switching modes preserves existing posts, issues, subscriptions, groups and permissions.
+## Now and then
 
-Blog modes use a chronological post home page and RSS link. Blog + newsletter also shows email subscriptions; Blog hides the newsletter calls to action. Existing issue and subscription URLs remain available so changing presentation does not break previously shared links. Use the Writing and Accounts settings to choose whether to accept community submissions or keep the blog for its existing authors.
+- [Competitions](competitions.md): moderated entries, appointed judges, reader voting and published results.
+- [Business outreach and previews](business-outreach.md): a private inbox for opportunities from businesses, and private links for sharing a draft issue.
 
-Administrators and trusted accounts with **Publish articles** permission can publish their own blog posts directly from the writing editor and edit them later. Ordinary writers still submit for editorial review. Publishing a post does not create an issue or send a newsletter to subscribers.
+## Who does what
 
-On a published post, choose **Newsletter options**. A host with **Put issues together** permission can add the saved post to an existing draft issue or create a new draft, choosing a summary/link or full article. This reuses the same post rather than copying it; repeated additions to one issue do not duplicate it. Review and send the issue using the normal newsletter workflow. For this local newsletter feature, select Blog + newsletter.
+New publications start with these roles. Change them under **Dashboard → Groups and permissions**.
 
-For a separate newsletter, set **External newsletter website** in General settings to its QuillSail base URL, including any subpath (for example `https://newsletter.example.org`). From Newsletter options, **Continue to newsletter** opens its submission form carrying only the public post URL, title, author credit and excerpt. Restricted posts cannot use this handoff. Both sites must run a QuillSail version with blog-submission support. For other newsletter software, share the original post URL with its editors manually.
+| Role | Can |
+| --- | --- |
+| Everyone | Read the public site, subscribe to the newsletter. |
+| Members | Everything above, plus write and submit pieces, join reader groups, and read members-only articles. |
+| Editors | Review submissions, edit and publish any article, put issues together and send them, manage subscribers and pages, and read the activity log. |
+| Administrators | Everything, including settings, groups, permissions, email and design. |
 
-The writer signs into a verified account on the destination site, reviews the fields, supplies an excerpt of at least 20 words, confirms permission, and submits. Its normal submission permissions, sections and closure rules apply. The receiver does not fetch the source URL or accept sign-in authority from the blog. It creates a submission for editorial review, preserving original author credit and the source link in the published article, newsletter HTML/text and account export. Receiving editors decide whether to publish it or put it in an issue. A site that is closed to registration may require an invitation before the writer can submit.
+The [permissions reference](reference/permissions.md) lists every permission and what each group starts with.
 
-## Writing and review
+## Where things are
 
-Readers create an account, confirm their email, and use Write for us to create a draft. Markdown supports links, code blocks, tables, footnotes, task lists, and note/tip/warning callouts. Save drafts and submit when ready. Unsubmitted drafts remain private to their authors. Writers can inspect revision history and follow feedback on the submission timeline.
-
-Editors pick up submissions, leave feedback, request changes, accept, decline, or publish. Change requests require an explanation. Writers revise and resubmit. Internal editorial notes are hidden from writers. Events generate notifications according to account preferences.
-
-## Newsletter issues
-
-Create an issue under Issues. Set its title, subject override, introduction, preheader, and audience. Add accepted or published articles, headings, and text blocks. Reorder items, choose full articles or summaries, and optionally target individual blocks to audience groups. Members-only or group-restricted articles use summaries in email; check excerpts for sensitive information.
-
-Preview HTML and text, including each audience variant. Send a test email. Schedule in the configured publication timezone or send immediately after confirming the issue number. The worker processes delivery. The report shows queued, sent, failed, and skipped addresses. An issue can also be published to the web without mailing subscribers.
-
-## Competitions
-
-Administrators can host competitions from **Dashboard → Competitions → New competition**. A group can also receive **Host competitions** permission. Set the brief, eligibility rules, criteria and prizes, then choose **Judges only**, **Reader voting only**, or **Judges and reader voting**. Administrators can judge automatically; appoint additional judges from verified active members. Assigned judges use the public entry pages and do not receive access to the rest of the dashboard.
-
-Entrants submit a title, Markdown text and an optional project/repository link. Each verified account has one entry per competition. Organizers approve or reject entries with private feedback. Participants can revise or withdraw while submissions are open; revisions return the entry to pending approval. Approved entries and authors' display names become public when judging starts. Submitted work is frozen after that point.
-
-Use the configured publication timezone for optional submission and judging/voting deadlines. The server enforces deadlines without requiring a background job. Leave deadlines blank to advance phases manually. The sequence is **Draft → Accepting entries → Judging and voting → Closed → Results published**. Opening a competition locks its setup; only drafts can be deleted.
-
-Judges score approved entries from 0 to 100 against the stated criteria and may revise scores until judging closes. Their notes remain private to them. Verified readers have one vote per competition and may change or remove it until voting closes. Self-voting and self-judging are blocked. Rejected and withdrawn entries do not participate in standings. Before publication, scores and vote counts are visible only to organizers.
-
-Close judging/voting and publish the final results. Judge mode requires at least one score for every approved entry. Judges' Choice ranks by average score, rounded to two decimals; Readers' Choice ranks by votes received. In both mode these are separate awards, without a combined weighted score. Tied entries share a rank; entries with zero reader votes do not receive a Readers' Choice rank. Published results are frozen, including if a judge or voter later deletes their account. Account exports include the user's entries, ballots and private judge notes. Account deletion removes ballots, private judge notes and unpublished entries; published competition work remains with anonymized credit.
-
-## Subscribers and accounts
-
-Subscribers need only an email address. Members have accounts for writing and access to community groups. Manage subscribers separately from members. Import/export commands are available through `quillsail subscribers --help`; only import addresses with appropriate permission to receive the publication. Accounts can edit profiles, notification preferences, subscriptions, group requests, and passwords, download personal data, and request account deletion. Deleting an account anonymizes it; already published writing may remain in the archive.
+| To… | Go to |
+| --- | --- |
+| Review submissions | **Dashboard → Articles** |
+| Put an issue together | **Dashboard → Issues** |
+| Approve requests to join groups | **Dashboard → Members** |
+| Change the name, sign-up rules and email | **Dashboard → Settings** |
+| Change the look | **Dashboard → Settings → Appearance** |
+| See who changed what | **Dashboard → Activity log** |
+| Check the worker and queued email | **Dashboard → System status** |

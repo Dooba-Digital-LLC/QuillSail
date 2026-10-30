@@ -1,0 +1,16 @@
+{# The docs home lists every section, generated from docs.toml so it never falls out of date. #}
+<section class="section-index" aria-labelledby="all-docs-title">
+  <h2 id="all-docs-title">All documentation</h2>
+  <div class="section-grid">
+    {% for section in docs.sections %}
+    <div class="section-card">
+      <h3 class="kicker">{{ section.title }}</h3>
+      <ul>
+        {% for item in section.pages if item.slug %}
+        <li><a href="{{ url_for('docs.page', slug=item.slug) }}">{{ item.title }}</a>{% if item.summary %}<span class="section-summary">{{ item.summary|truncate(110, killwords=False, end='…') }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+</section>

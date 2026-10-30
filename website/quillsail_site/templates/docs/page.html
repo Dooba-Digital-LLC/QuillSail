@@ -1,0 +1,56 @@
+{% extends "docs/layout.html" %}
+
+{% block title %}{% if page.slug %}{{ page.heading }} · QuillSail Docs{% else %}QuillSail Documentation{% endif %}{% endblock %}
+{% block description %}{{ page.summary or 'Install, run and extend QuillSail, the open-source blog and newsletter software where readers write.' }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ docs_url(page.path) }}">{% endblock %}
+
+{% block content %}
+<article class="docs-article">
+  <header class="docs-article-head">
+    <p class="kicker">{{ page.section }}</p>
+    <h1>{{ page.heading }}</h1>
+  </header>
+  {% if page.toc|length > 2 %}
+  <details class="toc-inline">
+    <summary>On this page</summary>
+    <ul>
+      {% for heading in page.toc %}
+      <li class="toc-level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.text }}</a></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  <div class="prose">
+    {{ page.html }}
+  </div>
+  {% if not page.slug %}{% include "docs/sections.html" %}{% endif %}
+  <footer class="docs-article-foot">
+    <p class="edit-link"><a href="{{ docs.edit_url(page) }}">Edit this page on GitHub</a></p>
+    <nav class="pager" aria-label="Previous and next pages">
+      {% if page.previous %}
+      <a class="pager-link pager-previous" href="{{ url_for('docs.page', slug=page.previous.slug) }}" rel="prev">
+        <span class="kicker">Previous</span><span class="pager-title">{{ page.previous.title }}</span>
+      </a>
+      {% endif %}
+      {% if page.next %}
+      <a class="pager-link pager-next" href="{{ url_for('docs.page', slug=page.next.slug) }}" rel="next">
+        <span class="kicker">Next</span><span class="pager-title">{{ page.next.title }}</span>
+      </a>
+      {% endif %}
+    </nav>
+  </footer>
+</article>
+{% endblock %}
+
+{% block toc %}
+{% if page.toc %}
+<aside class="docs-toc" aria-labelledby="toc-title">
+  <h2 class="kicker" id="toc-title">On this page</h2>
+  <ul data-toc>
+    {% for heading in page.toc %}
+    <li class="toc-level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.text }}</a></li>
+    {% endfor %}
+  </ul>
+</aside>
+{% endif %}
+{% endblock %}

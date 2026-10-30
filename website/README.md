@@ -1,0 +1,123 @@
+# QuillSail website
+
+The source of three sites, served by one small Flask application:
+
+| Address | What it serves |
+| --- | --- |
+| `quillsail.blog` | The homepage, downloads, the terminal installers (`/install.sh`, `/install.ps1`) and the release API |
+| `docs.quillsail.blog` | The documentation, rendered from this repository's `docs/` folder, with search |
+| `updates.quillsail.blog` | A stable address for the signed update feed, which redirects to GitHub Releases |
+
+The design follows QuillSail's interface style in [`assets/README.md`](../assets/README.md): ink on paper, hairline rules, Amiri Bold headings, and the logo purple as the only accent. Light is the default; visitors can choose Dark or Automatic, as in the desktop launcher. Pages work without JavaScript, and a strict Content Security Policy allows only the site's own files.
+
+## Run it locally
+
+From the repository root, with Python 3.11 or newer:
+
+```sh
+python -m venv website/.venv
+website/.venv/bin/pip install -e 'website[dev,server]'
+cd website && .venv/bin/python -m quillsail_site
+```
+
+Open <http://localhost:8000> for the site and <http://docs.localhost:8000> for the docs. Browsers send `*.localhost` to your own computer. Changes to Python files, templates, `docs/*.md` and `docs.toml` reload the server.
+
+Release information comes from the live signed feed, so the first page load needs an internet connection. To work offline, point `QUILLSAIL_RELEASES_FIXTURE` at a JSON file like the one in `tests/conftest.py`.
+
+## How downloads work
+
+Release details aren't stored in the site. `releases.py` reads QuillSail's [signed update feed](../docs/desktop-updates.md) with the same TUF client and trust root as the desktop app (`quillsail_site/trust/root.json`, a copy of `src/copydesk/updates/root.json`; a test keeps them identical). It checks every signature, expiry date and version, applies the app updater's rules to each entry, and keeps the newest release for each channel in memory. It refreshes every ten minutes in the background, and if GitHub can't be reached it keeps serving the last verified result.
+
+So the download buttons, `/download/PLATFORM`, the release API and the installers only ever offer archives whose size and SHA-256 checksum are signed. Publishing a release with the **Desktop bundles** workflow updates the site automatically; there's nothing to deploy.
+
+| Endpoint | Returns |
+| --- | --- |
+| `/download/PLATFORM` | A redirect to the newest download: `macos-arm64`, `macos-x86_64`, `windows-x86_64`, `linux-x86_64` or `server` |
+| `/api/v1/releases/latest` | JSON for every download, with versions, sizes, SHA-256 checksums and URLs |
+| `/api/v1/releases/latest/PLATFORM` | JSON for one download |
+| `/api/v1/releases/latest/PLATFORM.txt` | The same as `key value` lines, for shell scripts |
+| `/install.sh`, `/install.ps1` | The installers, with this site's address filled in |
+| `/healthz` | Status, including the last verified release |
+
+Add `?channel=stable` to choose the stable channel; the default comes from `QUILLSAIL_CHANNEL`.
+
+## The installers
+
+[`install.sh`](quillsail_site/install/install.sh) (macOS and Linux, bash 3.2 or newer) and [`install.ps1`](quillsail_site/install/install.ps1) (Windows PowerShell 5.1 and PowerShell 7) install the desktop app for the current user. They read release details from this site, check each download's size and checksum, refuse archives with paths outside the app folder, swap the app into place with a rename, and add a `quillsail` command. The [terminal installer guide](../docs/install-script.md) documents what they do for users. The site replaces `__QUILLSAIL_SITE_URL__` with its own address when serving them.
+
+## The documentation site
+
+[`docs.toml`](docs.toml) lists the pages in reading order. Pages are the repository's own Markdown files, rendered once at startup:
+
+- Headings get GitHub's anchors, so links such as `desktop.md#multiple-publications` work on both GitHub and the site.
+- Links to other pages become site links; links to other repository files go to GitHub.
+- `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]` and `> [!CAUTION]` blocks become callouts.
+- Raw HTML isn't rendered.
+
+To add a page, create it under `docs/`, add it to `docs.toml`, and run the tests. They fail if a file under `docs/` isn't listed, if a link points to a missing page or heading, or if a link on the website points to a missing docs page. The [reference pages](../docs/reference/) are generated from the application's code by `scripts/build_reference_docs.py`.
+
+## Configuration
+
+Everything is set with environment variables. Defaults suit local development.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `QUILLSAIL_SITE_URL` | `http://localhost:8000` | The site's public address |
+| `QUILLSAIL_DOCS_URL` | `http://docs.localhost:8000` | The docs' public address. A path on the site's host, such as `https://quillsail.blog/docs`, also works. |
+| `QUILLSAIL_UPDATES_URL` | `http://updates.localhost:8000` | The update address. Set it empty to turn it off. |
+| `QUILLSAIL_PROXY_HOPS` | `0` | How many trusted reverse proxies are in front of the site |
+| `QUILLSAIL_CHANNEL` | `beta` | The release channel the site offers by default |
+| `QUILLSAIL_RELEASE_TTL` | `600` | Seconds between release checks |
+| `QUILLSAIL_REPOSITORY` | `Dooba-Digital-LLC/QuillSail` | The GitHub repository for releases, edit links and source links |
+| `QUILLSAIL_BRANCH` | `main` | The branch that edit and source links point to |
+| `QUILLSAIL_METADATA_URL` | The `desktop-updates` release | Where the signed feed's metadata lives |
+| `QUILLSAIL_TRUST_ROOT` | The bundled `root.json` | The trust root used to verify the feed |
+| `QUILLSAIL_REPO_ROOT` | This repository | Where `docs/` and `website/docs.toml` are |
+| `QUILLSAIL_RELEASES_FIXTURE` | Unset | A JSON file of releases, for development and tests only |
+
+A request for any other host, such as `www.quillsail.blog`, is redirected to the site's address.
+
+## Deploy
+
+The site is a standard WSGI application: `gunicorn 'quillsail_site:create_app()'`. Build the container from the repository root, so the docs are included:
+
+```sh
+docker build -f website/Dockerfile -t quillsail-website .
+docker run --rm -p 8000:8000 \
+  -e QUILLSAIL_SITE_URL=https://quillsail.blog \
+  -e QUILLSAIL_DOCS_URL=https://docs.quillsail.blog \
+  -e QUILLSAIL_UPDATES_URL=https://updates.quillsail.blog \
+  -e QUILLSAIL_PROXY_HOPS=1 \
+  quillsail-website
+```
+
+Point all three host names (and `www`, if you want the redirect) at a reverse proxy that terminates HTTPS and forwards to port 8000 with the original `Host` header. With Caddy:
+
+```text
+quillsail.blog, www.quillsail.blog, docs.quillsail.blog, updates.quillsail.blog {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8000
+}
+```
+
+The site sends its own security and caching headers: fingerprinted assets are cached for a year, pages for five minutes, and the release API for a minute. Rebuild and redeploy when `docs/` or the website changes; releases need no deploy.
+
+## Rebuild the font and images
+
+The committed assets are generated from the repository's masters:
+
+```sh
+pip install -e 'website[assets]'
+python website/scripts/build_fonts.py    # Amiri Bold, subset to Latin as WOFF2
+python website/scripts/build_images.py   # social card, touch icon and favicons
+```
+
+## Tests
+
+```sh
+cd website
+pytest
+ruff check .
+```
+
+The tests build signed TUF repositories with throwaway keys to check release verification, render every page, check every docs link, and run `install.sh` end to end against a local copy of the site with a synthetic app. `install.ps1` needs PowerShell to run its tests.

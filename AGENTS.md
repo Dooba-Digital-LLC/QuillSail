@@ -11,3 +11,4 @@ QuillSail is a generic, MIT-licensed blog and newsletter CMS. Keep organization-
 - Never commit environment files, provider credentials, instance data, exports, backups, or `.validation/`.
 - Run `pytest` and `ruff check src tests scripts deploy` for code changes. Validate wheel/sdist contents when changing packaging. Report any checks that could not be run.
 - Read `CONTRIBUTING.md` and the relevant documents under `docs/`. Do not publish a package, container or GitHub release unless the user requests publication.
+- `website/` is the separate Flask app for quillsail.blog and the docs site (see `website/README.md`). It renders `docs/`; list new docs pages in `website/docs.toml`, and run `cd website && pytest && ruff check .` after changing either. After changing commands, settings, permissions, workflow transitions or hooks, run `python scripts/build_reference_docs.py` to regenerate `docs/reference/`.

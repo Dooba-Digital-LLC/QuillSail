@@ -1,0 +1,91 @@
+# Navigation for docs.quillsail.blog, in reading order.
+#
+# Pages are the repository's own Markdown files, so they read the same on
+# GitHub. Every file under docs/ must be listed here or under `exclude`, and the
+# website's tests check that, along with every link between pages.
+#
+# `slug` is the page's address. It defaults to the file's path under docs/,
+# without ".md" (docs/reference/cli.md becomes /reference/cli).
+
+exclude = []
+
+[[sections]]
+title = "Get started"
+pages = [
+  { title = "Overview", file = "docs/README.md" },
+  { title = "How QuillSail works", file = "docs/introduction.md" },
+  { title = "Quickstart", file = "docs/quickstart.md" },
+]
+
+[[sections]]
+title = "Install"
+pages = [
+  { title = "Ways to install", file = "docs/install.md" },
+  { title = "Terminal installer", file = "docs/install-script.md" },
+  { title = "Desktop app", file = "docs/desktop.md" },
+  { title = "Server installation", file = "docs/installation.md" },
+  { title = "Configuration", file = "docs/configuration.md" },
+]
+
+[[sections]]
+title = "Run a publication"
+pages = [
+  { title = "Publication guide", file = "docs/user-guide.md" },
+  { title = "Set up your publication", file = "docs/publication-setup.md" },
+  { title = "Groups and permissions", file = "docs/groups-and-permissions.md" },
+  { title = "Writing and review", file = "docs/writing-and-review.md" },
+  { title = "Blog and newsletter modes", file = "docs/publication-modes.md" },
+  { title = "Newsletter issues", file = "docs/newsletter-issues.md" },
+  { title = "Subscribers and accounts", file = "docs/subscribers.md" },
+  { title = "Competitions", file = "docs/competitions.md" },
+  { title = "Business outreach and previews", file = "docs/business-outreach.md" },
+  { title = "Design and themes", file = "docs/theming.md" },
+]
+
+[[sections]]
+title = "Email"
+pages = [
+  { title = "Email and delivery", file = "docs/email.md" },
+  { title = "Gmail, Outlook and SMTP", file = "docs/email-connectors.md" },
+]
+
+[[sections]]
+title = "Operate"
+pages = [
+  { title = "Backups and upgrades", file = "docs/maintenance.md" },
+  { title = "Server updates", file = "docs/server-updates.md" },
+  { title = "Security", file = "docs/security.md" },
+  { title = "Troubleshooting", file = "docs/troubleshooting.md" },
+]
+
+[[sections]]
+title = "Extend"
+pages = [
+  { title = "Extensions", file = "docs/extensions.md" },
+  { title = "Public API", file = "docs/api.md" },
+]
+
+[[sections]]
+title = "Reference"
+pages = [
+  { title = "Command line", file = "docs/reference/cli.md" },
+  { title = "Configuration file", file = "docs/reference/configuration.md" },
+  { title = "Dashboard settings", file = "docs/reference/settings.md" },
+  { title = "Permissions and groups", file = "docs/reference/permissions.md" },
+  { title = "Editorial workflow", file = "docs/reference/workflow.md" },
+  { title = "Extension hooks", file = "docs/reference/hooks.md" },
+]
+
+[[sections]]
+title = "Project"
+pages = [
+  { title = "What's new", file = "CHANGELOG.md", slug = "changelog" },
+  { title = "Architecture", file = "docs/architecture.md" },
+  { title = "Contributing", file = "CONTRIBUTING.md", slug = "contributing" },
+  { title = "Releases and GitHub", file = "docs/github.md" },
+  { title = "Signed updates", file = "docs/desktop-updates.md" },
+  { title = "Verification record", file = "docs/verification.md" },
+  { title = "Review notes", file = "docs/review.md" },
+  { title = "Security policy", file = "SECURITY.md", slug = "security-policy" },
+  { title = "Code of conduct", file = "CODE_OF_CONDUCT.md", slug = "code-of-conduct" },
+]

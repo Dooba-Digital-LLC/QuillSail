@@ -1,0 +1,14 @@
+{% set target = step_target if step_target is defined else started.target %}
+<ol class="next-steps">
+  {% if target.startswith('macos') %}
+  <li>Open the downloaded file to unzip it, then drag <strong>QuillSail</strong> into your Applications folder.</li>
+  <li>Open QuillSail. If macOS says it can't check the app, open <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</li>
+  {% elif target.startswith('windows') %}
+  <li>Right-click the downloaded file and choose <strong>Extract All</strong>. Keep the extracted <strong>QuillSail</strong> folder together.</li>
+  <li>Open <strong>QuillSail.exe</strong>. If Windows SmartScreen appears, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+  {% else %}
+  <li>Extract the archive with <code>tar -xzf QuillSail-*-linux-x86_64.tar.gz</code> and keep the <strong>QuillSail</strong> folder together.</li>
+  <li>Run <code>QuillSail/QuillSail</code>. A minimal system may need a few <a href="{{ docs_url('/desktop#using-the-app') }}">desktop libraries</a> first.</li>
+  {% endif %}
+  <li>Your browser opens a short setup form. Name your publication and create your account.</li>
+</ol>

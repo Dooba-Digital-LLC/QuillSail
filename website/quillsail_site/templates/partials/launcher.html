@@ -1,0 +1,43 @@
+{# A drawing of the desktop launcher in HTML, using its real labels (src/copydesk/desktop_ui.py). It follows the page's appearance. #}
+<div class="window" role="img" aria-label="The QuillSail desktop launcher, showing a publication running on this computer with an Open dashboard button.">
+  <div class="window-bar" aria-hidden="true">
+    <span class="window-controls"><i></i><i></i><i></i></span>
+    <span class="window-title">QuillSail</span>
+  </div>
+  <div class="launcher" aria-hidden="true">
+    <div class="launcher-nameplate">
+      <svg class="mark" viewBox="0 0 1005 842" focusable="false"><use href="#qs-mark"/></svg>
+      <span class="launcher-wordmark"><span class="quill">Quill</span>Sail</span>
+    </div>
+    <p class="launcher-tagline">Your publication, on your computer.</p>
+    <div class="launcher-group">
+      <p class="launcher-kicker">Publication instance</p>
+      <div class="launcher-select"><span>Default publication · Running</span><svg class="icon" focusable="false"><use href="#i-chevron"/></svg></div>
+      <div class="launcher-row"><span class="launcher-button">New instance…</span><span class="launcher-button">Add existing…</span><span class="launcher-button">Refresh</span></div>
+      <p class="launcher-note">1 instance running in this launcher.</p>
+    </div>
+    <div class="launcher-group">
+      <p class="launcher-kicker">Status</p>
+      <p class="launcher-status">Your publication is running</p>
+      <p class="launcher-address">http://127.0.0.1:5080</p>
+      <span class="launcher-button launcher-primary">Open dashboard</span>
+      <div class="launcher-row"><span class="launcher-button">Stop</span><span class="launcher-button">View logs</span><span class="launcher-button">Open data folder</span></div>
+    </div>
+    <div class="launcher-group">
+      <p class="launcher-kicker">Updates</p>
+      <div class="launcher-row launcher-updates"><span class="launcher-label">Update channel</span><span class="launcher-select launcher-select-small"><span>Beta</span><svg class="icon" focusable="false"><use href="#i-chevron"/></svg></span><span class="launcher-button launcher-grow">Check for updates</span></div>
+      <p class="launcher-text">Updates are installed only when you choose to install them.</p>
+    </div>
+    <div class="launcher-group launcher-appearance">
+      <p class="launcher-kicker">Appearance</p>
+      <span class="launcher-segments"><span class="launcher-segment" data-for="light">Light</span><span class="launcher-segment" data-for="dark">Dark</span><span class="launcher-segment" data-for="auto">Automatic</span></span>
+    </div>
+    <div class="launcher-footer">
+      <div>
+        <p class="launcher-note">Closing this window keeps your publications running. Quit QuillSail to stop them; their content stays saved.</p>
+        <p class="launcher-kicker launcher-version">Version {{ release.version if release else '1.10.0' }} · Local access only</p>
+      </div>
+      <span class="launcher-button">Quit QuillSail</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/docs.css') }}">{% endblock %}
+{% block body_class %}docs{% endblock %}
+
+{% block header %}
+<header class="docs-header">
+  <div class="docs-header-inner">
+    <a class="menu-toggle" href="#docs-menu" data-menu-toggle aria-controls="docs-menu">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-menu"/></svg>
+      <span>Menu</span>
+    </a>
+    <div class="docs-brand">
+      {% set wordmark_href = url_for('docs.page', slug='') %}
+      {% include "partials/wordmark.html" %}
+      <span class="docs-label">Docs</span>
+    </div>
+    <form class="docs-search" role="search" action="{{ url_for('docs.search') }}" method="get" data-search>
+      <label for="docs-search-input" class="visually-hidden">Search the documentation</label>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+      <input id="docs-search-input" type="search" name="q" value="{{ query|default('') }}" placeholder="Search the docs" autocomplete="off" spellcheck="false" data-search-input>
+      <kbd class="search-key" aria-hidden="true">/</kbd>
+      <div class="search-panel" id="docs-search-panel" data-search-panel hidden>
+        <p class="visually-hidden" role="status" data-search-status></p>
+        <ul class="search-suggestions" data-search-list></ul>
+      </div>
+    </form>
+    <nav class="docs-links" aria-label="QuillSail">
+      <a href="{{ site_url('/') }}">Home</a>
+      <a href="{{ github_url }}">GitHub</a>
+      <a class="button button-primary button-small" href="{{ site_url('/download') }}">Download</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block main %}
+<div class="docs-shell">
+  <nav id="docs-menu" class="docs-sidebar" aria-label="Documentation">
+    <div class="docs-sidebar-head">
+      <span class="kicker">Documentation</span>
+      <a class="menu-close" href="#main" data-menu-close>
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-close"/></svg>
+        <span>Close</span>
+      </a>
+    </div>
+    {% for section in docs.sections %}
+    <h2 class="kicker">{{ section.title }}</h2>
+    <ul>
+      {% for item in section.pages %}
+      <li><a href="{{ url_for('docs.page', slug=item.slug) }}"{% if page is defined and page and item.slug == page.slug %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </nav>
+  <main id="main" class="docs-main">
+    {% block content %}{% endblock %}
+  </main>
+  {% block toc %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block footer %}
+<footer class="docs-footer">
+  <div class="docs-footer-inner">
+    <p>© 2026 QuillSail contributors. Released under the <a href="{{ github_url }}/blob/main/LICENSE">MIT license</a>.</p>
+    {% include "partials/appearance.html" %}
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/docs.js') }}" defer></script>{% endblock %}

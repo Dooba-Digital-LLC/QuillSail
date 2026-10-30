@@ -84,13 +84,17 @@ Demo accounts use `demo-password-123`; use the demo only in a local test install
 
 ## Documentation
 
+The [documentation overview](docs/README.md) lists every guide. The same pages are published as the documentation website from `website/`.
+
+- [How QuillSail works](docs/introduction.md) and the [quickstart](docs/quickstart.md)
+- [Ways to install](docs/install.md) and the [terminal installer](docs/install-script.md)
 - [Server installation](docs/installation.md)
 - [Desktop launcher](docs/desktop.md)
 - [GitHub setup and releases](docs/github.md)
 - [Configuration](docs/configuration.md)
 - [Email and delivery](docs/email.md)
 - [Connect Gmail, Outlook, or an SMTP server](docs/email-connectors.md)
-- [Editorial and administrator guide](docs/user-guide.md)
+- [Editorial and administrator guide](docs/user-guide.md): [setup](docs/publication-setup.md), [groups and permissions](docs/groups-and-permissions.md), [writing and review](docs/writing-and-review.md), [blog and newsletter modes](docs/publication-modes.md), [newsletter issues](docs/newsletter-issues.md), [subscribers and accounts](docs/subscribers.md) and [competitions](docs/competitions.md)
 - [Business outreach and private issue previews](docs/business-outreach.md)
 - [Themes](docs/theming.md)
 - [Extensions](docs/extensions.md)
@@ -99,7 +103,9 @@ Demo accounts use `demo-password-123`; use the demo only in a local test install
 - [Database, SMTP, and university deployment verification](docs/verification.md)
 - [Backups and upgrades](docs/maintenance.md)
 - [One-command server updates and recovery](docs/server-updates.md)
-- [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
+- [Security model](docs/security.md) and [troubleshooting](docs/troubleshooting.md)
+- Reference: [command line](docs/reference/cli.md), [configuration file](docs/reference/configuration.md), [dashboard settings](docs/reference/settings.md), [permissions](docs/reference/permissions.md), [editorial workflow](docs/reference/workflow.md) and [extension hooks](docs/reference/hooks.md)
+- [Architecture](docs/architecture.md), [contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
 
 ## Development
 

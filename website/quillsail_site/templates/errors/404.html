@@ -1,0 +1,38 @@
+{% extends "docs/layout.html" if app_name == "docs" else "site/layout.html" if app_name == "site" else "base.html" %}
+
+{% block title %}Page not found · QuillSail{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<article class="docs-article error-page">
+  <header class="docs-article-head">
+    <p class="kicker">Error 404</p>
+    <h1>We can't find that page</h1>
+  </header>
+  <p class="lead">It may have moved when the docs were reorganized. Search for it, or start from the overview.</p>
+  <form class="search-form" role="search" action="{{ url_for('docs.search') }}" method="get">
+    <label for="missing-search">Search the documentation</label>
+    <div class="search-form-row">
+      <input id="missing-search" type="search" name="q" autocomplete="off">
+      <button class="button" type="submit">Search</button>
+    </div>
+  </form>
+  <p><a href="{{ url_for('docs.page', slug='') }}">Go to the documentation overview</a></p>
+</article>
+{% endblock %}
+
+{% block main %}
+{% if app_name == "docs" %}{{ super() }}{% else %}
+<main id="main" class="container page error-page">
+  <header class="page-head">
+    <p class="kicker">Error 404</p>
+    <h1 class="display-medium">We can't find that page</h1>
+    <p class="lead">The address may be mistyped, or the page may have moved.</p>
+  </header>
+  <p class="error-actions">
+    <a class="button button-primary" href="{{ site_url('/') }}">Go to the homepage</a>
+    <a class="button" href="{{ docs_url('/') }}">Read the documentation</a>
+  </p>
+</main>
+{% endif %}
+{% endblock %}

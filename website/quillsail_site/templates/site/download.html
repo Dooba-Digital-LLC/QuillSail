@@ -1,0 +1,115 @@
+{% extends "site/layout.html" %}
+
+{% block title %}Download QuillSail{% endblock %}
+{% block description %}Download the QuillSail desktop app for macOS, Windows or Linux, install it from the terminal, or get the server package. Every download is listed in QuillSail's signed release feed.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site_url('/download') }}">{% endblock %}
+{% block robots %}{% if started %}<meta name="robots" content="noindex">{% endif %}{% endblock %}
+{% block head %}{% if started %}<meta http-equiv="refresh" content="1; url={{ url_for('site.download', target=started.target) }}">{% endif %}{% endblock %}
+{% block body_class %}page-download{% endblock %}
+
+{% macro digest(build) %}
+<span class="digest"><code title="{{ build.sha256 }}">{{ build.sha256[:16] }}…</code><button type="button" class="copy copy-small" data-copy="{{ build.sha256 }}" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-copy"/></svg><span data-copy-label>Copy</span><span class="visually-hidden"> the SHA-256 checksum of {{ build.archive }}</span></button></span>
+{% endmacro %}
+
+{% block main %}
+<main id="main" class="container page">
+  <header class="page-head">
+    <p class="kicker">Download</p>
+    <h1 class="display-medium">Download QuillSail</h1>
+    {% if release %}
+    <p class="lead">Version {{ release.version }} {{ release.channel }}. The desktop app runs a complete publication on your computer, with everything it needs included. You don't need Python, Docker or the terminal.</p>
+    {% else %}
+    <p class="lead">Release details can't be checked right now. Every version is also listed on <a href="{{ config.releases_url }}">GitHub Releases</a>.</p>
+    {% endif %}
+  </header>
+
+  {% if started %}
+  <section class="notice" aria-labelledby="started-title" role="status">
+    <h2 id="started-title">Your download is starting</h2>
+    <p>{{ started.archive }} · {{ started.size_label }}. If it doesn't start, <a href="{{ url_for('site.download', target=started.target) }}">download it directly</a>.</p>
+    {% include "partials/next_steps.html" %}
+  </section>
+  {% endif %}
+
+  {% if release %}
+  <section class="download-feature" aria-labelledby="recommended-title">
+    <div>
+      <h2 id="recommended-title" class="kicker">{{ 'For this computer' if build else 'The desktop app' }}</h2>
+      {% include "partials/download_cta.html" %}
+    </div>
+    {% include "partials/install.html" %}
+  </section>
+
+  <section class="section-plain" aria-labelledby="all-title">
+    <h2 id="all-title">All downloads</h2>
+    <div class="table-wrap" tabindex="0">
+      <table class="downloads">
+        <caption class="visually-hidden">QuillSail {{ release.version }} downloads, with file sizes and SHA-256 checksums</caption>
+        <thead><tr><th scope="col">Computer</th><th scope="col">File</th><th scope="col">Size</th><th scope="col">SHA-256</th><th scope="col"><span class="visually-hidden">Download</span></th></tr></thead>
+        <tbody>
+          {% for key, platform in platforms.items() if release.builds.get(key) %}
+          {% set item = release.builds[key] %}
+          <tr{% if key == detected %} class="is-detected"{% endif %}>
+            <th scope="row"><span class="platform-name">{{ platform.system }}</span> <span class="platform-variant">{{ platform.variant }}</span></th>
+            <td><code>{{ item.archive }}</code></td>
+            <td class="numeric">{{ item.size_label }}</td>
+            <td>{{ digest(item) }}</td>
+            <td class="action"><a class="button button-small" href="{{ url_for('site.downloads', started=key) }}">Download<span class="visually-hidden"> for {{ platform.computer }}</span></a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note"><a href="{{ release.notes_url }}">Release notes</a> · <a href="{{ config.releases_url }}/download/v{{ release.version }}/SHA256SUMS.txt">SHA256SUMS.txt</a> · <a href="{{ config.releases_url }}">Earlier versions</a></p>
+  </section>
+
+  <section class="section-plain" aria-labelledby="after-title">
+    <h2 id="after-title">After you download</h2>
+    <div class="columns columns-tight">
+      {% for key in ['macos-arm64', 'windows-x86_64', 'linux-x86_64'] %}
+      {% set step_platform = platforms[key] %}
+      <article class="column">
+        <h3>{{ step_platform.system }}</h3>
+        {% with step_target=key %}{% include "partials/next_steps.html" %}{% endwith %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section-plain" aria-labelledby="server-title">
+    <h2 id="server-title">Run QuillSail on a server</h2>
+    <div class="columns columns-tight">
+      <article class="column">
+        <h3>Docker Compose</h3>
+        <p>From a checkout of the repository, copy the example settings and start the web, worker and init containers. The site opens on port 8080.</p>
+        <figure class="code-snippet"><code>docker compose --env-file deploy/compose.env up -d --build</code></figure>
+        <a class="text-link" href="{{ docs_url('/installation') }}">Server installation <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </article>
+      <article class="column">
+        <h3>Python package</h3>
+        {% if release.server %}
+        <p>Install the wheel in a virtual environment with Python 3.11 or newer, then run <code>quillsail init</code>.</p>
+        <p class="file-line"><a href="{{ url_for('site.download', target='server') }}"><code>{{ release.server.archive }}</code></a> · {{ release.server.size_label }}</p>
+        <p class="file-line">SHA-256 {{ digest(release.server) }}</p>
+        {% else %}
+        <p>Install from a source checkout with Python 3.11 or newer, then run <code>quillsail init</code>.</p>
+        {% endif %}
+        <a class="text-link" href="{{ docs_url('/installation#python-installation') }}">Python installation <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </article>
+      <article class="column">
+        <h3>Updates</h3>
+        <p>Register a server once, then update it with one command. It backs up, migrates, checks health and recovers from failures.</p>
+        <figure class="code-snippet"><code>sudo quillsail update</code></figure>
+        <a class="text-link" href="{{ docs_url('/server-updates') }}">Server updates <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-plain verification" aria-labelledby="verify-title">
+    <h2 id="verify-title">How downloads are checked</h2>
+    <p>Every file on this page is listed in QuillSail's signed release feed, the same one the app uses for updates. This site checks the feed's signatures before it offers a download, and the terminal installer checks each file's size and SHA-256 checksum before installing it. Release information was last checked {{ release.checked_at|datetime_label }}.</p>
+    <p class="note">These are beta builds. The Mac apps aren't notarized by Apple, and the Windows app isn't code-signed yet, so your computer may ask you to confirm the first time you open QuillSail.</p>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

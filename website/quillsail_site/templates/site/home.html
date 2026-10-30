@@ -1,0 +1,237 @@
+{% extends "site/layout.html" %}
+
+{% block canonical %}<link rel="canonical" href="{{ site_url('/') }}">{% endblock %}
+{% block body_class %}page-home{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "QuillSail",
+  "description": "Self-hosted blog and newsletter software for publications written by their readers.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "macOS, Windows, Linux",
+  "softwareVersion": release.version if release else None,
+  "url": site_url('/'),
+  "downloadUrl": site_url('/download'),
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+  "author": {"@type": "Organization", "name": "Dooba Digital", "url": "https://github.com/Dooba-Digital-LLC"}
+}|tojson }}</script>
+{% endblock %}
+
+{% block main %}
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container">
+      <p class="kicker">Blogs and newsletters for communities</p>
+      <h1 id="hero-title" class="display">Where readers write.</h1>
+      <div class="hero-body">
+        <div class="hero-copy">
+          <p class="lead">QuillSail is open-source blog and newsletter software for publications written by their readers. Members send in their writing, your editors review it, and every issue goes out from a server you run.</p>
+          {% include "partials/download_cta.html" %}
+          {% include "partials/install.html" %}
+        </div>
+        <figure class="hero-figure">
+          {% include "partials/launcher.html" %}
+          <figcaption><span class="kicker">The desktop app</span> Runs your publication on your computer and opens the dashboard in your browser.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works" aria-labelledby="how-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="kicker">How it works</p>
+        <h2 id="how-title">From first draft to every inbox.</h2>
+      </header>
+      <ol class="steps">
+        <li>
+          <span class="step-number" aria-hidden="true">1</span>
+          <h3>Readers write</h3>
+          <p>Anyone with a confirmed account can draft a piece in Markdown, alone or with co-authors, and submit it when it's ready.</p>
+        </li>
+        <li>
+          <span class="step-number" aria-hidden="true">2</span>
+          <h3>Editors review</h3>
+          <p>Submissions wait in a queue. Editors leave feedback, ask for changes, then accept or decline. Writers hear about each step by email.</p>
+        </li>
+        <li>
+          <span class="step-number" aria-hidden="true">3</span>
+          <h3>You publish</h3>
+          <p>Accepted pieces go live with archives, search and feeds. Writers you trust can publish directly.</p>
+        </li>
+        <li>
+          <span class="step-number" aria-hidden="true">4</span>
+          <h3>Every inbox gets it</h3>
+          <p>Gather pieces into an issue and send it from your own email account. A background worker sends it at a steady pace.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="review-title">
+    <div class="container spotlight">
+      <div class="spotlight-copy">
+        <p class="kicker">Editorial review</p>
+        <h2 id="review-title">A real editorial desk, built in.</h2>
+        <p>Every piece follows a clear path: submitted, in review, changes requested, accepted, published. Editors write feedback the writer sees, and internal notes the writer doesn't. Each step is recorded on the piece's timeline and emailed to the people involved.</p>
+        <ul class="checklist">
+          <li>A Markdown editor with previews, image uploads and callouts</li>
+          <li>Co-authors and a full revision history</li>
+          <li>Change requests always explain what to change</li>
+          <li>An activity log of who did what, and when</li>
+        </ul>
+        <a class="text-link" href="{{ docs_url('/writing-and-review') }}">How writing and review work <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </div>
+      <figure class="spotlight-figure">
+        {% include "partials/review.html" %}
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="audience-title">
+    <div class="container spotlight spotlight-reverse">
+      <div class="spotlight-copy">
+        <p class="kicker">Newsletters</p>
+        <h2 id="audience-title">One issue, every audience.</h2>
+        <p>Aim any part of an issue at particular groups. Alumni get the mentoring note, students get the internship fair, and everyone gets the articles. Preview each version, send yourself a test, then send it now or schedule it.</p>
+        <ul class="checklist">
+          <li>Double opt-in sign-up, with no account needed</li>
+          <li>Sending paced to your mail server's limits</li>
+          <li>Delivery reports, with retries for failures</li>
+          <li>Gmail, Outlook or any SMTP server</li>
+        </ul>
+        <a class="text-link" href="{{ docs_url('/newsletter-issues') }}">How issues are sent <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </div>
+      <figure class="spotlight-figure">
+        {% include "partials/issue.html" %}
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="features" aria-labelledby="features-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="kicker">Features</p>
+        <h2 id="features-title">Everything a reader-written publication needs.</h2>
+      </header>
+      <ul class="feature-grid">
+        <li><h3>Blog, newsletter or both</h3><p>Choose Newsletter, Blog, or Blog + newsletter during setup, and switch later. Your posts, issues and subscribers stay where they are.</p></li>
+        <li><h3>Groups you define</h3><p>Students, staff, alumni or your own. Each group decides how people join (open, by approval, or closed), with its own profile fields, badge and permissions.</p></li>
+        <li><h3>Permissions that can't escalate</h3><p>People can grant only the permissions they already hold. Administrators always keep every permission, so a site can't lock itself out.</p></li>
+        <li><h3>Subscribers without accounts</h3><p>Readers subscribe with just an email address. Double opt-in, a private preferences link, and one-click unsubscribe that mail apps recognize.</p></li>
+        <li><h3>Competitions</h3><p>Run writing or project competitions with moderated entries, appointed judges, reader voting, deadlines and published results.</p></li>
+        <li><h3>A designer for your publication</h3><p>Start from five original styles, then adjust type, color, layout and email presentation. Preview the website and email before you save.</p></li>
+        <li><h3>Archives, search and feeds</h3><p>Public archives, search, Atom feeds, and pages such as About and Privacy. Readers can export or delete their own account data.</p></li>
+        <li><h3>Email without tracking</h3><p>Issues go out through your own SMTP server, Gmail or Outlook account. QuillSail adds no open or click tracking.</p></li>
+        <li><h3>Business outreach</h3><p>An optional form for internships, jobs and partnerships. Contacts confirm their email, and requests arrive in a private inbox.</p></li>
+        <li><h3>Private previews</h3><p>Share a draft issue through a link that expires. It stays out of archives, search and feeds, and you can revoke it at any time.</p></li>
+        <li><h3>Themes, extensions and an API</h3><p>Override any template, hook into events and filters with Python, and read published content as JSON.</p></li>
+        <li><h3>Accessible by default</h3><p>Labeled forms, visible keyboard focus, and accent colors adjusted automatically to meet WCAG AA contrast.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="run" aria-labelledby="run-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="kicker">Run it your way</p>
+        <h2 id="run-title">Start on your computer. Go live on your server.</h2>
+      </header>
+      <div class="columns">
+        <article class="column">
+          <p class="kicker">On your computer</p>
+          <h3>The desktop app</h3>
+          <p>Download QuillSail and open it. The launcher runs a complete publication and opens its dashboard in your browser. Python, Docker and the terminal aren't needed.</p>
+          <p class="note">It stays private to your computer: the quickest way to try QuillSail and get your publication ready.</p>
+          <a class="text-link" href="{{ url_for('site.downloads') }}">Download the app <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+        </article>
+        <article class="column">
+          <p class="kicker">For your readers</p>
+          <h3>On a server</h3>
+          <p>Run QuillSail with Docker Compose or the Python package, behind your own HTTPS proxy. SQLite works out of the box, and PostgreSQL and MySQL/MariaDB are supported.</p>
+          <figure class="code-snippet"><code>docker compose up -d</code></figure>
+          <a class="text-link" href="{{ docs_url('/installation') }}">Server installation <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+        </article>
+        <article class="column">
+          <p class="kicker">Kept current</p>
+          <h3>One-command updates</h3>
+          <p>Updates verify the signed release, back up your instance and database, migrate, check the website and worker, and recover automatically if anything fails.</p>
+          <figure class="code-snippet"><code>sudo quillsail update</code></figure>
+          <a class="text-link" href="{{ docs_url('/server-updates') }}">How updates work <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="open-source" aria-labelledby="trust-title">
+    <div class="container trust">
+      <header class="section-head">
+        <p class="kicker">Open source</p>
+        <h2 id="trust-title">Yours to run, and yours to keep.</h2>
+      </header>
+      <dl class="trust-list">
+        <div><dt>MIT licensed</dt><dd>Read every line, run it anywhere, and change what you need. There's no account with us and no per-subscriber fee.</dd></div>
+        <div><dt>Your data, your database</dt><dd>SQLite, PostgreSQL or MySQL/MariaDB on a server you control. Export everything with one command.</dd></div>
+        <div><dt>Signed releases</dt><dd>Updates are checked against signing keys shipped in the app, using The Update Framework. There's no unsigned fallback.</dd></div>
+        <div><dt>An honest beta</dt><dd>QuillSail runs a real student newsletter today, but it hasn't had an independent security audit yet. Keep backups.</dd></div>
+      </dl>
+      <aside class="origin">
+        <p class="kicker">Where it started</p>
+        <p>QuillSail began as the publishing system for <em>The Tech Stack</em>, the newsletter of the Association for Computing Machinery chapter at the University of South Carolina. <a href="https://github.com/Dooba-Digital-LLC">Dooba Digital</a> builds and maintains it.</p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section" id="questions" aria-labelledby="faq-title">
+    <div class="container faq">
+      <header class="section-head">
+        <p class="kicker">Questions</p>
+        <h2 id="faq-title">Before you start.</h2>
+      </header>
+      <div class="faq-list">
+        <details>
+          <summary>Is QuillSail free?</summary>
+          <p>Yes. QuillSail is free software under the MIT license. You pay only for your own server and email sending, if you use paid ones.</p>
+        </details>
+        <details>
+          <summary>Do readers need an account?</summary>
+          <p>Not to subscribe: an email address is enough. Writers need a confirmed account to submit, so editors know who they're working with.</p>
+        </details>
+        <details>
+          <summary>Does the desktop app put my publication online?</summary>
+          <p>No. It runs only on your computer, at a local address. When you're ready for readers, run QuillSail on a server with Docker Compose or Python.</p>
+        </details>
+        <details>
+          <summary>Can I bring my subscriber list?</summary>
+          <p>Yes. Import a CSV file with <code>quillsail subscribers import</code>. Only import people who agreed to receive your publication.</p>
+        </details>
+        <details>
+          <summary>Which email providers work?</summary>
+          <p>Connect a Gmail or Outlook account, or use any SMTP server, such as your organization's mail relay or a sending service. Their sending limits still apply.</p>
+        </details>
+        <details>
+          <summary>Is it ready for my organization?</summary>
+          <p>QuillSail is in beta. It runs a real publication, updates back up and roll back automatically, and the code is tested against SQLite, PostgreSQL and MariaDB. It hasn't had an independent security audit, so keep backups.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section closing" aria-labelledby="closing-title">
+    <div class="container closing-grid">
+      <div>
+        <h2 id="closing-title" class="display-small">Start your publication.</h2>
+        <p class="lead">Download QuillSail, set up your publication in a few minutes, and invite your first writers. <a href="{{ docs_url('/quickstart') }}">Read the quickstart</a>.</p>
+      </div>
+      <div>
+        {% include "partials/download_cta.html" %}
+        {% with install_id='install-closing', install_title='Or use the terminal' %}{% include "partials/install.html" %}{% endwith %}
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
