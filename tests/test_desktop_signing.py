@@ -107,3 +107,28 @@ def test_dropped_connections_to_apples_ticket_service_are_retried(tmp_path, monk
         with pytest.raises(signing.subprocess.CalledProcessError):
             signing.stapler("validate", tmp_path / "QuillSail.dmg")
     assert len(attempts) == 3
+
+
+installers_spec = importlib.util.spec_from_file_location("desktop_installers", ROOT / "scripts/desktop_installers.py")
+installers = importlib.util.module_from_spec(installers_spec)
+installers_spec.loader.exec_module(installers)
+
+
+@pytest.mark.parametrize(("failures", "succeeds"), [(3, True), (4, False)])
+def test_a_busy_new_disk_image_is_attached_again(tmp_path, monkeypatch, failures, succeeds):
+    attempts = []
+
+    def busy(*args):
+        attempts.append(args)
+        if len(attempts) <= failures:
+            raise installers.subprocess.CalledProcessError(1, list(args))
+
+    monkeypatch.setattr(installers, "run", busy)
+    monkeypatch.setattr(installers.time, "sleep", lambda _: None)
+    if succeeds:
+        installers.attach(tmp_path / "QuillSail.dmg", tmp_path / "mounted")
+    else:
+        with pytest.raises(installers.subprocess.CalledProcessError):
+            installers.attach(tmp_path / "QuillSail.dmg", tmp_path / "mounted")
+    assert len(attempts) == 4
+    assert all(call[:2] == ("hdiutil", "attach") for call in attempts)
