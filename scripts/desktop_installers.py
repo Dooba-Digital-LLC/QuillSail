@@ -16,6 +16,18 @@ def run(*args):
     subprocess.run([str(arg) for arg in args], check=True, timeout=300)
 
 
+def attach(image, mount, attempts=4):
+    """macOS can briefly report a new disk image as busy while it scans it, so retry."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return run("hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mount, image)
+        except subprocess.CalledProcessError:
+            if attempt == attempts:
+                raise
+            print(f"hdiutil attach failed; retrying ({attempt} of {attempts - 1}).")
+            time.sleep(10 * attempt)
+
+
 def smoke(app, target):
     executable = app / ("Contents/MacOS/QuillSail" if target.startswith("macos") else "QuillSail.exe" if target.startswith("windows") else "QuillSail")
     run(executable, "--smoke-test")
@@ -53,7 +65,7 @@ def build(output, app, target, version, icon, archive):
                     desktop_signing.notarize(artifact)
                 desktop_signing.verify(artifact)
             mount = work / "mounted"
-            run("hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mount, artifact)
+            attach(artifact, mount)
             try:
                 assert (mount / "Applications").is_symlink()
                 installed = work / "Applications/QuillSail.app"
