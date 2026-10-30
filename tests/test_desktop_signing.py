@@ -88,3 +88,22 @@ def test_builds_without_an_identity_stay_ad_hoc_signed(tmp_path, monkeypatch):
     monkeypatch.setattr(signing, "run", lambda *args, **_: calls.append([str(arg) for arg in args]))
     signing.sign_app(tmp_path / "QuillSail.app")
     assert calls == [["codesign", "--force", "--deep", "--sign", "-", str(tmp_path / "QuillSail.app")]]
+
+
+@pytest.mark.parametrize(("failures", "succeeds"), [(2, True), (3, False)])
+def test_dropped_connections_to_apples_ticket_service_are_retried(tmp_path, monkeypatch, failures, succeeds):
+    attempts = []
+
+    def flaky(*args, **_):
+        attempts.append(args)
+        if len(attempts) <= failures:
+            raise signing.subprocess.CalledProcessError(65, list(args))
+
+    monkeypatch.setattr(signing, "run", flaky)
+    monkeypatch.setattr(signing.time, "sleep", lambda _: None)
+    if succeeds:
+        signing.stapler("validate", tmp_path / "QuillSail.dmg")
+    else:
+        with pytest.raises(signing.subprocess.CalledProcessError):
+            signing.stapler("validate", tmp_path / "QuillSail.dmg")
+    assert len(attempts) == 3
