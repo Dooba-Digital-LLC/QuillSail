@@ -146,3 +146,75 @@ def test_cli_runs_multiple_instances_and_cleans_up_all_listeners(registry, monke
     assert result.exit_code == 0, (result.output, result.exception)
     assert len(seen) == 2 and all(runtime.server is None for runtime in seen)
     assert all(instances.running_url(item) == '' for item in registry.list())
+
+
+def test_delete_keeps_files_by_default_and_can_reregister(registry):
+    item = registry.add('Keep Me')
+    original = item.config_path.read_bytes()
+    assert registry.delete(item.id) == item
+    assert registry.list() == [registry.default]
+    assert item.config_path.read_bytes() == original
+    assert registry.add('Restored', item.root, existing=True).root == item.root
+
+
+def test_delete_data_erases_only_selected_folder_and_preserves_symlink_target(registry, tmp_path):
+    item, other = registry.add('Delete Me'), registry.add('Keep Me')
+    target = tmp_path / 'outside.txt'
+    target.write_text('keep')
+    (item.root / 'outside-link').symlink_to(target)
+    registry.delete(item.id, delete_data=True)
+    assert not item.root.exists()
+    assert target.read_text() == 'keep'
+    assert other.config_path.is_file()
+    assert registry.list() == [registry.default, other]
+
+
+def test_delete_refuses_running_and_default_instances(registry):
+    from copydesk.desktop import AlreadyRunning, InstanceLock
+
+    item = registry.add('Locked')
+    lock = InstanceLock(item.root / 'desktop.lock')
+    lock.acquire()
+    try:
+        for delete_data in (False, True):
+            with pytest.raises(AlreadyRunning):
+                registry.delete(item.id, delete_data=delete_data)
+            assert registry.get(item.id) == item
+            assert item.config_path.is_file()
+    finally:
+        lock.release()
+    with pytest.raises(ConfigError, match='Default publication'):
+        registry.delete('default', delete_data=True)
+
+
+def test_cli_delete_requires_confirmation_and_explicit_data_deletion(registry):
+    runner = CliRunner()
+    item = registry.add('Disposable')
+    result = runner.invoke(main, ['instance', 'delete', item.id, '--delete-data'], input='n\n')
+    assert result.exit_code != 0
+    assert registry.get(item.id) == item and item.config_path.is_file()
+    result = runner.invoke(main, ['instance', 'delete', item.id], input='y\n')
+    assert result.exit_code == 0, result.output
+    assert 'Files kept' in result.output and item.config_path.is_file()
+    item = registry.add('Disposable', item.root, existing=True)
+    result = runner.invoke(main, ['instance', 'delete', item.id, '--delete-data', '--yes'])
+    assert result.exit_code == 0, result.output
+    assert not item.root.exists()
+
+
+def test_delete_missing_folder_can_remove_stale_registration(registry):
+    import shutil
+
+    item = registry.add('Missing')
+    shutil.rmtree(item.root)
+    registry.delete(item.id)
+    assert registry.list() == [registry.default]
+
+
+def test_delete_data_refuses_replaced_publication_folder(registry):
+    item = registry.add('Changed')
+    (item.root / 'desktop.json').unlink()
+    with pytest.raises(ConfigError, match='not a complete desktop publication'):
+        registry.delete(item.id, delete_data=True)
+    assert registry.get(item.id) == item
+    assert item.config_path.is_file()

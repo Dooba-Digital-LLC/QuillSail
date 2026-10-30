@@ -116,7 +116,7 @@ quillsail init [OPTIONS]
 
 ## `quillsail instance`
 
-Create, list and run independent local publications.
+Create, list, delete and run independent local publications.
 
 ```text
 quillsail instance [OPTIONS] COMMAND [ARGS]...
@@ -147,6 +147,20 @@ quillsail instance create [OPTIONS] NAME
 | --- | --- |
 | `NAME` | Required. |
 | `--data-dir DIRECTORY` | Use an empty folder instead of the managed data folder. |
+
+### `quillsail instance delete`
+
+Remove a stopped instance from the list. Keep its files unless --delete-data is used.
+
+```text
+quillsail instance delete [OPTIONS] NAME
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| `NAME` | Required. |
+| `--delete-data` | Permanently delete the publication folder and all its contents. |
+| `--yes` | Skip the confirmation prompt. |
 
 ### `quillsail instance list`
 

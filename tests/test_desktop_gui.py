@@ -396,3 +396,73 @@ def test_closing_the_window_keeps_publications_running_until_quit(tmp_path):
                             env={**os.environ, "QT_QPA_PLATFORM": "offscreen"}, capture_output=True,
                             text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('erase', [False, True])
+def test_launcher_deletes_stopped_instance_with_explicit_file_choice(tmp_path, erase):
+    pytest.importorskip('PySide6')
+    script = textwrap.dedent('''
+        import sys
+        from pathlib import Path
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
+        from copydesk import desktop_ui, instances
+
+        root = Path(sys.argv[1])
+        erase = sys.argv[2] == 'True'
+        registry = instances.InstanceRegistry(root / 'registry', default_root=root / 'default')
+        item = registry.add('Disposable')
+        desktop_ui.default_data_dir = lambda: root / 'default'
+        instances.InstanceRegistry = lambda: registry
+        class Runtime:
+            def __init__(self, root):
+                self.server = None
+                self.url = 'http://127.0.0.1:5080'
+            def start(self):
+                self.server = True
+                return 'http://127.0.0.1:5080'
+            def stop(self):
+                self.server = None
+        desktop_ui.DesktopRuntime = Runtime
+        def approve(dialog):
+            assert 'Remove Disposable' in dialog.text()
+            assert not dialog.checkBox().isChecked()
+            dialog.checkBox().setChecked(erase)
+            return QMessageBox.StandardButton.Ok
+        QMessageBox.exec = approve
+        errors = []
+        def check():
+            window = next(w for w in QApplication.topLevelWidgets() if isinstance(w, QMainWindow))
+            try:
+                if window.busy:
+                    QTimer.singleShot(20, check)
+                    return
+                if registry.get('default').id == window.selected_instance.id:
+                    window.instance_selector.setCurrentIndex(window.instance_selector.findData(item.id))
+                    assert window.delete_instance_button.isEnabled()
+                    window.delete_instance_button.click()
+                    QTimer.singleShot(20, finish)
+            except Exception as exc:
+                errors.append(exc)
+                window.request_quit()
+        def finish():
+            window = next(w for w in QApplication.topLevelWidgets() if isinstance(w, QMainWindow))
+            if window.busy:
+                QTimer.singleShot(20, finish)
+                return
+            try:
+                assert registry.list() == [registry.default]
+                assert item.root.exists() is not erase
+                assert window.selected_instance.id == 'default'
+                assert not window.delete_instance_button.isEnabled()
+            except Exception as exc:
+                errors.append(exc)
+            window.request_quit()
+        app = QApplication([])
+        QTimer.singleShot(100, check)
+        assert desktop_ui.run(open_browser=False) == 0
+        assert not errors, errors
+    ''')
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path), str(erase)],
+        env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'}, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr

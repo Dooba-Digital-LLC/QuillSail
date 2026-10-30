@@ -101,4 +101,17 @@ quillsail --instance student-blog export ./student-blog-backup.json
 quillsail --instance student-blog desktop
 ```
 
+To delete an instance, stop it first and choose **Delete instance…** in the launcher. By default, its files stay saved so you can register the folder again with **Add existing…**. Select **Permanently delete all publication files** to erase the folder, including content, subscribers, credentials and uploads. This cannot be undone; back up anything you want to keep first. The built-in **Default publication** cannot be deleted from the instance list.
+
+The terminal provides the same choices and asks for confirmation:
+
+```sh
+quillsail instance delete student-blog
+quillsail instance delete student-blog --delete-data
+```
+
+The first command keeps the files; the second permanently deletes the publication folder, including folders registered with `instance add`. Use `--yes` to skip confirmation. Running instances are refused, including those started in another launcher or terminal.
+
+**View logs** opens the launcher's log in the instance registry folder. The log stays available when a publication is deleted.
+
 Choose either `--instance` or an explicit `--config`. Named instances ignore server configuration environment overrides, so a local command cannot accidentally target a server database. `init` creates a manually configured installation; use `instance create` for a named local publication. Software updates apply to the shared installation, so run desktop updates without `--instance`. Production deployments can continue to use separate configuration files and supervised web/worker processes, as described in [installation](installation.md).

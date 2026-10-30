@@ -2,6 +2,8 @@
 
 ## 1.10.0 — Beta
 
+- Delete stopped named instances from the desktop launcher or `quillsail instance delete`. Keep publication files by default, or explicitly choose permanent deletion; protect running instances and the built-in Default publication.
+
 - Restyle the desktop launcher in black, white and the logo's purple, with serif headlines and body text and small-capital labels. Headlines use the bundled Amiri Bold typeface (SIL Open Font License). Design guidance for the launcher is in `assets/README.md`.
 - Open the launcher in light mode by default. Choose **Dark**, or **Automatic** to follow the system appearance, under **Appearance**; the choice is remembered. The dark theme softens white text and rules to reduce glare.
 - Size the launcher window to fit its content when the screen allows.
