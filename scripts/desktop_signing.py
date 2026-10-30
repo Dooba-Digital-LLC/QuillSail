@@ -14,6 +14,7 @@ import re
 import struct
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 THIN = {b"\xfe\xed\xfa\xce": ">", b"\xce\xfa\xed\xfe": "<", b"\xfe\xed\xfa\xcf": ">", b"\xcf\xfa\xed\xfe": "<"}
@@ -42,6 +43,18 @@ def _keychain():
 
 def run(*args, timeout=600):
     subprocess.run([str(arg) for arg in args], check=True, timeout=timeout)
+
+
+def stapler(action, path, attempts=3):
+    """Apple's ticket service sometimes drops connections, so retry before failing."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return run("xcrun", "stapler", action, path)
+        except subprocess.CalledProcessError:
+            if attempt == attempts:
+                raise
+            print(f"stapler {action} failed; retrying ({attempt} of {attempts - 1}).")
+            time.sleep(20 * attempt)
 
 
 def macho_type(path):
@@ -121,7 +134,7 @@ def notarize(path):
         raise RuntimeError(f"Apple did not notarize {path.name}: "
                            f"{submission.get('status') or result.stderr.strip() or 'no response'}.")
     print(f"Notarized {path.name} (submission {submission['id']}).")
-    run("xcrun", "stapler", "staple", path)
+    stapler("staple", path)
 
 
 def verify(path):
@@ -135,4 +148,4 @@ def verify(path):
             or (path.suffix == ".app" and not re.search(r"flags=0x[0-9a-f]+\([^)]*runtime", details))):
         raise RuntimeError(f"{path.name} is not signed with a timestamped Developer ID and hardened runtime.")
     if notarizing():
-        run("xcrun", "stapler", "validate", path)
+        stapler("validate", path)
