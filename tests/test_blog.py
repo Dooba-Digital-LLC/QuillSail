@@ -476,12 +476,15 @@ def test_invalid_blurb_choice_does_not_modify_item_and_restricted_body_stays_pri
         assert "Safe public introduction." in html and "Safe public introduction." in plain
 
 
-def test_full_transfer_preserves_unicode_and_blocks_drafts(app, admin):
-    article_id, _ = make_post(app, admin)
+def test_full_transfer_preserves_unicode_and_blocks_drafts(app):
     with app.app_context():
-        article = db.session.get(Article, article_id)
-        article.body = "مرحبا 🌊 café " * 10000
         settings.set_value("blog.newsletter_url", "https://newsletter.example.test/nested/")
+        # Exercise the browser payload limit independently of database TEXT
+        # byte limits (MariaDB's existing body column holds 64 KiB).
+        article = Article(
+            slug="unicode-post", title="Unicode post", body="مرحبا 🌊 café " * 10000,
+            status="published", published_at=utcnow(), visibility="public",
+        )
         transfer_url = publication.external_submission_url(article)
         url = urlsplit(transfer_url)
         data = json.loads(base64.urlsafe_b64decode(url.fragment.removeprefix("quillsail=")))
