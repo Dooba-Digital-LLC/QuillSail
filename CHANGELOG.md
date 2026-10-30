@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.1 — Beta
+
+- Offer drag-to-Applications DMGs for Apple Silicon and Intel Macs, a per-user Windows setup wizard, and a Debian/Ubuntu package with an application-menu entry.
+- Prefer separately verified graphical installers on the website while preserving updater archives and terminal installer compatibility. Keep publication data separate from application installation and removal.
+- Exercise native installation, launch, archive replacement, reinstallation and removal. Document installation steps and remaining platform signing/notarization limitations.
+
 ## 1.11.0 — Beta
 
 - Transfer a published public blog article's full text to another QuillSail newsletter for review, preserving sign-in, permissions and explicit submission. Keep the receiving server from fetching arbitrary source URLs and retain manual pasting when browser transfer is unavailable.
