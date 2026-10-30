@@ -484,4 +484,4 @@ quillsail worker [OPTIONS]
 
 ---
 
-*Generated from the QuillSail 1.11.1 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.11.2 source code by `scripts/build_reference_docs.py`.*

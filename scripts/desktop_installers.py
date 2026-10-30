@@ -45,6 +45,13 @@ def build(output, app, target, version, icon, archive):
             run("ditto", app, stage / "QuillSail.app")
             (stage / "Applications").symlink_to("/Applications", target_is_directory=True)
             run("hdiutil", "create", "-ov", "-volname", "QuillSail", "-srcfolder", stage, "-format", "UDZO", artifact)
+            import desktop_signing
+
+            if desktop_signing.identity():
+                desktop_signing.sign_disk_image(artifact)
+                if desktop_signing.notarizing():
+                    desktop_signing.notarize(artifact)
+                desktop_signing.verify(artifact)
             mount = work / "mounted"
             run("hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mount, artifact)
             try:
@@ -54,7 +61,7 @@ def build(output, app, target, version, icon, archive):
                 run("ditto", mount / "QuillSail.app", installed)
             finally:
                 run("hdiutil", "detach", mount)
-            run("codesign", "--verify", "--deep", "--strict", installed)
+            desktop_signing.verify(installed)
             smoke(installed, target)
             update_smoke(installed, target, archive, version)
             shutil.rmtree(installed)

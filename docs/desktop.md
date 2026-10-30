@@ -77,7 +77,15 @@ On Intel macOS, install the build dependencies in a clean environment with `OPEN
 
 The **Desktop bundles** GitHub Actions workflow explicitly builds all four targets on native runners and verifies the server wheel/source. Pull requests and ordinary manual runs only save workflow artifacts. A maintainer can run it on `main` with **publish** enabled to publish a beta after every target passes. It validates source commits and hashes, stages all assets in a draft, then publishes the complete release. A failed upload leaves a resumable draft. Published versions cannot be overwritten by the script. This workflow publishes downloadable desktop bundles and server packages; it does not publish containers or packages to a registry.
 
-Local macOS builds are ad-hoc signed. Public download distribution still needs Developer ID signing/notarization, and Windows distribution should use an appropriate code-signing process. These release credentials are not part of the repository. No signing identity or notarization account is configured by the build script. DMGs contain the ad-hoc signed app; the Windows setup executable is unsigned. These formats do not remove Gatekeeper or SmartScreen warnings. Linux packages are verified through the signed QuillSail feed rather than a distribution repository signature.
+### Mac signing and notarization
+
+Released Mac apps are signed with a Developer ID and notarized by Apple, so macOS opens them without asking. On Mac runners, the **Desktop bundles** workflow signs every binary in the app with the hardened runtime and a secure timestamp, from the innermost files out. Manual runs then notarize and staple the app before creating its updater archive, and sign, notarize and staple the DMG. Pull request runs sign without notarizing. Publishing refuses Mac builds that aren't notarized, so an expired Apple Developer membership or certificate stops a release instead of shipping an unsigned app.
+
+The workflow reads the certificate and notarization login from five repository secrets: `MACOS_CERTIFICATE_P12` (a base64-encoded Developer ID Application certificate and private key), `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD` (an app-specific password) and `APPLE_TEAM_ID`. It imports them into a temporary keychain that is deleted after the build. They never enter the repository, the app or the logs.
+
+Local builds and pull requests from forks have no certificate, so they stay ad-hoc signed and macOS asks before opening them. To sign a local build, set `QUILLSAIL_MACOS_IDENTITY` to the name of a Developer ID Application identity in your keychain. To notarize it as well, also set `QUILLSAIL_NOTARY_PROFILE` to a profile saved with `xcrun notarytool store-credentials`.
+
+The Windows setup executable is unsigned, so SmartScreen may warn before it runs. Linux packages are verified through the signed QuillSail feed rather than a distribution repository signature.
 
 The launcher uses [Qt for Python](https://doc.qt.io/qtforpython-6/deployment/deployment-pyinstaller.html) and [PyInstaller](https://pyinstaller.org/en/stable/usage.html). Retain the bundled dependency licenses when redistributing; their licenses remain separate from QuillSail's MIT license.
 

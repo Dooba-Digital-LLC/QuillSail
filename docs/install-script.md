@@ -112,7 +112,7 @@ The installer trusts two things: HTTPS to quillsail.blog and GitHub, and the rel
 
 After installation, every update is verified by the app itself with [The Update Framework](desktop-updates.md), so later updates don't depend on the website at all.
 
-These are beta builds: the Mac apps aren't notarized by Apple, and the Windows app isn't code-signed yet. The signature checks above are separate from Apple's and Microsoft's publisher checks.
+These are beta builds. The Mac apps are signed with a Developer ID and notarized by Apple; the Windows app isn't code-signed yet. The signature checks above are separate from Apple's and Microsoft's publisher checks.
 
 ## For automation
 

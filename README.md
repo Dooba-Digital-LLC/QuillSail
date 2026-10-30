@@ -41,7 +41,7 @@ The desktop launcher starts a local publication and opens the dashboard in your 
 | Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-windows-x86_64.zip) |
 | Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-linux-x86_64.tar.gz) |
 
-Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds; Developer ID notarization and Windows code signing are not configured. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.10.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
+Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds. Mac downloads from 1.11.2 onward are notarized by Apple; Windows code signing isn't configured yet. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.10.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
 
 ## Deploy with Docker Compose
 

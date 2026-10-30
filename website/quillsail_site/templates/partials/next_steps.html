@@ -9,7 +9,9 @@
   {% else %}
   <li>Open the <strong>.deb</strong> in your software installer on Ubuntu 22.04 or a compatible Debian desktop. Install it, then open <strong>QuillSail</strong> from the application menu.</li>
   {% endif %}
-  <li>These beta installers are not notarized or code-signed by a platform publisher. See the <a href="{{ docs_url('/desktop#using-the-app') }}">desktop guide</a> for signing limitations.</li>
+  {% if target.startswith('windows') %}
+  <li>The setup program isn't code-signed yet. If Windows SmartScreen appears, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+  {% endif %}
   {% elif target.startswith('macos') %}
   <li>Open the downloaded file to unzip it, then drag <strong>QuillSail</strong> into your Applications folder.</li>
   <li>Open QuillSail. If macOS says it can't check the app, open <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</li>

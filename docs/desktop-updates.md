@@ -46,4 +46,4 @@ The installer is a separate small native executable. The launcher copies it to a
 
 The previous application stays under the transaction's `previous` directory for manual recovery. The launcher surfaces recorded installation failures on its next opening. No automatic database downgrade is attempted. Publication backups created before schema migrations must be restored together with the matching older application when recovering from an incompatible migration.
 
-TUF authenticates release content independently of operating-system code signing. macOS Developer ID signing/notarization and Windows Authenticode signing are still separate distribution tasks; the existing ad-hoc/unsigned beta limitations remain. Never describe TUF signatures as Apple notarization or Windows publisher verification.
+TUF authenticates release content independently of operating-system code signing. Released Mac apps are also signed with a Developer ID and notarized by Apple, as described in the [desktop guide](desktop.md#mac-signing-and-notarization); Windows Authenticode signing isn't configured. Never describe TUF signatures as Apple notarization or Windows publisher verification.
