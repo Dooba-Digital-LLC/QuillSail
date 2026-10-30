@@ -73,8 +73,6 @@ class InstanceRegistry:
                 raise ValueError
             if len({row.id for row in rows}) != len(rows) or len({row.root for row in rows}) != len(rows):
                 raise ValueError
-            if not any(row.id == "default" and row.root == self.default.root for row in rows):
-                raise ValueError
             return rows
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise ConfigError("The instance registry could not be read. Preserve instances.json and your publication folders before repairing it.") from exc
@@ -85,22 +83,28 @@ class InstanceRegistry:
                 return instance
         raise ConfigError(f"No instance named {identifier!r}. Run `quillsail instance list`.")
 
-    def delete(self, identifier: str, *, delete_data=False) -> Instance:
-        """Unregister a stopped publication, optionally erasing its private folder."""
+    def delete(self, identifier: str, *, delete_data=False, runtime: DesktopRuntime | None = None) -> Instance:
+        """Stop an owned runtime and unregister it, optionally erasing its folder.
+
+        Other processes must stop their own runtimes before deletion. An explicitly
+        saved empty registry keeps the legacy default from reappearing on startup.
+        """
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         registry_lock = InstanceLock(self.root / "registry.lock")
         registry_lock.acquire()
         publication_lock = None
         try:
             item = self.get(identifier)
-            if item.id == "default":
-                raise ConfigError("The Default publication cannot be deleted from the instance list.")
             rows = self.list()
             if delete_data and (self.root.is_relative_to(item.root) or any(
                 row.id != item.id and (row.root.is_relative_to(item.root) or item.root.is_relative_to(row.root))
                 for row in rows
             )):
                 raise ConfigError("This folder overlaps the registry or another publication; keep its files instead.")
+            if runtime is not None:
+                if runtime.root != item.root:
+                    raise ConfigError("The running publication does not match the instance being deleted.")
+                runtime.stop()
             if item.root.exists():
                 publication_lock = InstanceLock(item.root / "desktop.lock")
                 publication_lock.acquire()

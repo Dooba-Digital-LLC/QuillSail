@@ -141,12 +141,13 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
     registered = next((item for item in registry.list() if item.root == root), None) if data_dir else None
     if data_dir and root != default_root and registered is None:
         registry = InstanceRegistry(root.with_name(root.name + "-instances"), default_root=root)
-    selected = registry.get(instance_id or (registered.id if registered else "default"))
+    rows = registry.list()
+    selected = registry.get(instance_id) if instance_id else registered or next(iter(rows), None)
     # A second launch brings the open launcher forward instead of starting another.
     if send_command(registry.root, "show") == "ok":
         return 0
     appearance = saved_appearance(registry.root)
-    root = selected.root
+    root = selected.root if selected else registry.root
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     # The launcher outlives individual publications, including deleted ones.
     registry.root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -268,8 +269,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
         def __init__(self):
             super().__init__()
             self.appearance = appearance
-            self.runtime = self.make_runtime(root)
-            self.runtimes = {selected.id: self.runtime}
+            self.runtime = self.make_runtime(root) if selected else None
+            self.runtimes = {selected.id: self.runtime} if selected else {}
             self.selected_instance = selected
             self.external_url = ""
             self.busy = self.quitting = self.ready_to_quit = False
@@ -314,6 +315,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.instance_selector = QComboBox()
             self.instance_selector.setObjectName("instance-selector")
             self.instance_selector.setAccessibleName("Publication instance")
+            self.instance_selector.setPlaceholderText("No instances")
             instance_label.setBuddy(self.instance_selector)
             layout.addWidget(instance_label)
             layout.addWidget(self.instance_selector)
@@ -326,13 +328,13 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.add_instance.clicked.connect(self.add_existing_instance)
             instance_row.addWidget(self.add_instance)
             self.refresh_button = QPushButton("Refresh")
-            self.refresh_button.clicked.connect(lambda: self.refresh_instances(self.selected_instance.id))
+            self.refresh_button.clicked.connect(lambda: self.refresh_instances(self.selected_instance.id if self.selected_instance else None))
             instance_row.addWidget(self.refresh_button)
             layout.addLayout(instance_row)
             self.delete_instance_button = QPushButton("Delete instance…")
             self.delete_instance_button.clicked.connect(self.delete_instance)
             layout.addWidget(self.delete_instance_button)
-            self.refresh_instances(selected.id)
+            self.refresh_instances(selected.id if selected else None)
             self.instance_selector.currentIndexChanged.connect(self.select_instance)
             self.instance_summary = QLabel("No instances running in this launcher.")
             self.instance_summary.setProperty("role", "note")
@@ -358,14 +360,14 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             row = QHBoxLayout()
             row.setSpacing(8)
             self.toggle = QPushButton("Start")
-            self.toggle.clicked.connect(lambda: self.stop() if self.runtime.server else self.start())
+            self.toggle.clicked.connect(lambda: self.stop() if self.runtime and self.runtime.server else self.start())
             row.addWidget(self.toggle)
             logs = QPushButton("View logs")
             logs.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(logfile))))
             row.addWidget(logs)
-            files = QPushButton("Open data folder")
-            files.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.selected_instance.root))))
-            row.addWidget(files)
+            self.files_button = QPushButton("Open data folder")
+            self.files_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.selected_instance.root))) if self.selected_instance else None)
+            row.addWidget(self.files_button)
             layout.addLayout(row)
             layout.addSpacing(4)
             layout.addWidget(rule())
@@ -470,6 +472,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             # macOS sends a forced activation when someone clicks the Dock icon.
             app.applicationStateChanged.connect(self.application_state_changed)
             self.listen_for_commands()
+            self.select_instance()
             QTimer.singleShot(0, self.start)
 
         def listen_for_commands(self):
@@ -549,13 +552,16 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             except OSError:
                 log.exception("The launcher appearance could not be saved for the next launch.")
 
-        def refresh_instances(self, selected_id):
+        def refresh_instances(self, selected_id=None):
             self.instance_selector.blockSignals(True)
             self.instance_selector.clear()
             for item in registry.list():
                 self.instance_selector.addItem(item.name, item.id)
-            self.instance_selector.setCurrentIndex(self.instance_selector.findData(selected_id))
+            index = self.instance_selector.findData(selected_id)
+            self.instance_selector.setCurrentIndex(max(0, index) if self.instance_selector.count() else -1)
             self.instance_selector.blockSignals(False)
+            if hasattr(self, "status"):
+                self.select_instance()
 
         def refresh_running_labels(self):
             count = sum(bool(runtime.server) for runtime in self.runtimes.values())
@@ -567,6 +573,16 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                 self.instance_selector.setItemText(index, item.name + (" · Running" if runtime and runtime.server else ""))
 
         def select_instance(self):
+            if self.instance_selector.currentData() is None:
+                self.selected_instance = self.runtime = None
+                self.external_url = ""
+                self.setWindowTitle("QuillSail")
+                self.status.setText("Create or add an instance")
+                self.address.setText("Choose New instance… to create a publication, or Add existing… to open a saved publication folder.")
+                self.toggle.setText("Start")
+                self.restore_instance_controls()
+                self.refresh_running_labels()
+                return
             self.selected_instance = registry.get(self.instance_selector.currentData())
             identifier = self.selected_instance.id
             if identifier not in self.runtimes:
@@ -579,26 +595,38 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                                 "Your publication is running" if self.runtime.server else "Stopped. Your content is saved.")
             self.address.setText(external or self.runtime.url if self.runtime.server or external else "Start this instance to open its dashboard.")
             self.toggle.setText("Stop" if self.runtime.server else "Start")
-            self.toggle.setEnabled(not external)
-            self.open_button.setEnabled(bool(self.runtime.server or external))
-            self.delete_instance_button.setEnabled(identifier != "default" and not self.runtime.server and not external)
+            self.restore_instance_controls()
             self.refresh_running_labels()
 
+        def restore_instance_controls(self):
+            selected = self.selected_instance is not None
+            running = bool(self.runtime and self.runtime.server)
+            self.instance_selector.setEnabled(bool(self.instance_selector.count()) and not self.busy)
+            self.toggle.setEnabled(selected and not self.external_url and not self.busy)
+            self.open_button.setEnabled(bool(running or self.external_url) and not self.busy)
+            self.files_button.setEnabled(selected and not self.busy)
+            self.delete_instance_button.setEnabled(selected and not self.external_url and not self.busy)
+            self.delete_instance_button.setToolTip("Stop this instance in its other launcher or terminal before deleting it." if self.external_url else "")
+
         def delete_instance(self):
+            if self.busy or self.quitting or self.selected_instance is None:
+                return
             item = self.selected_instance
             dialog = QMessageBox(self)
             dialog.setWindowTitle("Delete instance")
             dialog.setTextFormat(Qt.TextFormat.PlainText)
             dialog.setText(f"Remove {item.name} from the instance list?")
-            dialog.setInformativeText(f"Files will be kept in {item.root} unless you choose to permanently delete them. Stop the instance before deleting it.")
-            erase = QCheckBox("Permanently delete all publication files, including content and subscribers")
+            dialog.setInformativeText(f"QuillSail will finish background work and stop this instance before removing it. Files will be kept in {item.root} unless you choose to permanently delete them, including content and subscribers.")
+            erase = QCheckBox("Permanently delete publication files")
             dialog.setCheckBox(erase)
             dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
-            dialog.button(QMessageBox.StandardButton.Ok).setText("Delete instance")
+            dialog.button(QMessageBox.StandardButton.Ok).setText("Stop and delete" if self.runtime.server else "Delete instance")
             dialog.setDefaultButton(QMessageBox.StandardButton.Cancel)
             if dialog.exec() == QMessageBox.StandardButton.Ok:
                 delete_data = erase.isChecked()
-                self.operation(lambda: registry.delete(item.id, delete_data=delete_data), self.instance_deleted, self.delete_failed)
+                runtime = self.runtime
+                self.status.setText("Finishing background work and deleting the instance…")
+                self.operation(lambda: registry.delete(item.id, delete_data=delete_data, runtime=runtime), self.instance_deleted, self.delete_failed)
 
         @Slot(str)
         def delete_failed(self, message):
@@ -614,8 +642,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.finish_operation()
             self.busy = False
             self.runtimes.pop(item.id, None)
-            self.refresh_instances("default")
-            self.select_instance()
+            self.refresh_instances()
             if self.quitting:
                 QTimer.singleShot(0, self.request_quit)
 
@@ -638,7 +665,6 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.finish_operation()
             self.busy = False
             self.refresh_instances(item.id)
-            self.select_instance()
             if self.quitting:
                 QTimer.singleShot(0, self.request_quit)
             elif not self.external_url:
@@ -653,6 +679,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.instance_selector.setEnabled(False)
             self.new_instance.setEnabled(False)
             self.delete_instance_button.setEnabled(False)
+            self.files_button.setEnabled(False)
             self.add_instance.setEnabled(False)
             self.refresh_button.setEnabled(False)
             self.task = Task(callback, self)
@@ -669,11 +696,11 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.task.deleteLater()
             self.update_button.setEnabled(True)
             self.update_channel.setEnabled(True)
-            self.instance_selector.setEnabled(True)
             self.new_instance.setEnabled(True)
-            self.delete_instance_button.setEnabled(self.selected_instance.id != "default" and not self.runtime.server and not self.external_url)
             self.add_instance.setEnabled(True)
             self.refresh_button.setEnabled(True)
+            self.busy = False
+            self.restore_instance_controls()
 
         def update_channel_changed(self):
             self.available_update = None
@@ -718,7 +745,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                 self.update_status.setText(str(exc))
                 return
             self.update_progress_changed("Downloading update…", 0)
-            self.operation(lambda: UpdateClient().prepare(release, install_root, data_dir=root,
+            data_dir = self.selected_instance.root if self.selected_instance else registry.root
+            self.operation(lambda: UpdateClient().prepare(release, install_root, data_dir=data_dir,
                            progress=lambda message, percent: self.task.progress.emit(message, percent)),
                            self.update_prepared, self.update_failed)
 
@@ -726,8 +754,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
         def update_checked(self, update):
             self.finish_operation()
             self.busy = False
-            self.toggle.setEnabled(True)
-            self.open_button.setEnabled(bool(self.runtime.server))
+            self.restore_instance_controls()
             self.update_progress.hide()
             if self.quitting:
                 QTimer.singleShot(0, self.request_quit)
@@ -755,19 +782,18 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.update_button.setText("Check for updates")
             self.update_status.setText(message)
             self.update_progress.hide()
-            self.toggle.setEnabled(True)
-            self.open_button.setEnabled(bool(self.runtime.server))
+            self.restore_instance_controls()
             if self.quitting:
                 if handoff_failed:
                     self.quitting = False
                     self.quit_button.setEnabled(True)
-                    if self.runtime.server is None:
+                    if self.runtime and self.runtime.server is None:
                         QTimer.singleShot(0, self.start)
                 else:
                     QTimer.singleShot(0, self.request_quit)
 
         def start(self):
-            if not self.busy:
+            if not self.busy and self.selected_instance is not None:
                 if external := running_url(self.selected_instance):
                     self.external_url = external
                     self.select_instance()
@@ -794,6 +820,8 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
                 self.open_dashboard()
 
         def open_dashboard(self):
+            if self.selected_instance is None:
+                return
             url = self.runtime.launch_url() if self.runtime.server else running_url(self.selected_instance) + "/dashboard/"
             if not QDesktopServices.openUrl(QUrl(url)):
                 self.status.setText("Your browser could not be opened. Try Open dashboard again.")
@@ -802,7 +830,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             if not self.busy:
                 self.status.setText("Finishing background work and stopping…")
                 def stop_and_handoff():
-                    for runtime in self.runtimes.values() if self.quitting else (self.runtime,):
+                    for runtime in self.runtimes.values() if self.quitting else ((self.runtime,) if self.runtime else ()):
                         runtime.stop()
                     if self.update_plan is not None:
                         launch_installer(self.update_plan)
@@ -815,7 +843,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.status.setText("Stopped. Your content is saved.")
             self.address.setText("Start QuillSail to open your dashboard.")
             self.toggle.setText("Start")
-            self.toggle.setEnabled(True)
+            self.restore_instance_controls()
             self.refresh_running_labels()
             if self.quitting:
                 QTimer.singleShot(0, self.request_quit)
@@ -829,7 +857,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.status.setText("QuillSail could not start: " + message)
             self.address.setText("View logs for details. Your publication files are in the data folder.")
             self.toggle.setText("Start")
-            self.toggle.setEnabled(True)
+            self.restore_instance_controls()
             if smoke:
                 self.smoke_error = True
             if smoke or self.quitting:
