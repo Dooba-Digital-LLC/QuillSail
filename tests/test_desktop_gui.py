@@ -399,7 +399,7 @@ def test_closing_the_window_keeps_publications_running_until_quit(tmp_path):
 
 
 @pytest.mark.parametrize('erase', [False, True])
-def test_launcher_deletes_stopped_instance_with_explicit_file_choice(tmp_path, erase):
+def test_launcher_deletes_instance_with_explicit_file_choice(tmp_path, erase):
     pytest.importorskip('PySide6')
     script = textwrap.dedent('''
         import sys
@@ -416,6 +416,7 @@ def test_launcher_deletes_stopped_instance_with_explicit_file_choice(tmp_path, e
         instances.InstanceRegistry = lambda: registry
         class Runtime:
             def __init__(self, root):
+                self.root = root
                 self.server = None
                 self.url = 'http://127.0.0.1:5080'
             def start(self):
@@ -454,7 +455,7 @@ def test_launcher_deletes_stopped_instance_with_explicit_file_choice(tmp_path, e
                 assert registry.list() == [registry.default]
                 assert item.root.exists() is not erase
                 assert window.selected_instance.id == 'default'
-                assert not window.delete_instance_button.isEnabled()
+                assert window.delete_instance_button.isEnabled()
             except Exception as exc:
                 errors.append(exc)
             window.request_quit()
@@ -464,5 +465,195 @@ def test_launcher_deletes_stopped_instance_with_explicit_file_choice(tmp_path, e
         assert not errors, errors
     ''')
     result = subprocess.run([sys.executable, '-c', script, str(tmp_path), str(erase)],
+        env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'}, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('action', ['keep', 'erase', 'cancel'])
+def test_delete_running_default_and_reopen_empty_launcher(tmp_path, action):
+    pytest.importorskip('PySide6')
+    script = textwrap.dedent('''
+        import sys
+        from pathlib import Path
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
+        from copydesk import desktop_ui, instances
+        from copydesk.desktop import DesktopRuntime
+
+        root, action = Path(sys.argv[1]), sys.argv[2]
+        registry = instances.InstanceRegistry(root / 'registry', default_root=root / 'default')
+        DesktopRuntime(registry.default.root).initialize()
+        desktop_ui.default_data_dir = lambda: registry.default.root
+        instances.InstanceRegistry = lambda: registry
+        calls, errors = [], []
+        class Runtime:
+            def __init__(self, root):
+                self.root = root
+                self.server = None
+                self.url = 'http://127.0.0.1:5080'
+            def start(self):
+                calls.append('start')
+                self.server = True
+                return self.url
+            def stop(self):
+                if self.server:
+                    calls.append('stop')
+                self.server = None
+        desktop_ui.DesktopRuntime = Runtime
+        original_delete = registry.delete
+        def delete(*args, **kwargs):
+            # Registry must finish the owned runtime before taking its deletion lock.
+            item = original_delete(*args, **kwargs)
+            assert calls == ['start', 'stop']
+            calls.append('delete')
+            return item
+        registry.delete = delete
+        def confirm(dialog):
+            assert 'Default publication' in dialog.text()
+            assert dialog.button(QMessageBox.StandardButton.Ok).text() == 'Stop and delete'
+            assert calls == ['start']
+            dialog.checkBox().setChecked(action == 'erase')
+            return QMessageBox.StandardButton.Cancel if action == 'cancel' else QMessageBox.StandardButton.Ok
+        QMessageBox.exec = confirm
+        app = QApplication([])
+        def window():
+            return next(w for w in app.topLevelWidgets() if isinstance(w, QMainWindow))
+        def inspect():
+            w = window()
+            if w.busy:
+                QTimer.singleShot(20, inspect)
+                return
+            try:
+                assert w.selected_instance.id == 'default'
+                assert w.delete_instance_button.isEnabled()
+                w.delete_instance_button.click()
+                QTimer.singleShot(20, finished)
+            except Exception as exc:
+                errors.append(exc)
+                w.request_quit()
+        def finished():
+            w = window()
+            if w.busy:
+                QTimer.singleShot(20, finished)
+                return
+            try:
+                if action == 'cancel':
+                    assert calls == ['start'] and w.runtime.server
+                    assert registry.list() == [registry.default]
+                else:
+                    assert calls == ['start', 'stop', 'delete']
+                    assert registry.list() == [] and w.runtime is None
+                    assert w.status.text() == 'Create or add an instance'
+                    assert w.new_instance.isEnabled() and w.add_instance.isEnabled()
+                    assert not w.toggle.isEnabled() and not w.open_button.isEnabled()
+                    assert not w.files_button.isEnabled() and not w.delete_instance_button.isEnabled()
+                    assert registry.default.root.exists() is (action != 'erase')
+            except Exception as exc:
+                errors.append(exc)
+            w.request_quit()
+        QTimer.singleShot(100, inspect)
+        assert desktop_ui.run(open_browser=False) == 0
+        assert not errors, errors
+        if action != 'cancel':
+            def reopened():
+                w = window()
+                try:
+                    assert w.runtime is None and not w.runtimes
+                    assert w.status.text() == 'Create or add an instance'
+                    assert calls == ['start', 'stop', 'delete']
+                except Exception as exc:
+                    errors.append(exc)
+                w.request_quit()
+            QTimer.singleShot(100, reopened)
+            assert desktop_ui.run(open_browser=False) == 0
+            assert not errors, errors
+            assert registry.list() == []
+    ''')
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path), action],
+        env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'}, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('action', ['create', 'add', 'update'])
+def test_empty_launcher_supports_new_existing_and_update_actions(tmp_path, action):
+    pytest.importorskip('PySide6')
+    script = textwrap.dedent('''
+        import sys
+        from pathlib import Path
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QFileDialog, QInputDialog, QMainWindow
+        from copydesk import desktop_ui, instances, updater
+        from copydesk.desktop import DesktopRuntime
+        from copydesk import __version__
+
+        root, action = Path(sys.argv[1]), sys.argv[2]
+        registry = instances.InstanceRegistry(root / 'registry', default_root=root / 'default')
+        registry.delete('default')
+        saved = root / 'saved-publication'
+        DesktopRuntime(saved).initialize()
+        desktop_ui.default_data_dir = lambda: registry.default.root
+        instances.InstanceRegistry = lambda: registry
+        starts, errors = [], []
+        class Runtime:
+            def __init__(self, root):
+                self.root, self.server = root, None
+                self.url = 'http://127.0.0.1:5080'
+            def start(self):
+                starts.append(self.root)
+                self.server = True
+                return self.url
+            def stop(self):
+                self.server = None
+        class Client:
+            def check(self, **kwargs):
+                return updater.Update(__version__, __version__, 'linux-x86_64', 'beta', '', 0, '')
+        desktop_ui.DesktopRuntime = Runtime
+        updater.UpdateClient = Client
+        QInputDialog.getText = lambda *args: ('Replacement', True)
+        QFileDialog.getExistingDirectory = lambda *args: str(saved)
+        app = QApplication([])
+        def window():
+            return next(w for w in app.topLevelWidgets() if isinstance(w, QMainWindow))
+        def inspect():
+            w = window()
+            try:
+                assert w.runtime is None and not starts
+                w.resize(460, 600)
+                w.refresh_button.click()
+                assert w.status.text() == 'Create or add an instance'
+                if action == 'update':
+                    w.update_button.click()
+                elif action == 'create':
+                    w.new_instance.click()
+                else:
+                    w.add_instance.click()
+                QTimer.singleShot(50, finish)
+            except Exception as exc:
+                errors.append(exc)
+                w.request_quit()
+        def finish():
+            w = window()
+            if w.busy:
+                QTimer.singleShot(20, finish)
+                return
+            try:
+                if action == 'update':
+                    assert w.runtime is None and not starts
+                    assert not w.toggle.isEnabled() and not w.open_button.isEnabled()
+                    assert w.new_instance.isEnabled() and w.update_button.isEnabled()
+                else:
+                    assert w.selected_instance.id == 'replacement'
+                    assert w.runtime.server and len(starts) == 1
+                    assert starts[0] == (saved if action == 'add' else registry.root / 'publications/replacement')
+                    assert w.delete_instance_button.isEnabled()
+            except Exception as exc:
+                errors.append(exc)
+            w.request_quit()
+        QTimer.singleShot(100, inspect)
+        assert desktop_ui.run(open_browser=False) == 0
+        assert not errors, errors
+        assert not registry.default.root.exists()
+    ''')
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path), action],
         env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'}, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr

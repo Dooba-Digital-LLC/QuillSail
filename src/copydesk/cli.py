@@ -284,7 +284,7 @@ def instance_add(name, data_dir):
 @click.option("--delete-data", is_flag=True, help="Permanently delete the publication folder and all its contents.")
 @click.option("--yes", is_flag=True, help="Skip the confirmation prompt.")
 def instance_delete(name, delete_data, yes):
-    """Remove a stopped instance from the list. Keep its files unless --delete-data is used."""
+    """Remove a stopped instance, including default. Keep files unless --delete-data is used."""
     from copydesk.instances import InstanceRegistry
 
     try:

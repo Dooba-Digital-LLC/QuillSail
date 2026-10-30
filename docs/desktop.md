@@ -101,16 +101,21 @@ quillsail --instance student-blog export ./student-blog-backup.json
 quillsail --instance student-blog desktop
 ```
 
-To delete an instance, stop it first and choose **Delete instance…** in the launcher. By default, its files stay saved so you can register the folder again with **Add existing…**. Select **Permanently delete all publication files** to erase the folder, including content, subscribers, credentials and uploads. This cannot be undone; back up anything you want to keep first. The built-in **Default publication** cannot be deleted from the instance list.
+To delete any instance, including **Default publication**, choose **Delete instance…** in the launcher. If it is running here, confirming **Stop and delete** finishes background work and stops it before removing it. Cancelling leaves it running. Instances running in another launcher or terminal must be stopped there first; the button explains this when unavailable.
+
+By default, its files stay saved so you can register the folder again with **Add existing…**. Select **Permanently delete publication files** to erase the folder, including content, subscribers, credentials and uploads. This cannot be undone; back up anything you want to keep first.
+
+After deleting the last instance, the launcher shows **Create or add an instance**, with **New instance…** and **Add existing…** available. This empty list stays saved when you quit and reopen QuillSail. If other instances remain, the launcher selects one and keeps any others running.
 
 The terminal provides the same choices and asks for confirmation:
 
 ```sh
 quillsail instance delete student-blog
 quillsail instance delete student-blog --delete-data
+quillsail instance delete default
 ```
 
-The first command keeps the files; the second permanently deletes the publication folder, including folders registered with `instance add`. Use `--yes` to skip confirmation. Running instances are refused, including those started in another launcher or terminal.
+The first command keeps the files; the second permanently deletes the publication folder, including folders registered with `instance add`. The third removes Default publication, keeping its files. Use `--yes` to skip confirmation. Stop the selected instance in its launcher or terminal before deleting it from the CLI; running instances are refused.
 
 **View logs** opens the launcher's log in the instance registry folder. The log stays available when a publication is deleted.
 

@@ -150,7 +150,7 @@ quillsail instance create [OPTIONS] NAME
 
 ### `quillsail instance delete`
 
-Remove a stopped instance from the list. Keep its files unless --delete-data is used.
+Remove a stopped instance, including default. Keep files unless --delete-data is used.
 
 ```text
 quillsail instance delete [OPTIONS] NAME
@@ -484,4 +484,4 @@ quillsail worker [OPTIONS]
 
 ---
 
-*Generated from the QuillSail 1.10.1 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.10.2 source code by `scripts/build_reference_docs.py`.*

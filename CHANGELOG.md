@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.2 — Beta
+
+- Allow deleting Default publication and running instances owned by the launcher. After confirmation, finish background work and stop the selected instance before removing it. Keeping files remains the default.
+- Show a Create or add an instance screen when the instance list is empty. Preserve the empty list across restarts, and support creating or registering a replacement publication.
+
 ## 1.10.1 — Beta
 
 - Delete stopped named instances from the desktop launcher or `quillsail instance delete`. Keep publication files by default, or explicitly choose permanent deletion; protect running instances and the built-in Default publication.

@@ -169,7 +169,7 @@ def test_delete_data_erases_only_selected_folder_and_preserves_symlink_target(re
     assert registry.list() == [registry.default, other]
 
 
-def test_delete_refuses_running_and_default_instances(registry):
+def test_delete_refuses_instances_owned_by_another_process(registry):
     from copydesk.desktop import AlreadyRunning, InstanceLock
 
     item = registry.add('Locked')
@@ -183,8 +183,77 @@ def test_delete_refuses_running_and_default_instances(registry):
             assert item.config_path.is_file()
     finally:
         lock.release()
-    with pytest.raises(ConfigError, match='Default publication'):
-        registry.delete('default', delete_data=True)
+
+
+@pytest.mark.parametrize('delete_data', [False, True])
+def test_default_deletion_persists_empty_registry_and_allows_new_instances(registry, delete_data):
+    item = registry.default
+    DesktopRuntime(item.root).initialize()
+    registry.delete('default', delete_data=delete_data)
+    reopened = instances.InstanceRegistry()
+    assert reopened.list() == []
+    assert item.root.exists() is not delete_data
+    with pytest.raises(ConfigError, match='No instance named'):
+        reopened.get('default')
+    replacement = reopened.add('Replacement')
+    assert reopened.list() == [replacement]
+    if not delete_data:
+        restored = reopened.add('Original', item.root, existing=True)
+        assert restored.root == item.root
+
+
+def test_delete_stops_owned_default_and_worker_without_stopping_other_instance(registry, monkeypatch):
+    other = registry.add('Other')
+    runtime, other_runtime = DesktopRuntime(registry.default.root), DesktopRuntime(other.root)
+    try:
+        runtime.start()
+        other_runtime.start(with_worker=False)
+        worker, listener = runtime.worker_thread, runtime.http_thread
+        original_rmtree = instances.shutil.rmtree
+        def erase(path, *args, **kwargs):
+            assert runtime.server is None and not worker.is_alive() and not listener.is_alive()
+            return original_rmtree(path, *args, **kwargs)
+        monkeypatch.setattr(instances.shutil, 'rmtree', erase)
+        registry.delete('default', delete_data=True, runtime=runtime)
+        assert runtime.server is None and not worker.is_alive() and not listener.is_alive()
+        assert not registry.default.root.exists()
+        assert registry.list() == [other]
+        assert requests.get(other_runtime.url + '/healthz', timeout=5).status_code == 200
+    finally:
+        runtime.stop()
+        other_runtime.stop()
+
+
+def test_delete_preserves_registration_and_files_if_stop_fails(registry, monkeypatch):
+    runtime = DesktopRuntime(registry.default.root)
+    runtime.initialize()
+    def fail():
+        raise RuntimeError('Could not stop the worker')
+    monkeypatch.setattr(runtime, 'stop', fail)
+    with pytest.raises(RuntimeError, match='Could not stop'):
+        registry.delete('default', delete_data=True, runtime=runtime)
+    assert registry.list() == [registry.default]
+    assert registry.default.config_path.is_file()
+
+
+def test_delete_rejects_a_different_runtime_before_stopping_it(registry):
+    other = registry.add('Other')
+    runtime = DesktopRuntime(registry.default.root)
+    try:
+        runtime.start(with_worker=False)
+        with pytest.raises(ConfigError, match='does not match'):
+            registry.delete(other.id, delete_data=True, runtime=runtime)
+        assert runtime.server is not None and other.config_path.is_file()
+    finally:
+        runtime.stop()
+
+
+def test_cli_can_delete_default_and_list_an_empty_registry(registry):
+    runner = CliRunner()
+    result = runner.invoke(main, ['instance', 'delete', 'default', '--yes'])
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(main, ['instance', 'list', '--json'])
+    assert result.exit_code == 0 and json.loads(result.output) == []
 
 
 def test_cli_delete_requires_confirmation_and_explicit_data_deletion(registry):
