@@ -1,11 +1,8 @@
 {% extends "docs/layout.html" %}
 
-{% block title %}{% if page.slug %}{{ page.heading }} · QuillSail Docs{% else %}QuillSail Documentation{% endif %}{% endblock %}
-{% block description %}{{ page.summary or 'Install, run and extend QuillSail, the open-source blog and newsletter software where readers write.' }}{% endblock %}
-{% block canonical %}<link rel="canonical" href="{{ docs_url(page.path) }}">{% endblock %}
-
 {% block content %}
 <article class="docs-article">
+  {% include "partials/breadcrumbs.html" %}
   <header class="docs-article-head">
     <p class="kicker">{{ page.section }}</p>
     <h1>{{ page.heading }}</h1>

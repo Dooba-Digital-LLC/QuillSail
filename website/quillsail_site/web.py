@@ -36,6 +36,14 @@ def make_app(name: str, config: Config, *, form_origins: tuple[str, ...] = ()) -
     )
     app.jinja_env.filters["datetime_label"] = lambda value: f"{value:%B} {value.day}, {value:%Y} at {value:%H:%M} UTC"
 
+    def indexable() -> bool:
+        return request.endpoint in {"site.home", "site.downloads", "docs.page"} and not (
+            request.endpoint == "site.downloads" and "started" in request.args)
+
+    @app.context_processor
+    def seo_context():
+        return {"seo_indexable": indexable()}
+
     # Pages load only their own fonts, styles and scripts: no inline code or third parties.
     csp = "; ".join([
         "default-src 'none'", "script-src 'self'", "style-src 'self'", "img-src 'self'", "font-src 'self'",
@@ -45,6 +53,8 @@ def make_app(name: str, config: Config, *, form_origins: tuple[str, ...] = ()) -
 
     @app.after_request
     def headers(response: Response) -> Response:
+        if response.status_code >= 400 or (request.endpoint != "static" and not indexable()):
+            response.headers.setdefault("X-Robots-Tag", "noindex, follow")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
@@ -66,6 +76,9 @@ def make_app(name: str, config: Config, *, form_origins: tuple[str, ...] = ()) -
         elif "Cache-Control" not in response.headers and response.status_code == 200:
             response.cache_control.public = True
             response.cache_control.max_age = 300
+        if response.mimetype == "text/html":
+            # Keep proxy-injected scripts from conflicting with our own-file CSP.
+            response.cache_control.no_transform = True
         return response
 
     @app.errorhandler(404)

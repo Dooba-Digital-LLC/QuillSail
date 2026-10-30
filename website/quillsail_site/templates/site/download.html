@@ -1,9 +1,5 @@
 {% extends "site/layout.html" %}
 
-{% block title %}Download QuillSail{% endblock %}
-{% block description %}Download the QuillSail desktop app for macOS, Windows or Linux, install it from the terminal, or get the server package. Every download is listed in QuillSail's signed release feed.{% endblock %}
-{% block canonical %}<link rel="canonical" href="{{ site_url('/download') }}">{% endblock %}
-{% block robots %}{% if started %}<meta name="robots" content="noindex">{% endif %}{% endblock %}
 {% block head %}{% if started %}<meta http-equiv="refresh" content="1; url={{ url_for('site.download', target=started.target) }}">{% endif %}{% endblock %}
 {% block body_class %}page-download{% endblock %}
 
@@ -13,6 +9,7 @@
 
 {% block main %}
 <main id="main" class="container page">
+  {% include "partials/breadcrumbs.html" %}
   <header class="page-head">
     <p class="kicker">Download</p>
     <h1 class="display-medium">Download QuillSail</h1>

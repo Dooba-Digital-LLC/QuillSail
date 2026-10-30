@@ -16,6 +16,7 @@ from flask import (
 
 from quillsail_site.config import Config
 from quillsail_site.docs import Docs
+from quillsail_site.seo import page_metadata
 from quillsail_site.web import make_app, static_file, text_response
 
 bp = Blueprint("docs", __name__)
@@ -45,7 +46,17 @@ def page(slug: str):
     found = docs().get(slug)
     if found is None:
         abort(404)
-    return render_template("docs/page.html", page=found)
+    config = current_app.config["QUILLSAIL"]
+    # The operator guide and disclosure policy both have a "Security" heading.
+    # Navigation labels distinguish documents that share their source heading.
+    title = found.title if any(
+        other.slug != found.slug and other.heading == found.heading
+        for other in docs().pages.values()) else found.heading
+    metadata = page_metadata(
+        config, title=f"{title} · QuillSail Docs" if found.slug else "QuillSail Documentation",
+        summary=found.summary or "Install, run and extend QuillSail, the open-source blog and newsletter CMS.",
+        url=config.docs.join(found.path), page=found)
+    return render_template("docs/page.html", page=found, **metadata)
 
 
 @bp.get("/search")
@@ -76,7 +87,8 @@ def search_json():
 @bp.get("/robots.txt")
 def robots():
     sitemap = current_app.config["QUILLSAIL"].docs.join("/sitemap.xml")
-    return text_response(f"User-agent: *\nDisallow: /search\nSitemap: {sitemap}\n", max_age=86_400)
+    # Crawlers must be able to read the search responses' noindex directives.
+    return text_response(f"User-agent: *\nAllow: /\nSitemap: {sitemap}\n", max_age=86_400)
 
 
 @bp.get("/sitemap.xml")

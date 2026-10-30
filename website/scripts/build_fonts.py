@@ -10,6 +10,8 @@ Reserved Font Name, so the subset keeps its name under the SIL Open Font License
 
 from __future__ import annotations
 
+import hashlib
+import re
 import shutil
 from pathlib import Path
 
@@ -42,6 +44,15 @@ def main() -> None:
     target = OUTPUT / "Amiri-Bold-latin.woff2"
     subset.save_font(font, str(target), options)
     shutil.copy2(SOURCE / "OFL.txt", OUTPUT / "OFL.txt")
+    # Match the template's fingerprinted preload and keep font caching immutable.
+    fingerprint = hashlib.sha256(target.read_bytes()).hexdigest()[:10]
+    stylesheet = OUTPUT.parent / "css/site.css"
+    css, count = re.subn(
+        r"\.\./fonts/Amiri-Bold-latin\.woff2(?:\?v=[0-9a-f]+)?",
+        f"../fonts/Amiri-Bold-latin.woff2?v={fingerprint}", stylesheet.read_text(), count=1)
+    if count != 1:
+        raise ValueError("The heading font declaration is missing from site.css.")
+    stylesheet.write_text(css)
     print(f"{target.relative_to(ROOT)}: {target.stat().st_size:,} bytes")
 
 

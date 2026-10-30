@@ -1,32 +1,15 @@
 {% extends "site/layout.html" %}
 
-{% block canonical %}<link rel="canonical" href="{{ site_url('/') }}">{% endblock %}
 {% block body_class %}page-home{% endblock %}
-
-{% block head %}
-<script type="application/ld+json">{{ {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "QuillSail",
-  "description": "Self-hosted blog and newsletter software for publications written by their readers.",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "macOS, Windows, Linux",
-  "softwareVersion": release.version if release else None,
-  "url": site_url('/'),
-  "downloadUrl": site_url('/download'),
-  "license": "https://opensource.org/licenses/MIT",
-  "isAccessibleForFree": true,
-  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-  "author": {"@type": "Organization", "name": "Dooba Digital", "url": "https://github.com/Dooba-Digital-LLC"}
-}|tojson }}</script>
-{% endblock %}
 
 {% block main %}
 <main id="main">
   <section class="hero" aria-labelledby="hero-title">
     <div class="container">
-      <p class="kicker">Blogs and newsletters for communities</p>
-      <h1 id="hero-title" class="display">Where readers write.</h1>
+      <div class="hero-head">
+        <p class="kicker">Blogs and newsletters for communities</p>
+        <h1 id="hero-title" class="display">Where readers write.</h1>
+      </div>
       <div class="hero-body">
         <div class="hero-copy">
           <p class="lead">QuillSail is open-source blog and newsletter software for publications written by their readers. Members send in their writing, your editors review it, and every issue goes out from a server you run.</p>

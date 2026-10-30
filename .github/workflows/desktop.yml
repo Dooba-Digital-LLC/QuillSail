@@ -17,7 +17,7 @@ permissions:
   contents: read
 concurrency:
   group: desktop-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   server:
     name: Build and test server package
@@ -30,6 +30,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - run: python -m pip install -e '.[dev]'
       - run: python scripts/build_server_release.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -68,6 +70,11 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.python_arch }}
+          cache: pip
+          # Separate the large desktop dependency cache from server/test jobs.
+          cache-dependency-path: |
+            pyproject.toml
+            .github/workflows/desktop.yml
       - name: Install Linux desktop libraries
         if: runner.os == 'Linux'
         run: |
@@ -77,7 +84,7 @@ jobs:
       - run: python -m build --wheel
       - name: Install only the wheel and desktop build dependencies
         shell: bash
-        run: python -m pip install --no-cache-dir "$(echo dist/*.whl)[desktop-build]"
+        run: python -m pip install "$(echo dist/*.whl)[desktop-build]"
       - name: Build and test native desktop
         if: runner.os != 'Linux'
         run: python scripts/build_desktop.py --target ${{ matrix.target }}
@@ -113,6 +120,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: desktop-*
