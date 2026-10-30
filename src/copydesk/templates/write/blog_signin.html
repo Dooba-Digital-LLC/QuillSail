@@ -1,0 +1,17 @@
+{% extends "layout/public.html" %}
+{% block title %}Offer a blog post · {{ site.name }}{% endblock %}
+{% block content %}
+<div class="container container-narrow" data-blog-transfer>
+  <header class="page-intro"><h1>Offer a blog post to {{ site.name }}</h1></header>
+  <p data-transfer-status role="status">Sign in with a confirmed account on this newsletter to review your article and submit it to the editors.</p>
+  {% if current_user.is_authenticated %}
+  <p>Confirm your email address, then return to this page to continue.</p>
+  <a class="button" href="{{ url_for('auth.verify_notice') }}">Confirm your email</a>
+  {% else %}
+  <a class="button button-primary" href="{{ url_for('auth.login', next=request.full_path.rstrip('?')) }}">Sign in to continue</a>
+  <p>Need an account? <a href="{{ url_for('auth.join', next=request.full_path.rstrip('?')) }}">Join this publication</a>.</p>
+  {% endif %}
+  <noscript><p>With JavaScript off, you can paste the full article after signing in.</p></noscript>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/blog-transfer.js', v=version) }}" defer></script>{% endblock %}

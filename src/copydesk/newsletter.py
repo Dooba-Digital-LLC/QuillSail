@@ -136,6 +136,14 @@ def add_article(issue: Issue, article: Article) -> IssueItem:
     return item
 
 
+def set_article_display(item: IssueItem, display: str) -> None:
+    if display not in {"summary", "full", "blurb"}:
+        raise IssueError("Choose the full article, the creator's blurb, or a summary and link.")
+    if display == "blurb" and not (item.article and item.article.newsletter_blurb.strip()):
+        raise IssueError("This article has no creator blurb. Choose a summary or the full article.")
+    item.display = display
+
+
 def add_block(issue: Issue, kind: str, title: str = "", body: str = "") -> IssueItem:
     if kind not in ("text", "heading"):
         raise IssueError("Unknown item type.")
@@ -175,6 +183,8 @@ def problems(issue: Issue) -> list[str]:
             found.append("One of the articles in this issue was deleted. Remove it from the issue.")
         elif item.kind == "article" and item.article.status not in ("accepted", "published"):
             found.append(f"“{item.article.display_title}” is no longer accepted. Remove it or accept it again.")
+        elif item.kind == "article" and item.display == "blurb" and not item.article.newsletter_blurb.strip():
+            found.append(f"“{item.article.display_title}” has no creator blurb. Choose a summary or the full article.")
     if issue.audience_mode == "groups" and not issue.audience_groups:
         found.append("You chose to send to particular groups but didn't pick any.")
     return found
@@ -222,14 +232,15 @@ def prepare_items(
             if article is None or (not email and not include_unpublished and not article.is_published):
                 continue
             full_allowed = item.display == "full" and article.visibility == "public"
-            body_html = render_markdown(article.body) if full_allowed else ""
+            body_html = render_markdown(article.body, base_url=article.source_url) if full_allowed else ""
             prepared.append(PreparedItem(
                 kind="article",
                 title=article.display_title,
                 url=external_url("public.article", slug=article.slug),
                 section=article.section.name if article.section else "",
                 byline=join_names([a.display_name for a in article.authors]),
-                summary=item.body.strip() or article.summary,
+                summary=(article.newsletter_blurb.strip() if item.display == "blurb"
+                         else item.body.strip() or article.summary),
                 text=article.body if full_allowed else "",
                 html=for_email(body_html),
                 web_html=body_html,

@@ -86,7 +86,7 @@
                 <p class="small muted cluster">
                   <span>{{ article.authors|map(attribute="display_name")|join(", ") }}</span>
                   {{ ui.status(article.status) }}
-                  <span>Shows {{ "the full text" if entry.display == "full" else "a summary and a link" }}</span>
+                  <span>Shows {{ "the full text" if entry.display == "full" else "the creator's blurb and a link" if entry.display == "blurb" else "a summary and a link" }}</span>
                 </p>
               {% elif entry.kind == "heading" %}
                 <p class="eyebrow">Section heading</p>
@@ -107,14 +107,18 @@
                   {{ forms.csrf() }}
                   {% if entry.kind == "article" %}
                     <fieldset class="fieldset">
-                      <legend>In the email, show</legend>
-                      <label class="check"><input type="radio" name="display" value="summary"{% if entry.display != "full" %} checked{% endif %}> <span>A summary and a “read more” link</span></label>
+                      <legend>In this issue, show</legend>
+                      <label class="check"><input type="radio" name="display" value="summary"{% if entry.display not in ("full", "blurb") %} checked{% endif %}> <span>A summary and a “read more” link</span></label>
                       <label class="check"><input type="radio" name="display" value="full"{% if entry.display == "full" %} checked{% endif %}> <span>The full article</span></label>
+                      {% if entry.article and entry.article.newsletter_blurb %}
+                      <label class="check"><input type="radio" name="display" value="blurb"{% if entry.display == "blurb" %} checked{% endif %}> <span>The creator's newsletter blurb and a link</span></label>
+                      <p class="help">{{ entry.article.newsletter_blurb }}</p>
+                      {% endif %}
                       {% if entry.article and entry.article.visibility != "public" %}<p class="help">{{ icon("lock") }} This article isn't public, so emails always show a summary.</p>{% endif %}
                     </fieldset>
                     <div class="field">
                       <label for="item-body-{{ entry.id }}">Custom summary <span class="optional">(optional)</span></label>
-                      <p class="help">Replaces the article's summary in this issue only.</p>
+                      <p class="help">Used with “A summary and a read more link”. Leave blank for the article's usual summary. Does not replace the creator's blurb or the full article.</p>
                       <textarea id="item-body-{{ entry.id }}" name="body" rows="3">{{ entry.body }}</textarea>
                     </div>
                   {% elif entry.kind == "heading" %}

@@ -1,3 +1,5 @@
+import base64
+import json
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -208,6 +210,9 @@ def test_external_newsletter_link_uses_subpath_and_public_metadata_only(app, edi
         assert query["source"][0].endswith("/articles/" + slug + "/")
         assert query["title"] == ["A blog post"] and len(query["excerpt"][0]) <= 400
         assert "email" not in query and "token" not in query
+        transfer = json.loads(base64.urlsafe_b64decode(target.fragment.removeprefix("quillsail=")))
+        assert transfer == {"version": 1, "source": query["source"][0], "body": BODY}
+        assert "body" not in query
         article.visibility = "members"
         db.session.commit()
         assert publication.external_submission_url(article) == ""
@@ -309,7 +314,10 @@ def test_external_submissions_respect_verification_csrf_and_closed_submissions(a
         user = db.session.scalar(select(User).where(User.username == 'blogger'))
         user.email_verified_at = None
         db.session.commit()
-    assert writer.get('/write/from-blog').location.endswith('/verify-email')
+    landing = writer.get('/write/from-blog')
+    assert landing.status_code == 200 and b'data-blog-transfer' in landing.data
+    assert b'Confirm your email' in landing.data
+    assert submission(writer).location.endswith('/verify-email')
 
 
 def test_host_can_choose_mode_and_external_newsletter_settings(app, editor_client):
@@ -358,3 +366,166 @@ def test_cli_initialization_supports_blog_mode(tmp_path):
     with app.app_context():
         assert settings.get("site.mode") == "blog"
     assert b"Latest posts" in app.test_client().get("/").data
+
+
+def test_creator_blurb_is_separate_reviewed_private_and_exported(app, editor_client):
+    writer, _ = member_client(app)
+    blurb = "A creator-selected passage for newsletter readers."
+    response = submission(writer, newsletter_blurb=blurb)
+    assert response.status_code == 302
+    with app.app_context():
+        article = db.session.scalar(select(Article))
+        assert article.body == BODY and article.newsletter_blurb == blurb
+        assert article.status == "submitted" and not article.is_published
+        article_id, slug = article.id, article.slug
+    assert app.test_client().get(f"/articles/{slug}/").status_code == 404
+    assert app.test_client().get(f"/api/v1/articles/{slug}").status_code == 404
+    assert blurb in editor_client.get(f"/dashboard/articles/{article_id}/").get_data(as_text=True)
+    exported = writer.get("/account/export").get_json()["articles"][0]
+    assert exported["body"] == BODY and exported["newsletter_blurb"] == blurb
+    # Editors use their own per-issue custom summary; they cannot overwrite the
+    # text attributed to the creator by forging the writer's edit field.
+    post(editor_client, f"/write/{article_id}/edit", title="Edited", body=BODY,
+         newsletter_blurb="Not the creator's words")
+    with app.app_context():
+        assert db.session.get(Article, article_id).newsletter_blurb == blurb
+        article = db.session.get(Article, article_id)
+        article.status = "changes_requested"
+        db.session.commit()
+    assert b'Your newsletter blurb' in writer.get(f"/write/{article_id}/edit").data
+    assert post(writer, f"/write/{article_id}/edit", title="Edited", body=BODY,
+                newsletter_blurb="Revised by the creator").status_code == 302
+    with app.app_context():
+        assert db.session.get(Article, article_id).newsletter_blurb == "Revised by the creator"
+
+
+def test_blurb_length_and_submission_confirmation_are_validated(app):
+    writer, _ = member_client(app)
+    for changes in ({"newsletter_blurb": "x" * 5001}, {"permission": ""}):
+        response = submission(writer, **changes)
+        assert response.status_code == 422
+        assert BODY.encode() in response.data
+        assert b'data-transfer-fill' not in response.data
+    with app.app_context():
+        assert db.session.scalar(select(func.count()).select_from(Article)) == 0
+
+
+@pytest.mark.parametrize("display", ["full", "blurb", "summary"])
+def test_editor_selects_full_creator_or_custom_text_per_issue(app, editor_client, display):
+    writer, _ = member_client(app)
+    submission(writer, newsletter_blurb="The creator's chosen blurb.")
+    with app.app_context():
+        article = db.session.scalar(select(Article))
+        article.status, article.published_at = "published", utcnow()
+        article.excerpt = "The usual article summary."
+        admin = db.session.scalar(select(User).where(User.email == "editor@example.edu"))
+        issue = newsletter.create(admin)
+        entry = newsletter.add_article(issue, article)
+        db.session.commit()
+        issue_id, item_id, article_id = issue.id, entry.id, article.id
+    path = f"/dashboard/issues/{issue_id}/items/{item_id}"
+    assert writer.post(path, data={"csrf_token": "test-csrf", "display": display}).status_code == 403
+    assert editor_client.post(path, data={"display": display}).status_code == 400
+    assert post(editor_client, path, display=display, body="The editor's custom summary.").status_code == 302
+    with app.app_context():
+        issue = db.session.get(Issue, issue_id)
+        entry = issue.items[0]
+        assert entry.display == display
+        assert db.session.get(Article, article_id).body == BODY
+        _, html, plain = newsletter.render(issue)
+        web = newsletter.prepare_items(issue, "#6E4CC2", email=False)[0]
+        expected = {"full": BODY, "blurb": "The creator's chosen blurb.",
+                    "summary": "The editor's custom summary."}[display]
+        assert expected in plain
+        # Typography can change apostrophes in Markdown; use distinctive text.
+        assert ("useful idea" in html) == (display == "full")
+        assert ("chosen blurb" in html) == (display == "blurb")
+        assert ("custom summary" in html) == (display == "summary")
+        assert (web.text if display == "full" else web.summary) == expected
+        assert article_id == entry.article_id
+        assert "blog.example.test/original" in html and "blog.example.test/original" in plain
+        assert "Original Author" in html and "Original Author" in plain
+        if display == "blurb":
+            entry.article.newsletter_blurb = ""
+            assert any("no creator blurb" in problem for problem in newsletter.problems(issue))
+
+
+def test_invalid_blurb_choice_does_not_modify_item_and_restricted_body_stays_private(
+    app, editor_client, admin
+):
+    article_id, _ = make_post(app, admin, visibility="members")
+    with app.app_context():
+        article = db.session.get(Article, article_id)
+        article.excerpt = "An intentional public summary."
+        issue = newsletter.create(db.session.get(User, admin))
+        entry = newsletter.add_article(issue, article)
+        entry.body = "Existing custom summary."
+        db.session.commit()
+        issue_id, item_id = issue.id, entry.id
+    path = f"/dashboard/issues/{issue_id}/items/{item_id}"
+    for display in ("blurb", "unknown"):
+        post(editor_client, path, display=display, body="Should not be saved")
+        with app.app_context():
+            item = db.session.get(IssueItem, item_id)
+            assert item.display == "summary" and item.body == "Existing custom summary."
+    post(editor_client, path, display="full", body="Safe public introduction.")
+    with app.app_context():
+        issue = db.session.get(Issue, issue_id)
+        _, html, plain = newsletter.render(issue)
+        assert BODY not in plain and "useful idea" not in html
+        assert "Safe public introduction." in html and "Safe public introduction." in plain
+
+
+def test_full_transfer_preserves_unicode_and_blocks_drafts(app, admin):
+    article_id, _ = make_post(app, admin)
+    with app.app_context():
+        article = db.session.get(Article, article_id)
+        article.body = "مرحبا 🌊 café " * 10000
+        settings.set_value("blog.newsletter_url", "https://newsletter.example.test/nested/")
+        transfer_url = publication.external_submission_url(article)
+        url = urlsplit(transfer_url)
+        data = json.loads(base64.urlsafe_b64decode(url.fragment.removeprefix("quillsail=")))
+        assert data["body"] == article.body
+        assert url.path == "/nested/write/from-blog"
+        assert len(transfer_url) < 1100000
+        article.status = "draft"
+        assert publication.external_submission_url(article) == ""
+
+
+def test_upgrade_adds_empty_blurbs_without_changing_existing_articles(tmp_path):
+    from sqlalchemy import create_engine, text
+
+    from copydesk import migrate
+
+    engine = create_engine(f"sqlite:///{tmp_path}/upgrade-blurb.db")
+    try:
+        migrate.upgrade(engine, "0005")
+        with engine.begin() as connection:
+            connection.execute(text("""
+                INSERT INTO articles (slug, title, body, subtitle, excerpt, cover_image,
+                    cover_alt, status, visibility, author_note, featured, word_count,
+                    created_at, updated_at)
+                VALUES ('kept', 'Existing article', 'Original body', '', '', '', '',
+                    'accepted', 'public', '', 0, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """))
+        migrate.upgrade(engine)
+        with engine.connect() as connection:
+            row = connection.execute(text("SELECT title, body, newsletter_blurb FROM articles WHERE slug = 'kept'")).one()
+        assert tuple(row) == ("Existing article", "Original body", "")
+        assert migrate.current_revision(engine) == migrate.head_revision()
+    finally:
+        engine.dispose()
+
+
+def test_transferred_relative_links_and_images_resolve_to_original_site(app):
+    from copydesk.text import render_markdown
+
+    with app.app_context():
+        html = str(render_markdown(
+            "![Chart](/uploads/chart.png) [Other post](../next/) [Jump](#section) <script>alert(1)</script>",
+            base_url="https://blog.example.test/articles/post/",
+        ))
+    assert 'src="https://blog.example.test/uploads/chart.png"' in html
+    assert 'href="https://blog.example.test/articles/next/"' in html
+    assert 'href="#section"' in html
+    assert '<script>' not in html

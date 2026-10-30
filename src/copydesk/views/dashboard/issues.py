@@ -161,10 +161,14 @@ def issue_item_update(issue_id: int, item_id: int):
         newsletter.renumber(item)
         flash("Removed from the issue.", "success")
     else:
+        if entry.kind == "article":
+            try:
+                newsletter.set_article_display(entry, form.get("display", "summary"))
+            except newsletter.IssueError as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("dash.issue", issue_id=item.id) + f"#item-{entry.id}")
         entry.title = (form.get("title") or "").strip()[:200]
         entry.body = form.get("body", "").replace("\r\n", "\n")
-        if entry.kind == "article":
-            entry.display = "full" if form.get("display") == "full" else "summary"
         wanted = {parse_int(v) for v in form.getlist("item_groups")}
         entry.audience_groups = [grp for grp in _audience_groups() if grp.id in wanted]
         flash("Item saved.", "success")

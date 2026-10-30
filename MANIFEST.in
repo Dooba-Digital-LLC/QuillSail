@@ -7,7 +7,7 @@ recursive-include deploy *.service
 recursive-include deploy *.py *.sh *.example
 recursive-include scripts *.py *.sh
 recursive-include assets *.svg *.png *.md
-recursive-include tests *.py
+recursive-include tests *.py *.cjs
 prune .validation
 prune .venv
 prune instance

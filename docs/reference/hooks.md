@@ -74,4 +74,4 @@ Register with `@extension.slot("slot")` and return HTML to insert. Return markup
 
 ---
 
-*Generated from the QuillSail 1.10.3 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.11.0 source code by `scripts/build_reference_docs.py`.*

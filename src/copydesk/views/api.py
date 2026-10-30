@@ -79,7 +79,7 @@ def article_json(article: Article, *, full: bool = False) -> dict:
         "source_author": article.source_author or None,
     }
     if full:
-        data["html"] = str(render_markdown(article.body))
+        data["html"] = str(render_markdown(article.body, base_url=article.source_url))
         data["markdown"] = article.body
     return data
 
