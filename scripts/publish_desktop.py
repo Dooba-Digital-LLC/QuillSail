@@ -50,6 +50,8 @@ def validate_downloads(folder, version, commit, *, include_server=False):
                     "setup_restart_check": True, "gui_lifecycle_check": True, "updater_install_check": True}
         if any(report.get(key) != value for key, value in expected.items()):
             raise ValueError(f"The {target} build report does not match the tested release commit.")
+        if target.startswith("macos-") and report.get("macos_signature") != "developer-id-notarized":
+            raise ValueError(f"The {target} build is not signed with a Developer ID and notarized by Apple.")
         if not archive.is_file() or archive.is_symlink() or not archive.stat().st_size or digest(archive) != report.get("sha256"):
             raise ValueError(f"The {target} archive is missing, empty or has the wrong checksum.")
         reports.append(report)
@@ -142,7 +144,7 @@ def publish(client, version, commit, files):
         "| Platform | Download |", "| --- | --- |", *rows, "",
         "The app opens localhost automatically. Create your publication and administrator on first launch; later launches preserve your data.", "",
         "Each native build passed browser setup/restart and GUI start/stop/restart checks using disposable data. No test email was sent.", "",
-        "These are beta builds. macOS bundles are ad-hoc signed; Developer ID signing/notarization and Windows code signing are not configured.",
+        "These are beta builds. The Mac apps and disk images are signed with a Developer ID and notarized by Apple. Windows code signing is not configured yet, so Windows may ask before opening the setup program.",
         "Linux .deb installers target Ubuntu 22.04 or newer and compatible Debian-based desktops. Updater archives remain available for terminal installations. See the desktop guide for required desktop libraries.", "",
         f"[Desktop guide](https://github.com/{client.repository}/blob/{tag}/docs/desktop.md) · Source commit: `{commit}`", "",
         "SHA256SUMS.txt and desktop-builds.json contain the download checksums and native build reports.",

@@ -144,7 +144,9 @@ def main():
         metadata.update(CFBundleShortVersionString=copydesk.__version__, CFBundleVersion=copydesk.__version__)
         with plist.open("wb") as handle:
             plistlib.dump(metadata, handle)
-        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
+        import desktop_signing
+
+        desktop_signing.sign_app(app)
         executable = app / "Contents/MacOS/QuillSail"
     elif sys.platform == "win32":
         executable = output / "QuillSail/QuillSail.exe"
@@ -156,6 +158,9 @@ def main():
     helper = resources / "updater" / ("QuillSailUpdater.exe" if sys.platform == "win32" else "QuillSailUpdater")
     subprocess.run([str(helper), "--smoke-test"], check=True, timeout=120)
     if sys.platform == "darwin":
+        # Notarize and staple before archiving, so the updater archive and DMG carry the ticket.
+        if desktop_signing.notarizing():
+            desktop_signing.notarize(app)
         artifact = output / (name + ".zip")
         subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(artifact)], check=True)
     elif sys.platform == "win32":
@@ -169,7 +174,7 @@ def main():
         extracted = extract_archive(artifact, Path(folder) / "unpacked", target)
         assert read_install(extracted)["version"] == copydesk.__version__
         if sys.platform == "darwin":
-            subprocess.run(["codesign", "--verify", "--deep", "--strict", str(extracted)], check=True)
+            desktop_signing.verify(extracted)
     from desktop_installers import build
 
     installer = build(output, app_root, target, copydesk.__version__, icon if sys.platform != "linux" else logo, artifact)
@@ -177,6 +182,8 @@ def main():
               "installer_lifecycle_check": True, "version": copydesk.__version__, "target": target, "archive": artifact.name,
               "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "setup_restart_check": True,
               "gui_lifecycle_check": True, "updater_install_check": True, "commit": os.environ.get("GITHUB_SHA", "local")}
+    if sys.platform == "darwin":
+        report["macos_signature"] = desktop_signing.status()
     (output / (name + ".json")).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Desktop bundle ready: {output / name}")
 

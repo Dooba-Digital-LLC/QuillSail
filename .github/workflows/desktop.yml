@@ -61,7 +61,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       OPENSSL_STATIC: '1'
-    timeout-minutes: 30
+    # Manual runs wait for Apple to notarize each Mac app and disk image.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,6 +84,46 @@ jobs:
       - name: Install Windows graphical installer builder
         if: runner.os == 'Windows'
         run: choco install innosetup --no-progress -y
+      - name: Prepare Developer ID signing
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Fork and Dependabot pull requests get no secrets, so they build ad-hoc signed apps,
+          # which publishing rejects. Pull requests sign; manual runs also notarize.
+          if [ -z "$MACOS_CERTIFICATE_P12" ]; then
+            echo "No Developer ID certificate is available. This build stays ad-hoc signed."
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/quillsail-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$keychain"
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -f pkcs12 -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | head -n 1)"
+          if [ -z "$identity" ]; then
+            echo "::error::MACOS_CERTIFICATE_P12 doesn't contain a valid Developer ID Application certificate and key."
+            exit 1
+          fi
+          echo "Signing with $identity"
+          echo "QUILLSAIL_MACOS_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "QUILLSAIL_MACOS_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            xcrun notarytool store-credentials quillsail-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_PASSWORD" --keychain "$keychain"
+            echo "QUILLSAIL_NOTARY_PROFILE=quillsail-notary" >> "$GITHUB_ENV"
+          fi
       - run: python -m pip install build
       - run: python -m build --wheel
       - name: Install only the wheel and desktop build dependencies
@@ -109,6 +150,9 @@ jobs:
             dist/desktop/*.json
           if-no-files-found: error
           retention-days: 14
+      - name: Remove the signing keychain
+        if: always() && runner.os == 'macOS'
+        run: if [ -n "${QUILLSAIL_MACOS_KEYCHAIN:-}" ]; then security delete-keychain "$QUILLSAIL_MACOS_KEYCHAIN"; fi
   publish:
     name: Publish four desktop downloads
     if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'

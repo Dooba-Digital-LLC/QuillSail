@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.2 — Beta
+
+- Sign the Mac apps and disk images with a Developer ID and have Apple notarize them, so macOS opens downloads without a trip to Privacy & Security. Every binary is signed with the hardened runtime and a secure timestamp, and the updater archives carry the stapled ticket.
+- Refuse to publish Mac builds that aren't notarized. Builds without a certificate, such as local and fork builds, stay ad-hoc signed.
+- Say on the website and in the guides that the Mac apps are notarized and the Windows setup program isn't code-signed yet.
+
 ## 1.11.1 — Beta
 
 - Offer drag-to-Applications DMGs for Apple Silicon and Intel Macs, a per-user Windows setup wizard, and a Debian/Ubuntu package with an application-menu entry.

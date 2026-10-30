@@ -13,7 +13,7 @@ Never paste configuration files, setup codes, tokens or subscriber data into a p
 
 ### macOS says it can't check QuillSail
 
-The beta isn't notarized by Apple yet, so macOS asks before opening a downloaded copy the first time. Open **System Settings → Privacy & Security**, scroll down, and choose **Open Anyway** next to the message about QuillSail.
+Downloads from QuillSail 1.11.2 onward are notarized by Apple and open without this step. Version 1.11.1 and earlier, and apps you build yourself, aren't notarized, so macOS asks before opening them the first time. Open **System Settings → Privacy & Security**, scroll down, and choose **Open Anyway** next to the message about QuillSail.
 
 ### Windows SmartScreen appears
 

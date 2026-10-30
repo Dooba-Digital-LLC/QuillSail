@@ -105,7 +105,7 @@
   <section class="section-plain verification" aria-labelledby="verify-title">
     <h2 id="verify-title">How downloads are checked</h2>
     <p>Every file on this page is listed in QuillSail's signed release feed, the same one the app uses for updates. This site checks the feed's signatures before it offers a download, and the terminal installer checks each file's size and SHA-256 checksum before installing it. Release information was last checked {{ release.checked_at|datetime_label }}.</p>
-    <p class="note">These are beta builds. The Mac apps aren't notarized by Apple, and the Windows app isn't code-signed yet, so your computer may ask you to confirm the first time you open QuillSail.</p>
+    <p class="note">These are beta builds. The Mac apps are signed and notarized by Apple. The Windows app isn't code-signed yet, so Windows may ask you to confirm the first time you open QuillSail.</p>
   </section>
   {% endif %}
 </main>

@@ -32,6 +32,8 @@ def downloads(folder):
         installer = folder / (stem + release.INSTALLERS[target])
         installer.write_bytes(b"synthetic-installer:" + target.encode())
         report.update(installer=installer.name, installer_sha256=release.digest(installer), installer_lifecycle_check=True)
+        if target.startswith("macos-"):
+            report["macos_signature"] = "developer-id-notarized"
         (folder / (stem + ".json")).write_text(json.dumps(report))
 
 
@@ -201,3 +203,18 @@ def test_graphical_installers_must_pass_native_checks(tmp_path, problem):
     report_path.write_text(json.dumps(report))
     with pytest.raises(ValueError, match="installer"):
         release.validate_downloads(tmp_path, VERSION, COMMIT)
+
+
+@pytest.mark.parametrize("signature", [None, "ad-hoc", "developer-id"])
+def test_mac_downloads_must_be_developer_id_signed_and_notarized(tmp_path, signature):
+    downloads(tmp_path)
+    report_path = tmp_path / f"QuillSail-{VERSION}-macos-arm64.json"
+    report = json.loads(report_path.read_text())
+    if signature is None:
+        del report["macos_signature"]
+    else:
+        report["macos_signature"] = signature
+    report_path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="notarized"):
+        release.validate_downloads(tmp_path, VERSION, COMMIT)
+    assert not (tmp_path / "SHA256SUMS.txt").exists()
