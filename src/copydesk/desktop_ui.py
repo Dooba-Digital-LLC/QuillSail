@@ -102,6 +102,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
         from PySide6.QtWidgets import (
             QApplication,
             QButtonGroup,
+            QCheckBox,
             QComboBox,
             QFileDialog,
             QFrame,
@@ -147,7 +148,9 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
     appearance = saved_appearance(registry.root)
     root = selected.root
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    logfile = root / "quillsail.log"
+    # The launcher outlives individual publications, including deleted ones.
+    registry.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    logfile = registry.root / "quillsail.log"
     # Create with private permissions before logging opens the file.
     descriptor = os.open(logfile, os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
     os.close(descriptor)
@@ -268,6 +271,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.runtime = self.make_runtime(root)
             self.runtimes = {selected.id: self.runtime}
             self.selected_instance = selected
+            self.external_url = ""
             self.busy = self.quitting = self.ready_to_quit = False
             # Like a menu bar app, closing the window leaves publications running.
             # Without a Dock or tray icon to reopen it, closing quits instead.
@@ -325,6 +329,9 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.refresh_button.clicked.connect(lambda: self.refresh_instances(self.selected_instance.id))
             instance_row.addWidget(self.refresh_button)
             layout.addLayout(instance_row)
+            self.delete_instance_button = QPushButton("Delete instance…")
+            self.delete_instance_button.clicked.connect(self.delete_instance)
+            layout.addWidget(self.delete_instance_button)
             self.refresh_instances(selected.id)
             self.instance_selector.currentIndexChanged.connect(self.select_instance)
             self.instance_summary = QLabel("No instances running in this launcher.")
@@ -574,7 +581,43 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.toggle.setText("Stop" if self.runtime.server else "Start")
             self.toggle.setEnabled(not external)
             self.open_button.setEnabled(bool(self.runtime.server or external))
+            self.delete_instance_button.setEnabled(identifier != "default" and not self.runtime.server and not external)
             self.refresh_running_labels()
+
+        def delete_instance(self):
+            item = self.selected_instance
+            dialog = QMessageBox(self)
+            dialog.setWindowTitle("Delete instance")
+            dialog.setTextFormat(Qt.TextFormat.PlainText)
+            dialog.setText(f"Remove {item.name} from the instance list?")
+            dialog.setInformativeText(f"Files will be kept in {item.root} unless you choose to permanently delete them. Stop the instance before deleting it.")
+            erase = QCheckBox("Permanently delete all publication files, including content and subscribers")
+            dialog.setCheckBox(erase)
+            dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+            dialog.button(QMessageBox.StandardButton.Ok).setText("Delete instance")
+            dialog.setDefaultButton(QMessageBox.StandardButton.Cancel)
+            if dialog.exec() == QMessageBox.StandardButton.Ok:
+                delete_data = erase.isChecked()
+                self.operation(lambda: registry.delete(item.id, delete_data=delete_data), self.instance_deleted, self.delete_failed)
+
+        @Slot(str)
+        def delete_failed(self, message):
+            self.finish_operation()
+            self.busy = False
+            self.select_instance()
+            self.status.setText("The instance could not be deleted: " + message)
+            if self.quitting:
+                QTimer.singleShot(0, self.request_quit)
+
+        @Slot(object)
+        def instance_deleted(self, item):
+            self.finish_operation()
+            self.busy = False
+            self.runtimes.pop(item.id, None)
+            self.refresh_instances("default")
+            self.select_instance()
+            if self.quitting:
+                QTimer.singleShot(0, self.request_quit)
 
         def create_instance(self):
             name, accepted = QInputDialog.getText(self, "New publication instance", "Instance name")
@@ -609,6 +652,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.update_channel.setEnabled(False)
             self.instance_selector.setEnabled(False)
             self.new_instance.setEnabled(False)
+            self.delete_instance_button.setEnabled(False)
             self.add_instance.setEnabled(False)
             self.refresh_button.setEnabled(False)
             self.task = Task(callback, self)
@@ -627,6 +671,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.update_channel.setEnabled(True)
             self.instance_selector.setEnabled(True)
             self.new_instance.setEnabled(True)
+            self.delete_instance_button.setEnabled(self.selected_instance.id != "default" and not self.runtime.server and not self.external_url)
             self.add_instance.setEnabled(True)
             self.refresh_button.setEnabled(True)
 

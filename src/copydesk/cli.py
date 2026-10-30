@@ -231,7 +231,7 @@ def quit_command():
 
 @main.group("instance")
 def instance_commands():
-    """Create, list and run independent local publications."""
+    """Create, list, delete and run independent local publications."""
 
 
 @instance_commands.command("list")
@@ -277,6 +277,26 @@ def instance_add(name, data_dir):
     except (ConfigError, OSError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Registered {item.id}: {item.root}")
+
+
+@instance_commands.command("delete")
+@click.argument("name")
+@click.option("--delete-data", is_flag=True, help="Permanently delete the publication folder and all its contents.")
+@click.option("--yes", is_flag=True, help="Skip the confirmation prompt.")
+def instance_delete(name, delete_data, yes):
+    """Remove a stopped instance from the list. Keep its files unless --delete-data is used."""
+    from copydesk.instances import InstanceRegistry
+
+    try:
+        registry = InstanceRegistry()
+        item = registry.get(name)
+        action = "Permanently delete all publication files in" if delete_data else "Remove from the instance list, keeping files in"
+        if not yes:
+            click.confirm(f"{action} {item.root}?", abort=True)
+        registry.delete(name, delete_data=delete_data)
+    except (ConfigError, OSError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Deleted instance {item.id}. " + ("Publication files permanently deleted." if delete_data else f"Files kept in {item.root}."))
 
 
 @instance_commands.command("run")

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,6 +84,55 @@ class InstanceRegistry:
             if instance.id == identifier:
                 return instance
         raise ConfigError(f"No instance named {identifier!r}. Run `quillsail instance list`.")
+
+    def delete(self, identifier: str, *, delete_data=False) -> Instance:
+        """Unregister a stopped publication, optionally erasing its private folder."""
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        registry_lock = InstanceLock(self.root / "registry.lock")
+        registry_lock.acquire()
+        publication_lock = None
+        try:
+            item = self.get(identifier)
+            if item.id == "default":
+                raise ConfigError("The Default publication cannot be deleted from the instance list.")
+            rows = self.list()
+            if delete_data and (self.root.is_relative_to(item.root) or any(
+                row.id != item.id and (row.root.is_relative_to(item.root) or item.root.is_relative_to(row.root))
+                for row in rows
+            )):
+                raise ConfigError("This folder overlaps the registry or another publication; keep its files instead.")
+            if item.root.exists():
+                publication_lock = InstanceLock(item.root / "desktop.lock")
+                publication_lock.acquire()
+                if delete_data:
+                    try:
+                        marker = json.loads((item.root / "desktop.json").read_text(encoding="utf-8"))
+                        if marker.get("format") != FORMAT or not item.config_path.is_file():
+                            raise ValueError
+                    except (OSError, ValueError, AttributeError) as exc:
+                        raise ConfigError("This folder is not a complete desktop publication; keep its files instead.") from exc
+                    # Keep the lock open while removing private data, including on Windows.
+                    for child in item.root.iterdir():
+                        if child.name == "desktop.lock":
+                            continue
+                        if child.is_dir() and not child.is_symlink():
+                            shutil.rmtree(child)
+                        else:
+                            child.unlink()
+            write_private(self.path, json.dumps({"format": REGISTRY_FORMAT, "instances": [
+                {"id": row.id, "name": row.name, "directory": str(row.root)}
+                for row in rows if row.id != item.id
+            ]}, indent=2) + "\n")
+            if publication_lock:
+                publication_lock.release()
+            if delete_data and item.root.exists():
+                (item.root / "desktop.lock").unlink(missing_ok=True)
+                item.root.rmdir()
+            return item
+        finally:
+            if publication_lock:
+                publication_lock.release()
+            registry_lock.release()
 
     def add(self, name: str, directory: Path | None = None, *, existing=False) -> Instance:
         name = name.strip()

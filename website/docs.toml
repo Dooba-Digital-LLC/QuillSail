@@ -7,7 +7,8 @@
 # `slug` is the page's address. It defaults to the file's path under docs/,
 # without ".md" (docs/reference/cli.md becomes /reference/cli).
 
-exclude = []
+# Contributor proposals stay separate from the released user documentation.
+exclude = ["docs/design/domains-and-launch.md"]
 
 [[sections]]
 title = "Get started"
