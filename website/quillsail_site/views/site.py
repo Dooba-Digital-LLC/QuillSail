@@ -36,6 +36,12 @@ def create_site_app(config: Config, catalog: Catalog, docs: Docs) -> Flask:
         platforms=PLATFORMS,
         install_commands={"sh": f"curl -fsSL {site}/install.sh | bash", "ps1": f"irm {site}/install.ps1 | iex"},
     )
+    from quillsail_site.views.oauth import bp as oauth_bp
+
+    app.config.update(SECRET_KEY=config.oauth_relay_secret or None, MAX_CONTENT_LENGTH=32 * 1024,
+                      SESSION_COOKIE_NAME='quillsail_oauth_relay', SESSION_COOKIE_HTTPONLY=True,
+                      SESSION_COOKIE_SECURE=config.site.scheme == 'https', SESSION_COOKIE_SAMESITE='Lax')
+    app.register_blueprint(oauth_bp)
     app.register_blueprint(bp)
     return app
 

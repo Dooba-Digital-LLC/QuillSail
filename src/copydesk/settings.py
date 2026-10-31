@@ -197,6 +197,17 @@ define("appearance.email_css", "", "Custom email CSS", type="code", tab="appeara
        help="Applied to newsletter emails and inlined where supported. Email clients support a smaller set of CSS than browsers.")
 REGISTRY["appearance.custom_css"].max_length = 40000
 
+define("hosting.keep_awake", False, "Keep this computer awake while public", type="bool", tab="hosting",
+       help="Desktop only. Power settings and battery limits still apply.")
+
+# --- Launch page ---------------------------------------------------------------------
+define("launch.heading", "Launching soon", "Launch page heading", tab="launch", max_length=160)
+define("launch.message", "We're getting ready. Subscribe to hear when we launch.",
+       "Launch page message", type="markdown", tab="launch", max_length=5000)
+define("launch.signup", True, "Show the sign-up form", type="bool", tab="launch")
+define("launch.date", "", "Expected launch date", tab="launch", max_length=100)
+
+
 # --- Accounts ------------------------------------------------------------------------
 define("accounts.registration", "open", "Who can create an account", type="choice", tab="accounts",
        choices=[("open", "Anyone"), ("domains", "Only people with an email address at the domains below"),

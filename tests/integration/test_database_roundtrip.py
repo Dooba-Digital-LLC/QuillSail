@@ -10,7 +10,8 @@ from copydesk.app import create_app
 from copydesk.cli import main
 from copydesk.config import load_config
 from copydesk.db import db
-from copydesk.models import User
+from copydesk.models import EdgeReceipt, User
+from copydesk.utils import utcnow
 
 pytestmark = pytest.mark.integration
 
@@ -34,6 +35,8 @@ def test_export_restore_on_actual_server_database(app, tmp_path, database_url):
 
     with app.app_context():
         demo.run()
+        db.session.add(EdgeReceipt(id='synthetic-offline-receipt', received_at=utcnow()))
+        db.session.commit()
     runner = CliRunner()
     source = config_file('source', database_url)
     backup = tmp_path / 'source.json'

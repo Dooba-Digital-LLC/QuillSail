@@ -1,5 +1,5 @@
 {# The newsletter sign-up form. Pass `groups` (audience groups to offer) and an optional `box_id`. #}
-{% if newsletter_enabled %}
+{% if newsletter_enabled and (not launch_soon or launch_signup_available) %}
 {% set box = box_id|default("main") %}
 <form class="subscribe-box" method="post" action="{{ url_for('subscribe.subscribe') }}">
   {% if current_user.is_authenticated %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}

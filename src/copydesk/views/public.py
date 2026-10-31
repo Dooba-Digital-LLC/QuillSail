@@ -94,6 +94,10 @@ def _public_helpers():
 
 @bp.get("/")
 def home():
+    from copydesk import launch
+
+    if launch.is_soon() and not launch.editor():
+        return render_template("public/launching.html", signup_available=launch.signup_available(), groups=signup_groups())
     require_read()
     if publication.is_blog():
         page = paginate(published_articles().order_by(Article.published_at.desc(), Article.id.desc()), per_page=10)
@@ -455,5 +459,6 @@ def health():
     except Exception:  # noqa: BLE001 - report, don't crash
         database = "unavailable"
     status = 200 if database == "ok" else 503
-    return jsonify(status="ok" if status == 200 else "error", database=database, version=__version__,
+    identity = settings.get("system.instance_id") if database == "ok" else None
+    return jsonify(instance_id=identity, status="ok" if status == 200 else "error", database=database, version=__version__,
                    maintenance=active(current_app.extensions["copydesk"].config)), status

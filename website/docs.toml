@@ -25,6 +25,7 @@ pages = [
   { title = "Terminal installer", file = "docs/install-script.md" },
   { title = "Desktop app", file = "docs/desktop.md" },
   { title = "Server installation", file = "docs/installation.md" },
+  { title = "Domains and launch", file = "docs/hosting.md" },
   { title = "Configuration", file = "docs/configuration.md" },
 ]
 

@@ -32,6 +32,11 @@ MAIL_SECURITY = ("none", "starttls", "ssl")
 
 # Environment variable -> (section, key) in the TOML file.
 ENV_OVERRIDES: dict[str, tuple[str, str]] = {
+    "CLOUDFLARE_CLIENT_ID": ("oauth", "cloudflare_client_id"),
+    "COPYDESK_CLOUDFLARE_CLIENT_ID": ("oauth", "cloudflare_client_id"),
+    "COPYDESK_CLOUDFLARE_EDGE_SCOPES": ("oauth", "cloudflare_edge_scopes"),
+    "COPYDESK_CLOUDFLARE_SCOPES": ("oauth", "cloudflare_scopes"),
+    "COPYDESK_CLOUDFLARE_RELAY_URL": ("oauth", "cloudflare_relay_url"),
     "COPYDESK_BASE_URL": ("site", "base_url"),
     "COPYDESK_SECRET_KEY": ("site", "secret_key"),
     "COPYDESK_DATA_DIR": ("site", "data_dir"),
@@ -265,6 +270,10 @@ def _build(data: dict[str, Any], file_path: Path | None, root: Path) -> Config:
         testing=testing,
         raw=data,
         oauth_clients={
+            "cloudflare": {"client_id": str(oauth.get("cloudflare_client_id", "")),
+                           "scopes": str(oauth.get("cloudflare_scopes", "")),
+                           "edge_scopes": str(oauth.get("cloudflare_edge_scopes", "")),
+                           "relay_url": str(oauth.get("cloudflare_relay_url", ""))},
             "gmail": {"client_id": str(oauth.get("google_client_id", "")),
                       "client_secret": str(oauth.get("google_client_secret", ""))},
             "outlook": {"client_id": str(oauth.get("microsoft_client_id", "")),

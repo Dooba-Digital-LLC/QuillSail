@@ -8,6 +8,11 @@ Each variable overrides one value in the file. Lists, such as `COPYDESK_EXTENSIO
 
 | Variable | Overrides |
 | --- | --- |
+| `CLOUDFLARE_CLIENT_ID` | `[oauth] cloudflare_client_id` |
+| `COPYDESK_CLOUDFLARE_CLIENT_ID` | `[oauth] cloudflare_client_id` |
+| `COPYDESK_CLOUDFLARE_EDGE_SCOPES` | `[oauth] cloudflare_edge_scopes` |
+| `COPYDESK_CLOUDFLARE_SCOPES` | `[oauth] cloudflare_scopes` |
+| `COPYDESK_CLOUDFLARE_RELAY_URL` | `[oauth] cloudflare_relay_url` |
 | `COPYDESK_BASE_URL` | `[site] base_url` |
 | `COPYDESK_SECRET_KEY` | `[site] secret_key` |
 | `COPYDESK_DATA_DIR` | `[site] data_dir` |
@@ -170,4 +175,4 @@ microsoft_tenant = "common"
 
 ---
 
-*Generated from the QuillSail 1.11.2 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.12.0 source code by `scripts/build_reference_docs.py`.*

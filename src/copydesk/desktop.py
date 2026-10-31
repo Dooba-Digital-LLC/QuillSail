@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -20,12 +22,14 @@ import tarfile
 import tempfile
 import threading
 import time
+import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 from string import Template
 from urllib.parse import urlencode, urlsplit
 
 from flask import abort, redirect, request, session, url_for
+from flask.sessions import SecureCookieSessionInterface
 from sqlalchemy import select
 from werkzeug.serving import WSGIRequestHandler, make_server
 from werkzeug.wrappers import Response
@@ -124,6 +128,32 @@ class LocalRequests:
         return self.app(environ, start_response)
 
 
+class ListenerSessions(SecureCookieSessionInterface):
+    def get_cookie_secure(self, app):
+        return request.environ.get("quillsail.listener") == "public"
+
+
+class PublicRequests:
+    """A dedicated loopback origin for a locally authenticated tunnel/reverse proxy.
+
+    Never wrap the local listener in this middleware: visitor headers are trusted
+    only on this separate port. Remote peers and unexpected hosts fail closed.
+    """
+    def __init__(self, app, origin, provider="manual"):
+        self.app, self.host, self.provider = app, urlsplit(origin).netloc, provider
+
+    def __call__(self, environ, start_response):
+        if environ.get("REMOTE_ADDR") not in {"127.0.0.1", "::1"} or environ.get("HTTP_HOST", "").lower() != self.host:
+            return Response("Not found", status=404)(environ, start_response)
+        raw = environ.get("HTTP_CF_CONNECTING_IP", "") if self.provider == "cloudflare" else environ.get("HTTP_X_FORWARDED_FOR", "").split(",")[-1].strip()
+        try:
+            visitor = str(ipaddress.ip_address(raw))
+        except ValueError:
+            return Response("Visitor address required", status=400)(environ, start_response)
+        environ.update({"REMOTE_ADDR": visitor, "wsgi.url_scheme": "https", "SERVER_PORT": "443", "quillsail.listener": "public"})
+        return self.app(environ, start_response)
+
+
 class DesktopRuntime:
     def __init__(self, directory: Path | None = None):
         self.root = (directory or default_data_dir()).expanduser().resolve()
@@ -133,6 +163,12 @@ class DesktopRuntime:
         self.app = self.server = self.worker = None
         self.http_thread = self.worker_thread = None
         self.url = ""
+        self.public_server = self.public_thread = None
+        self.public_url = ""
+        self.tunnel = None
+        self.hosting_status = ""
+        self.awake = None
+        self._listener_lock = threading.RLock()
         self._proof = secrets.token_urlsafe(32)
         self._tickets: dict[str, float] = {}
         self._ticket_lock = threading.Lock()
@@ -226,20 +262,132 @@ class DesktopRuntime:
             except (OSError, SystemExit):
                 self.server = make_server("127.0.0.1", 0, self.app, threaded=True, request_handler=QuietHandler)
             self.url = f"http://127.0.0.1:{self.server.server_port}"
-            config.base_url = self.url
-            self.app.config["SERVER_NAME"] = urlsplit(self.url).netloc
-            self.app.wsgi_app = LocalRequests(self.app.wsgi_app, self.url)
-            write_private(self.state_path, json.dumps({"format": FORMAT, "port": self.server.server_port, "version": __version__}) + "\n")
+            self.app.config["SERVER_NAME"] = config.server_name
+            self.app.session_interface = ListenerSessions()
+            self._wsgi = self.app.wsgi_app
+            self.app.wsgi_app = LocalRequests(self._wsgi, self.url)
+            self.app.before_request_funcs[None].insert(0, self._public_guard)
+            if urlsplit(config.base_url).hostname in {"127.0.0.1", "localhost", "::1"}:
+                config.base_url = self.url
+                self.app.config["SERVER_NAME"] = config.server_name
+            else:
+                self._start_public(config.base_url, saved.get("public_port", 0))
+            write_private(self.state_path, json.dumps({"format": FORMAT, "port": self.server.server_port, "public_port": self.public_server.server_port if self.public_server else 0, "version": __version__}) + "\n")
             self.http_thread = threading.Thread(target=self.server.serve_forever, name="quillsail-local-web", daemon=True)
             self.http_thread.start()
             if with_worker:
                 self.worker = Worker(self.app)
                 self.worker_thread = threading.Thread(target=self.worker.run, name="quillsail-local-worker", daemon=True)
                 self.worker_thread.start()
+                self.ensure_tunnel(download=False)
+            self.apply_keep_awake()
         except BaseException:
             self.stop()
             raise
         return self.url
+
+    def apply_keep_awake(self):
+        from copydesk import settings
+        from copydesk.tunnel import AwakeGuard
+
+        with self.app.app_context():
+            enabled = bool(self.public_url and settings.get("hosting.keep_awake"))
+        if enabled and self.awake is None:
+            self.awake = AwakeGuard()
+            self.awake.start()
+        elif not enabled and self.awake:
+            self.awake.stop()
+            self.awake = None
+
+    def ensure_tunnel(self, *, download=True):
+        from copydesk import cloudflare
+        from copydesk.models import HostingConnection
+        from copydesk.tunnel import Tunnel, binary
+
+        if self.tunnel:
+            return
+        with self.app.app_context():
+            if db.session.get(HostingConnection, 1) is None:
+                return
+            row, data = cloudflare.connection()
+            self.hosting_status = "Authorization required" if row.status == "authorization_required" else ""
+            if row.status in {"disconnecting", "authorization_required"} or not data.get("tunnel_token"):
+                return
+            if not download:
+                # Downloads and remote configuration updates belong in a job.
+                from copydesk import jobs
+
+                jobs.enqueue("domain.provision")
+                db.session.commit()
+                return
+            self.tunnel = Tunnel(binary(self.root), data["tunnel_token"])
+            self.tunnel.start()
+
+    def stop_tunnel(self):
+        if self.tunnel:
+            self.tunnel.stop()
+            self.tunnel = None
+
+    def _public_guard(self):
+        if request.environ.get("quillsail.listener") != "public":
+            return None
+        from copydesk.launch import PUBLIC_ENDPOINTS
+
+        if request.endpoint not in PUBLIC_ENDPOINTS | {
+            "public.articles", "public.article", "public.issues", "public.issue",
+            "public.section", "public.page", "public.feed", "public.sitemap",
+            "public.search", "public.person",
+        }:
+            abort(404)
+        return None
+
+    def _start_public(self, url, port=0):
+        if not isinstance(port, int) or not 0 <= port <= 65535:
+            port = 0
+        provider = "manual"
+        with self.app.app_context():
+            from copydesk import settings
+
+            provider = settings.get("hosting.provider", "manual")
+        app = PublicRequests(self._wsgi, url, provider)
+        try:
+            self.public_server = make_server("127.0.0.1", port, app, threaded=True, request_handler=QuietHandler)
+        except (OSError, SystemExit):
+            self.public_server = make_server("127.0.0.1", 0, app, threaded=True, request_handler=QuietHandler)
+        self.public_url = url
+        self.public_thread = threading.Thread(target=self.public_server.serve_forever, name="quillsail-public-web", daemon=True)
+        self.public_thread.start()
+
+    def set_public_url(self, value):
+        from copydesk.domains import public_url
+
+        value = public_url(value) if value else ""
+        with self._listener_lock:
+            content = self.config_path.read_text(encoding="utf-8")
+            section = re.search(r'(?ms)^\[site\][ \t]*(?:#[^\n]*)?\n(.*?)(?=^\[|\Z)', content)
+            if section is None:
+                raise ConfigError("The desktop configuration has no site section.")
+            body, count = re.subn(r'(?m)^(base_url\s*=\s*).*$', lambda match: match[1] + json.dumps(value or self.url), section[1], count=1)
+            if count != 1:
+                raise ConfigError("The desktop configuration has no public address setting.")
+            content = content[:section.start(1)] + body + content[section.end(1):]
+            if tomllib.loads(content)['site']['base_url'] != (value or self.url):
+                raise ConfigError("The public address could not be saved in the site configuration.")
+            port = self.public_server.server_port if self.public_server else 0
+            if self.public_server:
+                self.public_server.shutdown()
+                self.public_thread.join()
+                self.public_server.server_close()
+                self.public_server = self.public_thread = None
+            write_private(self.config_path, content)
+            self.app.extensions["copydesk"].config.base_url = value or self.url
+            self.app.config["SERVER_NAME"] = urlsplit(value or self.url).netloc
+            self.public_url = value
+            if value:
+                self._start_public(value, port)
+            write_private(self.state_path, json.dumps({"format": FORMAT, "port": self.server.server_port,
+                "public_port": self.public_server.server_port if self.public_server else 0, "version": __version__}) + "\n")
+            self.apply_keep_awake()
 
     def launch_url(self) -> str:
         if self.server is None:
@@ -274,6 +422,15 @@ class DesktopRuntime:
                 self.worker.stop.set()
             if self.worker_thread:
                 self.worker_thread.join()
+            self.stop_tunnel()
+            if self.awake:
+                self.awake.stop()
+                self.awake = None
+            if self.public_server:
+                self.public_server.shutdown()
+                self.public_thread.join()
+                self.public_server.server_close()
+                self.public_server = self.public_thread = None
             if self.server:
                 if self.http_thread and self.http_thread.is_alive():
                     self.server.shutdown()

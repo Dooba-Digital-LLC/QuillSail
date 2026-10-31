@@ -1,0 +1,24 @@
+{% extends 'layout/dashboard.html' %}
+{% import 'macros/forms.html' as forms with context %}
+{% block page_title %}Launch{% endblock %}
+{% block content %}
+{{ forms.error_summary(errors) }}
+<ul>
+<li>Public address: {{ public_url }} — {{ 'HTTPS verified' if checks.get('https') else 'Not verified yet' }}</li>
+<li>{{ 'Sign-up form available' if signup_available else 'Connect an email sender to collect sign-ups. File and console email cannot deliver confirmation messages.' }}</li>
+<li>Email DNS: {% for kind, status in setting("hosting.email_checks", {}).items() %}{{ kind }} {{ status }}{% if not loop.last %}, {% endif %}{% else %}Not checked yet{% endfor %}</li>
+</ul>
+<p><a href="{{ url_for('dash.domain') }}">Domain and DNS checks</a></p>
+<form method="post">{{ forms.csrf() }}
+<button class="button button-primary" name="action" value="live">Go live</button>
+<button class="button" name="action" value="soon">Back to launching soon</button>
+</form>
+<form method="post" class="form">{{ forms.csrf() }}
+<input type="hidden" name="action" value="save">
+{{ forms.input('launch.heading', 'Heading', setting('launch.heading'), errors=errors) }}
+{{ forms.textarea('launch.message', 'Message (Markdown)', setting('launch.message'), errors=errors) }}
+{{ forms.input('launch.date', 'Expected launch date (optional)', setting('launch.date'), errors=errors) }}
+<label><input type="checkbox" name="launch.signup" value="1"{% if setting('launch.signup') %} checked{% endif %}> Show the sign-up form when a sender is connected</label>
+<button class="button button-primary">Save launch page</button>
+</form>
+{% endblock %}

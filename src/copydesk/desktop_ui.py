@@ -351,6 +351,16 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.address = QLabel("The dashboard will open in your browser.")
             self.address.setWordWrap(True)
             layout.addWidget(self.address)
+            self.public_status = QLabel("")
+            self.public_status.setWordWrap(True)
+            layout.addWidget(self.public_status)
+            self.public_button = QPushButton("Open public site")
+            self.public_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(self.runtime.public_url)) if self.runtime and self.runtime.public_url else None)
+            self.public_button.hide()
+            layout.addWidget(self.public_button)
+            self.public_timer = QTimer(self)
+            self.public_timer.timeout.connect(self.refresh_public_status)
+            self.public_timer.start(2000)
             self.open_button = QPushButton("Open dashboard")
             self.open_button.setDefault(True)
             self.open_button.setMinimumHeight(44)
@@ -563,6 +573,15 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             if hasattr(self, "status"):
                 self.select_instance()
 
+        def refresh_public_status(self):
+            address = getattr(self.runtime, "public_url", "")
+            tunnel = getattr(self.runtime, "tunnel", None)
+            status = tunnel.status if tunnel else "Offline"
+            if getattr(self.runtime, "hosting_status", ""):
+                status = self.runtime.hosting_status
+            self.public_status.setText(f"Public address: {address} · {status}" if address else "")
+            self.public_button.setVisible(bool(address))
+
         def refresh_running_labels(self):
             count = sum(bool(runtime.server) for runtime in self.runtimes.values())
             self.instance_summary.setText(f"{count} instance{'s' if count != 1 else ''} running in this launcher.")
@@ -597,6 +616,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.toggle.setText("Stop" if self.runtime.server else "Start")
             self.restore_instance_controls()
             self.refresh_running_labels()
+            self.refresh_public_status()
 
         def restore_instance_controls(self):
             selected = self.selected_instance is not None

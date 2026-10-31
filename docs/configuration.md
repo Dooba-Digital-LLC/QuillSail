@@ -26,3 +26,7 @@ Gmail and Outlook app registrations can be supplied under `[oauth]` or through t
 An administrator's saved email connection takes precedence over `[mail]` and is read by both web and worker processes without a restart. Disconnecting it resumes the server's `[mail]` configuration. Provider app credentials saved in the dashboard take precedence over their server defaults. Dashboard secrets are encrypted with a key derived from `site.secret_key`; preserve that key when restoring the database.
 
 Named local publications are selected with `quillsail --instance NAME COMMAND`. The desktop app and `quillsail instance` commands share their private registry and keep each publication's files separate. Named instance commands ignore server environment overrides. See [multiple local publications](desktop.md#multiple-publications). Inside application code, database engines and sessions resolve through the active Flask application context; creating another application never rebinds an existing publication's database.
+
+## Hosting and launch controls
+
+The Domain and Launch dashboard pages are described in [Domains and launch](hosting.md). Server `site.base_url` remains the source of truth. Desktop can save its public address separately from its local dashboard listener. OAuth uses public client metadata under `[oauth]` and a separately deployed confirmation relay; provider credentials are encrypted in the database with the instance secret key. Preserve that key when backing up or moving a publication.

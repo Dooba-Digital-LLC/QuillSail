@@ -36,6 +36,8 @@ NAV = [
         ("groups", "Groups and permissions", "shield", "manage_groups"),
     ]),
     ("Site", [
+        ("domain", "Domain", "server", "manage_settings"),
+        ("launch_page", "Launch", "send", "manage_settings"),
         ("settings", "Settings", "sliders", "manage_settings"),
         ("log", "Activity log", "activity", "view_log"),
         ("system", "System status", "server", "manage_settings"),
@@ -90,6 +92,7 @@ from copydesk.views.dashboard import (  # noqa: E402,F401 - registers routes
     email,
     groups,
     issues,
+    launch,
     log,
     members,
     overview,

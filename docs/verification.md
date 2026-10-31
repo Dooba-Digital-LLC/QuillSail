@@ -2,6 +2,18 @@
 
 QuillSail is beta software. These are development checks, not an independent security audit. Private deployment addresses, access details and operations records are excluded from the public repository.
 
+## 1.12.0 Beta — hosting and domains, 2026-10-30
+
+Issue #5 adds optional domain connection, launching-soon mode, Cloudflare OAuth with an HTTPS confirmation relay, and an API-token backup. Release preparation follows the contributor-branch, pull-request, rebase, CI and rebase-and-merge workflow. Published desktop artifacts are built from the merged commit, independently of local development builds.
+
+Local validation: application suite 512 passed, 3 skipped; website suite 128 passed, 1 skipped; five Node Worker tests passed. Ruff and generated-reference checks passed. Chrome previews at a 390px viewport showed no horizontal overflow on Domain, Launch or the launching-soon page, with labeled form fields. Wheel and source archive metadata and release-boundary checks passed; a clean wheel installation exercised migration, blog setup, subpath routing and assets. An ad-hoc-signed Apple Silicon build passed browser setup/restart, GUI lifecycle, updater, archive extraction and graphical-installer checks.
+
+Hosting coverage includes upgrade compatibility, launch permission/CSRF checks and hooks, path-prefix behavior, local/public listener separation, authoritative DNS agreement, DNS-rebinding rejection, SPF preservation and lookup limits, DKIM parsing, conditional undo, encrypted credentials, mocked provisioning retries and conflicts, browser-bound PKCE, relay confirmation/CSRF, offline request limits, transactional replay, fail-open capability rejection, a fake tunnel's restart/shutdown, checksum rejection and opt-in sleep inhibition. Premailer emits dependency deprecation warnings under Python 3.13.
+
+Live OAuth validation on a separate local publication: browser authorization with PKCE, the deployed HTTPS confirmation relay, encrypted access/refresh storage, automatic refresh, zone listing and publisher-verification TXT creation succeeded without a manually supplied API token. The OAuth picker’s tunnel permission identifier is `argotunnel.write`. After explicit approval, a public preview tunnel was provisioned through OAuth and verified online. Its HTTPS home and install-specific health endpoint returned 200; public dashboard, sign-in, setup and API endpoints returned 404. The local authenticated dashboard remained available. An initial local negative DNS cache cleared while the authoritative nameservers already held the new record. Cloudflare publisher verification remains asynchronous. The disposable publication was subsequently deleted by its owner; these results describe the completed test, not an ongoing hosted preview.
+
+PostgreSQL/MariaDB, Docker smoke tests, all four native desktop builds, Developer ID notarization and signed-feed publication are checked by the GitHub workflows before merge/publication as applicable; Docker and server databases are unavailable locally. The current published Cloudflare route schema does not expose the requested quota fail-open property; offline fallback activation therefore requires explicit API confirmation and otherwise removes the candidate route. Full token-template permission prefill also awaits confirmation of Cloudflare's tunnel permission key; the API-token path currently documents manual permission selection. Domain Connect remains deferred as designed.
+
 ## Application validation
 
 | Version | SQLite | PostgreSQL | Scope |

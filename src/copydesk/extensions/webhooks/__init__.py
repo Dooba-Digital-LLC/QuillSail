@@ -46,7 +46,7 @@ extension = Extension(
 )
 
 DEFAULT_EVENTS = ("issue.sent", "article.published")
-SUPPORTED = ("issue.sent", "article.published", "article.submitted", "subscriber.confirmed",
+SUPPORTED = ("publication.launched", "issue.sent", "article.published", "article.submitted", "subscriber.confirmed",
              "membership.requested", "user.registered")
 
 
@@ -144,3 +144,10 @@ def deliver(payload: dict[str, Any]) -> None:
         log.warning("Webhook to %s was rejected with HTTP %s; not retrying.", payload["url"], exc.code)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise jobs.RetryLater(f"Couldn't reach the webhook: {exc}", delay=120) from exc
+
+
+@extension.on("publication.launched")
+def _publication_launched(old, new, **_):
+    url = external_url("public.home")
+    _queue("publication.launched", f"{settings.get('site.name')} is {'live' if new == 'live' else 'launching soon'}.\n{url}",
+           {"old": old, "new": new, "url": url})

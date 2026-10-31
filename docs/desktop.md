@@ -26,7 +26,7 @@ The launcher starts automatically. **Open dashboard** reopens your browser, **St
 
 The launcher opens in light mode. Under **Appearance**, choose **Dark**, or **Automatic** to follow your system's light or dark setting. Your choice is remembered for the next launch, and the first-time setup page in your browser uses the same appearance.
 
-Email initially stays in local `.eml` files. Configure a sender in Settings → Email when you want actual delivery. Local URLs work only on your computer; [server installation](installation.md) covers a public website and an always-running email worker. Connecting Gmail/Outlook still needs the provider registration described in [email connectors](email-connectors.md).
+Email initially stays in local `.eml` files. Configure a sender in Settings → Email when you want actual delivery. The dashboard stays private on your computer. Use [Domains and launch](hosting.md) to connect a public address or enable the optional offline fallback. [Server installation](installation.md) covers an always-running website and email worker. Connecting Gmail/Outlook still needs the provider registration described in [email connectors](email-connectors.md).
 
 ## Data and updates
 

@@ -29,3 +29,7 @@ Useful events include `app.ready`, `article.created`, `article.saved`, `article.
 The bundled `webhooks` extension posts publication announcements. Configure endpoints under `[extensions.webhooks]`; its source documents supported formats and event payloads. Keep webhook URLs private, and review what publication metadata is sent before enabling an external integration.
 
 Long-running custom job handlers should call `copydesk.jobs.renew_lease()` and commit progress more often than every 15 minutes. This renews their claim and worker heartbeat. Keep externally visible operations idempotent because a process can fail after performing a side effect but before committing its record. `article.commented` handlers receive an `event` object; internal notes must be restricted to authorized reviewers in any integration.
+
+## Publication launch event
+
+`publication.launched` receives `old`, `new` (`live` or `soon`) and `actor` for each launch-state transition. The bundled webhooks extension supports this event when explicitly listed in an endpoint’s `events`; existing default subscriptions are unchanged. See [Domains and launch](hosting.md).

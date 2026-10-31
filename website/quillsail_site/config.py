@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -65,6 +65,7 @@ class Config:
     proxy_hops: int = 0
     releases_fixture: Path | None = None
     warm_releases: bool = True
+    oauth_relay_secret: str = field(default="", repr=False)
 
     @property
     def github_url(self) -> str:
@@ -94,6 +95,7 @@ class Config:
             raise ConfigError("QUILLSAIL_CHANNEL must be stable or beta.")
         fixture = env.get("QUILLSAIL_RELEASES_FIXTURE")
         values = {
+            "oauth_relay_secret": env.get("QUILLSAIL_OAUTH_RELAY_SECRET", ""),
             "site": address("QUILLSAIL_SITE_URL", "http://localhost:8000"),
             "docs": address("QUILLSAIL_DOCS_URL", "http://docs.localhost:8000"),
             "updates": Address.parse("QUILLSAIL_UPDATES_URL", updates_value) if updates_value else None,
@@ -109,6 +111,8 @@ class Config:
         }
         values.update(overrides)
         config = cls(**values)
+        if config.oauth_relay_secret and len(config.oauth_relay_secret) < 32:
+            raise ConfigError("QUILLSAIL_OAUTH_RELAY_SECRET must have at least 32 characters.")
         hosts = [(config.site.host, config.site.prefix), (config.docs.host, config.docs.prefix)]
         if config.updates:
             hosts.append((config.updates.host, config.updates.prefix))

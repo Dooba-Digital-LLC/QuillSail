@@ -284,6 +284,22 @@ quillsail subscribers import [OPTIONS] CSV_FILE
 | `CSV_FILE` | Required. |
 | `--confirmed` | Subscribe everyone straight away. Only if they already agreed to get this newsletter. |
 
+## `quillsail tunnel`
+
+Run a connected Cloudflare tunnel on a server.
+
+```text
+quillsail tunnel [OPTIONS] COMMAND [ARGS]...
+```
+
+### `quillsail tunnel run`
+
+Run the tunnel with encrypted credentials and automatic restart.
+
+```text
+quillsail tunnel run [OPTIONS]
+```
+
 ## `quillsail update`
 
 Update a desktop app or a registered Python/Compose server.
@@ -484,4 +500,4 @@ quillsail worker [OPTIONS]
 
 ---
 
-*Generated from the QuillSail 1.11.2 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.12.0 source code by `scripts/build_reference_docs.py`.*

@@ -31,7 +31,7 @@ from sqlalchemy import delete, func, select, update
 
 from copydesk import settings
 from copydesk.db import db
-from copydesk.models import EmailOAuthFlow, Job, RateLimit
+from copydesk.models import EmailOAuthFlow, HostingOAuthFlow, Job, RateLimit
 from copydesk.utils import utcnow
 
 log = logging.getLogger("copydesk.jobs")
@@ -186,6 +186,7 @@ def maintenance() -> None:
     if active(current_app.extensions["copydesk"].config):
         return
 
+    settings.invalidate()
     now = utcnow()
     db.session.execute(
         update(Job)
@@ -193,9 +194,16 @@ def maintenance() -> None:
         .values(status="queued", locked_by="", locked_at=None)
     )
     db.session.execute(delete(Job).where(Job.status == "done", Job.finished_at < now - timedelta(days=14)))
+    db.session.execute(delete(HostingOAuthFlow).where(HostingOAuthFlow.created_at < now - timedelta(minutes=10)))
     db.session.execute(delete(EmailOAuthFlow).where(EmailOAuthFlow.created_at < now - timedelta(minutes=10)))
     db.session.execute(delete(RateLimit).where(RateLimit.window_start < now - timedelta(days=1)))
     db.session.commit()
+    if settings.get("hosting.edge") and not db.session.scalar(select(Job.id).where(Job.kind == "edge.replay", Job.status.in_(("queued", "running"))).limit(1)):
+        enqueue("edge.replay")
+    if settings.get("hosting.edge"):
+        from copydesk import edge
+
+        edge.schedule_snapshot()
     newsletter.start_due_issues()
     db.session.commit()
 

@@ -48,6 +48,7 @@ from markupsafe import Markup
 log = logging.getLogger("copydesk.extensions")
 
 EVENTS: dict[str, str] = {
+    "publication.launched": "old, new, actor — publication launch state changed",
     "app.ready": "app — the Flask app, once every extension has loaded",
     "user.registered": "user — someone created an account",
     "user.verified": "user — someone confirmed their email address",

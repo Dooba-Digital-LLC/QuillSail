@@ -1,0 +1,79 @@
+{% extends 'layout/dashboard.html' %}
+{% import 'macros/forms.html' as forms with context %}
+{% block page_title %}Domain{% endblock %}
+{% block content %}
+<div id="f-domain" tabindex="-1">{{ forms.error_summary(errors) }}</div>
+<p>Public address: <strong>{{ public_url }}</strong></p>
+{% if desktop %}
+<form method="post" class="form">{{ forms.csrf() }}
+<input type="hidden" name="action" value="address">
+{{ forms.input('url', 'Public HTTPS address', desktop.public_url, help='Leave blank to keep this publication on your computer.') }}
+<button class="button">Save address</button>
+</form>
+<form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="awake">
+{{ forms.checkbox('keep_awake', 'Keep this computer awake while this publication is public', setting('hosting.keep_awake'), help='Optional. Power settings and battery limits still apply.') }}
+<button class="button">Save power preference</button></form>
+{% if desktop.awake and desktop.awake.problem %}<p role="status">{{ desktop.awake.problem }}</p>{% endif %}
+<p>Point your local reverse proxy to the public listener on port {{ desktop.public_server.server_port if desktop.public_server else 'not started' }}. Forward the public Host and visitor address in X-Forwarded-For. Keep this port private.</p>
+{% else %}<p>Set <code>site.base_url</code> in copydesk.toml or <code>COPYDESK_BASE_URL</code>, then restart QuillSail.</p>{% endif %}
+<h2>Connect Cloudflare</h2>
+<p>Sign in to Cloudflare to connect your domain. No API token is needed.</p>
+{% if oauth_available and not hosting %}<form method="post">{{ forms.csrf() }}<button class="button button-primary" name="action" value="oauth">Sign in with Cloudflare</button></form>{% endif %}
+{% if not hosting %}<details{% if not oauth_available %} open{% endif %}><summary>Cloudflare sign-in setup</summary>
+<p>Use your registered public OAuth client and deployed confirmation relay. These settings contain no client secret.</p>
+<form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="oauth.setup">
+{{ forms.input('client_id', 'Public client ID', oauth_client.get('client_id', '')) }}
+{{ forms.input('relay_url', 'Registered HTTPS relay callback', oauth_client.get('relay_url', '')) }}
+<button class="button">Save sign-in setup</button></form></details>{% endif %}
+{% if hosting %}
+{% if oauth_available %}<form method="post">{{ forms.csrf() }}<button class="button" name="action" value="oauth.reconnect">Reconnect with Cloudflare</button></form>{% endif %}
+<p>Connection: {{ hosting.status|replace('_', ' ') }}</p>
+<details><summary>Renew Cloudflare API access</summary><form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="reauthorize">
+{{ forms.input('token', 'Replacement Cloudflare API token', '', type='password', autocomplete='off') }}
+<button class="button">Verify replacement token</button></form></details>
+<form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="provision">
+<label for="zone">Cloudflare domain</label><select id="zone" name="zone">
+{% for zone in zones %}<option value="{{ zone.id }}"{% if zone.status != 'active' or zone.type != 'full' %} disabled{% endif %}>{{ zone.name }} — {{ zone.status }}</option>{% endfor %}
+</select>
+{{ forms.input('subdomain', 'Subdomain (blank for the root domain)', 'news') }}
+<button class="button" >Connect domain</button></form>
+{% for zone in zones if zone.status != 'active' %}<p>{{ zone.name }}: set nameservers to {{ zone.name_servers|join(', ') }}, then retry.</p>{% endfor %}
+<form method="post">{{ forms.csrf() }}<button class="button" name="action" value="retry">Retry connection</button><button class="button" name="action" value="disconnect">Disconnect and undo managed DNS</button></form>
+{% else %}
+<details><summary>Use an API token instead (backup)</summary>
+<p>Create an API token with Zone Read, DNS Write and Cloudflare Tunnel Write for your account and chosen domain. QuillSail will stop if the hostname is already in use.</p>
+<p><a href="https://dash.cloudflare.com/profile/api-tokens">Create a Cloudflare API token</a></p>
+<form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="connect">
+{{ forms.input('token', 'Cloudflare API token', '', type='password', autocomplete='off') }}
+<button class="button">Connect using API token</button></form></details>
+{% endif %}
+{% if desktop and hosting %}
+<h2>While this computer sleeps</h2>
+<p>The optional Cloudflare fallback saves a launch page and queues subscriber requests until this computer returns. It needs Workers Scripts Edit, Workers Routes Edit and Workers KV Storage Edit permissions. Cloudflare free-plan limits still apply.</p>
+{% if setting('hosting.edge_warning') %}<p role="alert">Unsubscribe requests waited more than three days. Keep this computer online to finish processing them.</p>{% endif %}
+<form method="post">{{ forms.csrf() }}<button class="button" name="action" value="{{ 'edge.disable' if setting('hosting.edge') else 'edge.enable' }}">{{ 'Disable offline fallback' if setting('hosting.edge') else 'Enable offline fallback' }}</button></form>
+{% endif %}
+<h2>Email DNS</h2>
+<p>For Gmail.com, Outlook.com and other personal email addresses, your email provider manages DNS. For custom addresses, copy DKIM records from your sending provider. DMARC starts with monitoring only (p=none); an existing policy is preserved.</p>
+<form method="post" class="form">{{ forms.csrf() }}
+<label for="preset">Sending provider</label><select id="preset" name="preset">{% for key, value in email_presets.items() %}<option value="{{ key }}">{{ value[0] }}</option>{% endfor %}</select>
+{{ forms.textarea('dkim', 'DKIM records (name TXT or CNAME value)', '') }}
+<button class="button" name="action" value="email.plan">Show manual email records</button>
+{% if hosting %}<button class="button" name="action" value="email">Check and safely set email DNS</button>{% endif %}</form>
+<p>{{ setting("hosting.email_note", "") }}</p>
+{% for record in setting("hosting.email_records", []) %}<p><code id="email-record-{{ loop.index }}">{{ record.name }} {{ record.type }} {{ record.value }}</code> <button class="button button-small" type="button" data-copy="#email-record-{{ loop.index }}">Copy record</button></p>{% endfor %}
+{% for kind, status in setting("hosting.email_checks", {}).items() %}<p>{{ kind }}: {{ status }}</p>{% endfor %}
+{% for record in managed %}<form method="post">{{ forms.csrf() }}<input type="hidden" name="action" value="undo"><input type="hidden" name="record" value="{{ record.id }}"><p>{{ record.purpose }}: {{ record.name }} <button class="button button-small">Undo this managed record</button></p></form>{% endfor %}
+<h2>Manual DNS</h2>
+<p>Use the record supplied by your host. Changing DNS alone does not make a computer reachable.</p>
+<form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="records">
+{{ forms.input('name', 'Record name', '', placeholder='news.example.com') }}
+{{ forms.select('type', 'Record type', [('A', 'A'), ('AAAA', 'AAAA'), ('CNAME', 'CNAME')], 'CNAME') }}
+{{ forms.input('value', 'Record value', '') }}
+<button class="button">Save expected record</button></form>
+{% for record in records %}<p><code id="record-{{ loop.index }}">{{ record.name }} {{ record.type }} {{ record.value }}</code> <button class="button button-small" type="button" data-copy="#record-{{ loop.index }}">Copy record</button></p>{% endfor %}
+{% for record in checks.get('records', []) %}<p>{{ record.name }}: {{ record.status }}</p>{% endfor %}
+<p>HTTPS: {{ 'Verified for this publication' if checks.get('https') else 'Not verified yet' }}</p>
+<form method="post">{{ forms.csrf() }}<button class="button" name="action" value="check">Check again</button></form>
+<p><a href="{{ url_for('dash.launch_page') }}">Launch controls</a></p>
+{% endblock %}

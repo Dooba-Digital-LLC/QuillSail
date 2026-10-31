@@ -1,0 +1,11 @@
+{% extends "layout/public.html" %}
+{% block title %}{{ setting('launch.heading') }} · {{ site.name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="hero"><div class="container">
+  <h1>{{ setting('launch.heading') }}</h1>
+  <div class="prose">{{ setting('launch.message')|markdown }}</div>
+  {% if setting('launch.date') %}<p>{{ setting('launch.date') }}</p>{% endif %}
+  {% if signup_available %}{% include 'partials/subscribe_box.html' %}{% endif %}
+</div></section>
+{% endblock %}

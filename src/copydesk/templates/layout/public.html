@@ -62,7 +62,7 @@
       {% else %}
         <a class="signin" href="{{ url_for('auth.login', next=request.full_path if request.path != '/' else None) }}">Sign in</a>
       {% endif %}
-      {% if newsletter_enabled %}<a class="button button-primary button-small" href="{{ url_for('subscribe.subscribe') }}">Subscribe</a>{% endif %}
+      {% if newsletter_enabled and (not launch_soon or launch_signup_available) %}<a class="button button-primary button-small" href="{{ url_for('subscribe.subscribe') }}">Subscribe</a>{% endif %}
     </div>
   </div>
   {{ slot('header_end') }}
@@ -80,6 +80,7 @@
 </div>
 {% endif %}
 
+{% if launch_soon and current_user.is_authenticated %}<div class="notice-bar" role="status"><div class="container">Readers see the launching-soon page.</div></div>{% endif %}
 {% include "partials/flashes.html" %}
 
 <main id="cd-main" class="site-main" tabindex="-1">

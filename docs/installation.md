@@ -91,3 +91,7 @@ docker compose --env-file deploy/compose.env up -d --no-build
 ```
 
 If using registry images, pull the desired pinned version instead of building. Keep the old image/package together with its matching database backup for recovery. Do not delete a publication's volume during an ordinary upgrade.
+
+## Connect a public domain
+
+Use [Domains and launch](hosting.md) for manual DNS, Cloudflare tunnels, launching-soon mode and email authentication records. Keep the public origin private behind its trusted proxy, set the public `site.base_url`, and run the background worker. The desktop dashboard remains loopback-only when a public listener is enabled.
