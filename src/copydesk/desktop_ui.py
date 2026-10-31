@@ -318,7 +318,14 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.instance_selector.setPlaceholderText("No instances")
             instance_label.setBuddy(self.instance_selector)
             layout.addWidget(instance_label)
-            layout.addWidget(self.instance_selector)
+            # The selected instance and the action on it share a row.
+            selector_row = QHBoxLayout()
+            selector_row.setSpacing(8)
+            selector_row.addWidget(self.instance_selector, 1)
+            self.delete_instance_button = QPushButton("Delete instance…")
+            self.delete_instance_button.clicked.connect(self.delete_instance)
+            selector_row.addWidget(self.delete_instance_button)
+            layout.addLayout(selector_row)
             instance_row = QHBoxLayout()
             instance_row.setSpacing(8)
             self.new_instance = QPushButton("New instance…")
@@ -331,9 +338,6 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.refresh_button.clicked.connect(lambda: self.refresh_instances(self.selected_instance.id if self.selected_instance else None))
             instance_row.addWidget(self.refresh_button)
             layout.addLayout(instance_row)
-            self.delete_instance_button = QPushButton("Delete instance…")
-            self.delete_instance_button.clicked.connect(self.delete_instance)
-            layout.addWidget(self.delete_instance_button)
             self.refresh_instances(selected.id if selected else None)
             self.instance_selector.currentIndexChanged.connect(self.select_instance)
             self.instance_summary = QLabel("No instances running in this launcher.")
@@ -353,11 +357,12 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             layout.addWidget(self.address)
             self.public_status = QLabel("")
             self.public_status.setWordWrap(True)
+            self.public_status.hide()
             layout.addWidget(self.public_status)
             self.public_button = QPushButton("Open public site")
+            self.public_button.setMinimumHeight(44)
             self.public_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(self.runtime.public_url)) if self.runtime and self.runtime.public_url else None)
             self.public_button.hide()
-            layout.addWidget(self.public_button)
             self.public_timer = QTimer(self)
             self.public_timer.timeout.connect(self.refresh_public_status)
             self.public_timer.start(2000)
@@ -366,7 +371,11 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             self.open_button.setMinimumHeight(44)
             self.open_button.setObjectName("primary")
             self.open_button.clicked.connect(self.open_dashboard)
-            layout.addWidget(self.open_button)
+            open_row = QHBoxLayout()
+            open_row.setSpacing(8)
+            open_row.addWidget(self.open_button, 1)
+            open_row.addWidget(self.public_button)
+            layout.addLayout(open_row)
             row = QHBoxLayout()
             row.setSpacing(8)
             self.toggle = QPushButton("Start")
@@ -451,10 +460,9 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             scroll.setWidgetResizable(True)
             scroll.setWidget(content)
             self.setCentralWidget(scroll)
-            # Fit the content when the screen allows; otherwise the content scrolls.
-            content.ensurePolished()
-            menu_height = 0 if self.menuBar().isNativeMenuBar() else self.menuBar().sizeHint().height()
-            self.resize(540, min(content.sizeHint().height() + menu_height, self.screen().availableGeometry().height() - 40))
+            # Text that wraps onto more lines, a public address or update progress
+            # can make the content taller after the window opens.
+            content.installEventFilter(self)
             app.styleHints().colorSchemeChanged.connect(self.appearance_changed)
             close_action = QAction("Close Window", self)
             close_action.setShortcut(QKeySequence.StandardKey.Close)
@@ -483,7 +491,34 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             app.applicationStateChanged.connect(self.application_state_changed)
             self.listen_for_commands()
             self.select_instance()
+            content.ensurePolished()
+            self.resize(540, self.minimumHeight())
+            self.fit_content()
             QTimer.singleShot(0, self.start)
+
+        def fit_content(self):
+            """Grow the window so everything shows without scrolling, as far as the screen allows."""
+            if self.isMaximized() or self.isFullScreen():
+                return
+            menu = 0 if self.menuBar().isNativeMenuBar() else self.menuBar().sizeHint().height()
+            needed = self.centralWidget().widget().heightForWidth(self.width()) + menu
+            # The title bar is outside the window's height. Until it exists, allow for a tall one.
+            frame = self.frameGeometry().height() - self.height() if self.isVisible() else 40
+            screen = self.screen().availableGeometry()
+            if (height := min(needed, screen.height() - frame)) > self.height():
+                self.resize(self.width(), height)
+                if self.isVisible() and self.frameGeometry().bottom() > screen.bottom():
+                    self.move(self.x(), max(screen.top(), screen.bottom() + 1 - self.frameGeometry().height()))
+
+        def showEvent(self, event):  # noqa: N802 - Qt virtual method
+            super().showEvent(event)
+            # The real title bar height is known once the window is shown.
+            QTimer.singleShot(0, self.fit_content)
+
+        def eventFilter(self, _watched, event):  # noqa: N802 - Qt virtual method
+            if event.type() == QEvent.Type.LayoutRequest:
+                QTimer.singleShot(0, self.fit_content)
+            return False
 
         def listen_for_commands(self):
             """Accept show and quit requests from `quillsail quit` or a second launch."""
@@ -580,6 +615,7 @@ def run(*, data_dir: Path | None = None, instance_id: str | None = None, open_br
             if getattr(self.runtime, "hosting_status", ""):
                 status = self.runtime.hosting_status
             self.public_status.setText(f"Public address: {address} · {status}" if address else "")
+            self.public_status.setVisible(bool(address))
             self.public_button.setVisible(bool(address))
 
         def refresh_running_labels(self):
