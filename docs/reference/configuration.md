@@ -43,6 +43,7 @@ Each variable overrides one value in the file. Lists, such as `COPYDESK_EXTENSIO
 | `COPYDESK_GOOGLE_METADATA_URL` | `[oauth] google_metadata_url` |
 | `COPYDESK_MICROSOFT_CLIENT_ID` | `[oauth] microsoft_client_id` |
 | `COPYDESK_MICROSOFT_CLIENT_SECRET` | `[oauth] microsoft_client_secret` |
+| `COPYDESK_MICROSOFT_METADATA_URL` | `[oauth] microsoft_metadata_url` |
 | `COPYDESK_MICROSOFT_TENANT` | `[oauth] microsoft_tenant` |
 
 ## The configuration file
@@ -163,7 +164,7 @@ level = "INFO"   # DEBUG, INFO, WARNING or ERROR
 
 
 [oauth]
-# Optional one-time app registrations for the Gmail and Outlook connect buttons.
+# Optional custom registrations; Gmail and Outlook use shared apps by default.
 # These can also be entered by an administrator in Settings -> Email.
 # Register the exact callback URL displayed there with the provider.
 # Secrets may instead come from COPYDESK_GOOGLE_CLIENT_SECRET and
@@ -173,8 +174,11 @@ google_client_secret = ""
 microsoft_client_id = ""
 microsoft_client_secret = ""
 microsoft_tenant = "common"
+# Shared discovery overrides; set empty to disable the respective shared app.
+# google_metadata_url = "https://quillsail.blog/.well-known/quillsail/gmail.json"
+# microsoft_metadata_url = "https://quillsail.blog/.well-known/quillsail/outlook.json"
 ```
 
 ---
 
-*Generated from the QuillSail 1.13.1 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.14.0 source code by `scripts/build_reference_docs.py`.*

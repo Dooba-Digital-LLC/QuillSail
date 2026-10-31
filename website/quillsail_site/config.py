@@ -73,6 +73,11 @@ class Config:
     google_client_secret: str = field(default="", repr=False)
     gmail_broker_secret: str = field(default="", repr=False)
     gmail_enabled: bool = False
+    microsoft_client_id: str = ""
+    microsoft_client_secret: str = field(default="", repr=False)
+    microsoft_tenant: str = "common"
+    outlook_broker_secret: str = field(default="", repr=False)
+    outlook_enabled: bool = False
     privacy_contact: str = ""
 
     @property
@@ -111,6 +116,11 @@ class Config:
             "google_client_secret": env.get("QUILLSAIL_GOOGLE_CLIENT_SECRET", ""),
             "gmail_broker_secret": env.get("QUILLSAIL_GMAIL_BROKER_SECRET", ""),
             "gmail_enabled": env.get("QUILLSAIL_GMAIL_ENABLED", "0").lower() in {"1", "true"},
+            "microsoft_client_id": env.get("QUILLSAIL_MICROSOFT_CLIENT_ID", ""),
+            "microsoft_client_secret": env.get("QUILLSAIL_MICROSOFT_CLIENT_SECRET", ""),
+            "microsoft_tenant": env.get("QUILLSAIL_MICROSOFT_TENANT", "common"),
+            "outlook_broker_secret": env.get("QUILLSAIL_OUTLOOK_BROKER_SECRET", ""),
+            "outlook_enabled": env.get("QUILLSAIL_OUTLOOK_ENABLED", "0").lower() in {"1", "true"},
             "privacy_contact": env.get("QUILLSAIL_PRIVACY_CONTACT", ""),
             "site": address("QUILLSAIL_SITE_URL", "http://localhost:8000"),
             "docs": address("QUILLSAIL_DOCS_URL", "http://docs.localhost:8000"),

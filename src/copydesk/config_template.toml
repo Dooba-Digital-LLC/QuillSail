@@ -111,7 +111,7 @@ level = "INFO"   # DEBUG, INFO, WARNING or ERROR
 
 
 [oauth]
-# Optional one-time app registrations for the Gmail and Outlook connect buttons.
+# Optional custom registrations; Gmail and Outlook use shared apps by default.
 # These can also be entered by an administrator in Settings -> Email.
 # Register the exact callback URL displayed there with the provider.
 # Secrets may instead come from COPYDESK_GOOGLE_CLIENT_SECRET and
@@ -121,3 +121,6 @@ google_client_secret = ""
 microsoft_client_id = ""
 microsoft_client_secret = ""
 microsoft_tenant = "common"
+# Shared discovery overrides; set empty to disable the respective shared app.
+# google_metadata_url = "https://quillsail.blog/.well-known/quillsail/gmail.json"
+# microsoft_metadata_url = "https://quillsail.blog/.well-known/quillsail/outlook.json"

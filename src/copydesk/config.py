@@ -67,6 +67,7 @@ ENV_OVERRIDES: dict[str, tuple[str, str]] = {
     "COPYDESK_GOOGLE_METADATA_URL": ("oauth", "google_metadata_url"),
     "COPYDESK_MICROSOFT_CLIENT_ID": ("oauth", "microsoft_client_id"),
     "COPYDESK_MICROSOFT_CLIENT_SECRET": ("oauth", "microsoft_client_secret"),
+    "COPYDESK_MICROSOFT_METADATA_URL": ("oauth", "microsoft_metadata_url"),
     "COPYDESK_MICROSOFT_TENANT": ("oauth", "microsoft_tenant"),
 }
 
@@ -282,7 +283,8 @@ def _build(data: dict[str, Any], file_path: Path | None, root: Path) -> Config:
                       "metadata_url": str(oauth.get("google_metadata_url", "https://quillsail.blog/.well-known/quillsail/gmail.json"))},
             "outlook": {"client_id": str(oauth.get("microsoft_client_id", "")),
                         "client_secret": str(oauth.get("microsoft_client_secret", "")),
-                        "tenant": str(oauth.get("microsoft_tenant", "common"))},
+                        "tenant": str(oauth.get("microsoft_tenant", "common")),
+                        "metadata_url": str(oauth.get("microsoft_metadata_url", "https://quillsail.blog/.well-known/quillsail/outlook.json"))},
         },
     )
 

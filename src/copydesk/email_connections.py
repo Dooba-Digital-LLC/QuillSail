@@ -94,14 +94,14 @@ def client_config(provider):
 def client_ready(provider, client=None):
     client = client if client is not None else client_config(provider)
     return bool(client.get('client_id') and client.get('client_secret') or
-        provider == 'gmail' and not client.get('client_id') and not client.get('client_secret') and client.get('metadata_url'))
+        provider in PROVIDERS and not client.get('client_id') and not client.get('client_secret') and client.get('metadata_url'))
 
 
 def save_client(provider, client_id, client_secret, tenant="common"):
     previous = client_config(provider)
     client_id = str(client_id or "").strip()
     provided_secret = str(client_secret or "").strip()
-    if provider == 'gmail' and not client_id and not provided_secret:
+    if provider in PROVIDERS and not client_id and not provided_secret:
         settings.set_value(CLIENT_KEY + provider, None)
         return
     if previous.get("client_id") != client_id and not provided_secret:
@@ -342,6 +342,12 @@ def _oauth_client(provider, client, **kwargs):
     )
 
 
+def _shared(provider):
+    from copydesk import shared_gmail, shared_outlook
+
+    return shared_outlook if provider == 'outlook' else shared_gmail
+
+
 def start_oauth(provider, user):
     configuration = client_config(provider)
     if not client_ready(provider, configuration):
@@ -356,10 +362,8 @@ def start_oauth(provider, user):
     }:
         raise ConnectionProblem("Use HTTPS for the publication before connecting email accounts.")
     client = configuration
-    if provider == 'gmail' and not configuration.get('client_id') and not configuration.get('client_secret'):
-        from copydesk import shared_gmail
-
-        client = shared_gmail.discover(configuration)
+    if not configuration.get('client_id') and not configuration.get('client_secret'):
+        client = _shared(provider).discover(configuration)
     nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
     if client.get('shared'):
         runtime = current_app.extensions.get('copydesk_desktop')
@@ -431,9 +435,7 @@ def finish_oauth(provider, user, sent_state, code):
         raise ConnectionProblem("Sign-in was cancelled or did not return an authorization code.")
     try:
         if client.get('shared'):
-            from copydesk import shared_gmail
-
-            token = shared_gmail.token(client, code=code, verifier=payload['verifier'])
+            token = _shared(provider).token(client, code=code, verifier=payload['verifier'])
         else:
             with _oauth_client(
                 provider,
@@ -534,9 +536,7 @@ def _access_token(config, *, force_refresh=False):
     client = data["client"]
     try:
         if client.get('shared'):
-            from copydesk import shared_gmail
-
-            fresh = shared_gmail.token(client, previous=token)
+            fresh = _shared(config.backend).token(client, previous=token)
         else:
             with _oauth_client(config.backend, client) as oauth:
                 fresh = dict(

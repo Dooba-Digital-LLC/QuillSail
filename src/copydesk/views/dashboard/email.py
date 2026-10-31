@@ -37,7 +37,7 @@ def _page(errors=None, values=None, status=200):
         clients[key] = {
             **info,
             "ready": connections.client_ready(key, config),
-            "shared": key == 'gmail' and not config.get('client_id') and bool(config.get('metadata_url')),
+            "shared": not config.get('client_id') and not config.get('client_secret') and bool(config.get('metadata_url')),
             "client_id": config.get("client_id", ""),
             "tenant": config.get("tenant", "common"),
             "callback": connections.callback_url(key),

@@ -82,6 +82,11 @@ Everything is set with environment variables. Defaults suit local development.
 | `QUILLSAIL_GOOGLE_CLIENT_SECRET` | Unset | Confidential Google secret; keep only in the private backend environment |
 | `QUILLSAIL_GMAIL_BROKER_SECRET` | Unset | Persistent private key of at least 32 characters for token-bound refresh proofs |
 | `QUILLSAIL_GMAIL_ENABLED` | `0` | Set to `1` after callback and audience configuration; Google verification is required for public use |
+| `QUILLSAIL_MICROSOFT_CLIENT_ID` | Unset | Shared Microsoft Web application ID for Outlook |
+| `QUILLSAIL_MICROSOFT_CLIENT_SECRET` | Unset | Confidential Microsoft secret value; backend only |
+| `QUILLSAIL_MICROSOFT_TENANT` | `common` | `common`, `organizations`, `consumers` or a tenant UUID on Microsoft's public-cloud host |
+| `QUILLSAIL_OUTLOOK_BROKER_SECRET` | Unset | Separate persistent private key of at least 32 characters for Outlook refresh proofs |
+| `QUILLSAIL_OUTLOOK_ENABLED` | `0` | Enable after Microsoft callback, delegated permissions and account audience are configured |
 | `QUILLSAIL_PRIVACY_CONTACT` | Unset | Operator-approved public privacy contact; enables the reviewed hosted-sign-in policy at `/privacy` |
 
 A request for any other host, such as `www.quillsail.blog`, is redirected to the site's address.
@@ -91,6 +96,10 @@ With HTTPS, a relay secret and a client ID configured, `/.well-known/quillsail/c
 Shared Gmail uses a confidential Web client. Its secret never appears in `/.well-known/quillsail/gmail.json`; only the public ID, scope and HTTPS endpoints are published. Register the canonical `/oauth/gmail/callback`, configure the private Google credentials and persistent Gmail broker key, and activate the service only for the audience permitted by Google. A Testing app remains limited to listed test users; unrestricted public use requires Google verification for the sensitive send-only scope.
 
 The callback uses browser-bound confirmation. `/oauth/gmail/token` accepts bounded server JSON requests for authorization-code exchange and proof-bound refresh, forwards only to Google's fixed token endpoint, and rejects broader mail scopes. User tokens transit the broker without being stored centrally; publications encrypt them locally and send email content directly to Google. Preserve the broker key across deployments and backups. Path-only logs, TLS and private environment permissions are required. See [email connectors](../docs/email-connectors.md).
+
+Shared Outlook follows the same confidential-broker model, with separate keys, proof salt, confirmation state and endpoints. Register `/oauth/outlook/callback` as a **Web** redirect, preserve existing callbacks, configure the private Microsoft credentials and Outlook proof key, then enable `QUILLSAIL_OUTLOOK_ENABLED`. Use the multitenant and personal-account audience when serving both Outlook.com and Microsoft 365. Organization consent restrictions and publisher policies still apply; neither shared credentials nor `common` bypasses them.
+
+The public `/.well-known/quillsail/outlook.json` document never contains the secret. The fixed Microsoft public-cloud token endpoint receives only the configured tenant, the backend secret, PKCE/code or proof-bound refresh token, and the minimal delegated scopes. Client-supplied upstream endpoints, authorities, secrets and scopes are rejected. Mail goes directly to Graph. Monitor secret expiration and rotate the secret on this backend before expiry while retaining the proof key.
 
 The privacy-policy template remains unpublished until the operator reviews its statements and supplies `QUILLSAIL_PRIVACY_CONTACT`. It must match actual service operation before being linked from Google's consent screen. Keep the shared Gmail service disabled while required provider configuration or verification is incomplete, unless explicitly enabling access for Google's listed test users.
 
