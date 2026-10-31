@@ -821,3 +821,44 @@ class BusinessInquiry(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow)
     article: Mapped[Article | None] = relationship()
+
+
+class HostingConnection(Base):
+    """One opt-in provider connection; secrets use a separate encryption context."""
+    __tablename__ = 'hosting_connection'
+    version: Mapped[int] = mapped_column(default=1)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default='connected')
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class ManagedRecord(Base):
+    """A provider record and its exact original value, for safe conditional undo."""
+    __tablename__ = 'managed_records'
+    __table_args__ = (UniqueConstraint('zone_id', 'provider_id', name='uq_managed_record'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    zone_id: Mapped[str] = mapped_column(String(64))
+    provider_id: Mapped[str] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(253))
+    type: Mapped[str] = mapped_column(String(10))
+    value: Mapped[str] = mapped_column(Text)
+    previous: Mapped[str | None] = mapped_column(Text, default=None)
+    purpose: Mapped[str] = mapped_column(String(32), default='website')
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class EdgeReceipt(Base):
+    """Durable replay receipt; no subscriber PII or token is stored here."""
+    __tablename__ = 'edge_receipts'
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    received_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class HostingOAuthFlow(Base):
+    __tablename__ = 'hosting_oauth_flows'
+    state_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
+    auth_version: Mapped[int] = mapped_column()
+    payload: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

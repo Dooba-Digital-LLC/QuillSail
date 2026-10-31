@@ -503,6 +503,13 @@ def _prepare_job(payload: dict[str, Any]) -> None:
 
 @jobs.handler("issue.batch")
 def _batch_job(payload: dict[str, Any]) -> None:
+    if settings.get('hosting.edge'):
+        from copydesk import edge
+
+        # Process offline opt-outs before contacting the mail server. If the
+        # provider cannot be reached, retry the batch instead of sending blindly.
+        edge.replay({})
+        db.session.commit()
     issue = db.session.get(Issue, payload.get("issue_id"))
     if issue is None or issue.status != "sending":
         return

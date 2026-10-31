@@ -150,3 +150,7 @@ archives for existing terminal installers. `installers` in the release JSON and
 Missing installer API entries return 503; they never fall back to unsigned assets.
 Application removal preserves publication data. See the desktop guide for native
 build dependencies, installation steps and signing limitations.
+
+## Cloudflare OAuth confirmation relay
+
+The site app includes `/oauth/cloudflare/callback`. Set `QUILLSAIL_OAUTH_RELAY_SECRET` to a persistent random secret of at least 32 characters to enable it. Deploy behind HTTPS and register that exact callback with a Cloudflare public PKCE client; see [hosting](../docs/hosting.md#cloudflare-oauth). The relay displays the destination and requires a CSRF-protected confirmation click. It does not exchange codes or receive provider tokens. Use query-free access logs at every proxy; the website container already uses a path-only format. Without configuration this route returns 503.

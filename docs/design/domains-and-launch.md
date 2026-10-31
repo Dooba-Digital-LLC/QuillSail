@@ -1,6 +1,6 @@
 # Design: connect a domain and launch
 
-**Status: proposal, not yet built.** This describes planned work for contributors and maintainers. Nothing here is available in a release yet. User documentation will go in `docs/hosting.md` once Phase 1 ships.
+**Status: implemented for Issue #5 in 1.12.0 Beta, with guarded offline fallback.** Phases 1–4 include public-client PKCE and the website confirmation relay. Real sign-in, refresh, DNS access, tunnel HTTPS/installation-identity and public-listener privacy checks passed on a disposable publication. Offline fallback activation requires Cloudflare to confirm the route quota fail-open capability, which its published schema does not currently expose. See [Domains and launch](../hosting.md) for the implemented behavior and conservative DNS restrictions. Domain Connect remains deferred.
 
 ## Why
 
@@ -35,7 +35,18 @@ As far as we could find, no self-hosted newsletter or blog tool does this. Ghost
 - **Tests** mock every Cloudflare call with `responses` and use a fake `cloudflared` script. Tests never touch the network.
 - **The schema change needs the next available migration number** (`0006` already stores newsletter blurbs). It adds `HostingConnection` (encrypted provider credentials and state) and `ManagedRecord` (each DNS record QuillSail created or changed, with the provider's record ID and the previous value).
 
-## Phase 0: Things to confirm first
+## Phase 0 implementation decisions
+
+- Both desktop and server OAuth use the fixed HTTPS confirmation relay. No assumption about wildcard loopback callback ports is required. Public metadata stays configurable until a client is registered, its exact scopes are approved and domain ownership is verified.
+- Download pinned `cloudflared` assets on demand and verify official release digests before execution. The working pin is 2026.10.7.
+- Add automated Node tests for the module Worker; no frontend build step is introduced.
+- Keep existing installs live. Browser setup defaults connected publications to launching soon.
+- Use migration 0007 for hosting, DNS ownership, OAuth state and replay receipts; 0006 remains newsletter blurbs. Original release targets below are historical proposals, not current version assignments.
+- Confirm two-host routing and per-listener cookie flags in desktop tests; retain a configured SERVER_NAME for URL generation in background jobs.
+- DNS proxying hides a tunnel CNAME from public authoritative answers; verify Cloudflare ownership/configuration and authoritative public address answers plus the install-specific HTTPS health response rather than expecting an unproxied CNAME.
+- Keep MX/PTR SPF policies and unsupported macros manual when their lookup budgets cannot be safely bounded.
+
+## Original Phase 0 prerequisites
 
 1. **Cloudflare OAuth.** PKCE without a client secret is supported, which fits open source. Still to confirm: whether loopback redirect addresses with any port are allowed, the exact scope names, and the domain-verification process for a public app.
 2. **Token permissions.** Find the permission keys for Zone Read, DNS Edit and Cloudflare Tunnel Edit with `GET /user/tokens/permission_groups`. The pre-filled token link needs them.

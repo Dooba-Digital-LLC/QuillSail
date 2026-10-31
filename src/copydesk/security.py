@@ -54,6 +54,8 @@ def csp_nonce() -> str:
 
 def default_csp() -> str:
     nonce = csp_nonce()
+    # A form-initiated OAuth redirect is checked against form-action by Chrome.
+    form_action = "'self' https://dash.cloudflare.com" if request.endpoint == "dash.domain" else "'self'"
     return (
         "default-src 'self'; "
         f"script-src 'self' 'nonce-{nonce}'; "
@@ -63,7 +65,7 @@ def default_csp() -> str:
         "connect-src 'self'; "
         "frame-src 'self'; "
         "frame-ancestors 'self'; "
-        "form-action 'self'; "
+        f"form-action {form_action}; "
         "base-uri 'self'; "
         "object-src 'none'"
     )

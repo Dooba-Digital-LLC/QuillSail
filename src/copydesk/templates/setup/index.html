@@ -25,6 +25,8 @@
       {{ forms.input("site_name", "Publication name", form.get("site_name"), errors=errors, required=True,
                      placeholder="Example Newsletter") }}
       {{ forms.select('site_mode', 'Publication type', [('newsletter', 'Newsletter'), ('blog', 'Blog'), ('hybrid', 'Blog + newsletter')], form.get('site_mode', 'newsletter'), errors=errors, help='You can change this later in Settings → General.') }}
+      {{ forms.radio_cards('hosting', 'Where will readers find your publication?', [('cloudflare', 'Connect Cloudflare', 'Use a Cloudflare domain and tunnel.'), ('manual', 'Use another host', 'Connect through your own server or reverse proxy.'), ('local', 'Not now, keep it on this computer', 'You can choose a public address later.')], form.get('hosting', 'local'), errors=errors) }}
+      {{ forms.select('launch_soon', "If connecting a domain, show a launching-soon page until you are ready?", [('1', 'Yes'), ('0', 'No')], form.get('launch_soon', '1'), errors=errors) }}
       <h2 class="setup-section">Your account</h2>
       {{ forms.input("display_name", "Your name", form.get("display_name"), errors=errors, required=True, autocomplete="name") }}
       {{ forms.input("email", "Your email address", form.get("email"), type="email", errors=errors, required=True, autocomplete="email") }}

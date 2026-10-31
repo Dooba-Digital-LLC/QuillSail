@@ -82,10 +82,15 @@ def index():
         problem = password_problem(form.get("password") or "", email)
         if problem:
             errors["password"] = problem
+        hosting = form.get('hosting', 'local')
+        if hosting not in {'local', 'manual', 'cloudflare'}:
+            errors['hosting'] = 'Choose where readers will find your publication.'
         if not errors:
             seed.seed(site_name)
             settings.set_value("site.name", site_name)
             settings.set_value("site.mode", mode)
+            if hosting != "local" and form.get("launch_soon", "1") == "1":
+                settings.set_value("launch.state", "soon")
             user = create_admin(email=email, name=name, password=form.get("password") or "")
             settings.set_value(CODE_KEY, "")
             audit.record("setup.completed", None, actor=user, label=site_name)
@@ -96,7 +101,7 @@ def index():
             login_user(user, remember=True)
             db.session.commit()
             flash(f"Welcome to {site_name}! Here's your dashboard. The checklist below walks you through the rest.", "success")
-            return redirect(url_for("dash.overview"))
+            return redirect(url_for("dash.domain" if hosting != "local" else "dash.overview"))
     # Setup uses the QuillSail interface style, so it follows the desktop
     # launcher's appearance instead of a theme saved in the browser.
     theme_lock = getattr(desktop, "appearance", "light") if desktop else "light"

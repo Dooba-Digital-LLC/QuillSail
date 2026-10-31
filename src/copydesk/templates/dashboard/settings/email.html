@@ -28,6 +28,10 @@
   </div>
 </section>
 
+<section class="panel"><div class="panel-body"><h2>Email DNS</h2>
+{% for kind, status in setting("hosting.email_checks", {}).items() %}<p>{{ kind }}: {{ status }}</p>{% endfor %}
+<p><a href="{{ url_for('dash.domain') }}">Check SPF, DKIM and DMARC</a></p></div></section>
+
 <div class="email-providers section">
 {% for key, provider in clients.items() %}
 <section class="panel email-provider" aria-labelledby="{{ key }}-heading">

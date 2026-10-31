@@ -8,6 +8,7 @@ Register a handler with `@extension.on("event.name")`. Handlers receive these ke
 
 | Event | Arguments | When |
 | --- | --- | --- |
+| `publication.launched` | old, new, actor | publication launch state changed |
 | `app.ready` | app | the Flask app, once every extension has loaded |
 | `user.registered` | user | someone created an account |
 | `user.verified` | user | someone confirmed their email address |
@@ -74,4 +75,4 @@ Register with `@extension.slot("slot")` and return HTML to insert. Return markup
 
 ---
 
-*Generated from the QuillSail 1.11.2 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.12.0 source code by `scripts/build_reference_docs.py`.*

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.0 — Beta
+
+- Add optional public domains, separate desktop public listeners, launching-soon pages and administrator launch controls. Preserve existing live sites and keep desktop setup, sign-in, account, dashboard and API endpoints private.
+- Add background authoritative DNS and HTTPS checks, encrypted Cloudflare API-token and public-client PKCE connections, resumable tunnels, per-instance launcher status, conditional DNS undo and safe disconnect.
+- Make Cloudflare OAuth the primary connection path, with per-publication public-client setup, refresh grants and reconnect support. Keep API tokens as a backup. Add an HTTPS confirmation relay and narrowly scoped CSP rules for OAuth redirects; no client secret is distributed.
+- Add manual email records, guarded SPF merging, DKIM conflict checks and preservation of existing DMARC policies. Add an opt-in Cloudflare offline launch snapshot and subscriber queue with transactional replay receipts and received-time opt-outs.
+- Add portable migration 0007, mocked provider and DNS tests, fake tunnel-process checks and automated Node Worker tests. Domain Connect remains deferred.
+- Keep offline fallback disabled unless Cloudflare confirms the required quota fail-open capability. OAuth clients and their HTTPS relay remain configurable public metadata; each operator registers their client before connecting.
+
 ## 1.11.2 — Beta
 
 - Sign the Mac apps and disk images with a Developer ID and have Apple notarize them, so macOS opens downloads without a trip to Privacy & Security. Every binary is signed with the hardened runtime and a secure timestamp, and the updater archives carry the stapled ticket.

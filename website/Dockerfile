@@ -27,7 +27,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
 # Behind a reverse proxy, set QUILLSAIL_PROXY_HOPS so the site trusts exactly that many proxies.
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "--access-logfile", "-", \
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "--access-logfile", "-", "--access-logformat", "%(h)s %(t)s %(m)s %(U)s %(s)s %(b)s", \
      "quillsail_site:create_app()"]
 LABEL org.opencontainers.image.title="QuillSail website" \
       org.opencontainers.image.description="quillsail.blog, docs.quillsail.blog and updates.quillsail.blog" \

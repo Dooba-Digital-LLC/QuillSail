@@ -21,6 +21,7 @@ from copydesk import (
     appearance,
     auth,
     jobs,
+    launch,
     permissions,
     publication,
     security,
@@ -164,6 +165,7 @@ def refresh_theme(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
+    from copydesk import cloudflare, domains, edge  # noqa: F401 — registers background DNS checks
     from copydesk.views import account, api, business, competitions, public, setup, subscribe, write
     from copydesk.views import auth as auth_views
     from copydesk.views.dashboard import bp as dashboard_bp
@@ -209,7 +211,9 @@ def _register_request_hooks(app: Flask, state: CopydeskState) -> None:
             from flask import redirect, url_for
 
             return redirect(url_for("setup.index"))
-        return None
+        from copydesk import launch
+
+        return launch.gate()
 
     @app.after_request
     def _after(response):
@@ -334,6 +338,10 @@ def _register_template_helpers(app: Flask, state: CopydeskState) -> None:
     )
 
     def nav_items() -> list[tuple[str, str, str]]:
+        from copydesk import launch
+
+        if launch.is_soon() and not launch.editor():
+            return []
         cached = g.get("_nav_items")
         if cached is not None:
             return cached
@@ -383,6 +391,8 @@ def _register_template_helpers(app: Flask, state: CopydeskState) -> None:
     def _context() -> dict[str, Any]:
         design = appearance.design()
         return {
+            "launch_soon": launch.is_soon(),
+            "launch_signup_available": launch.signup_available() if launch.is_soon() else True,
             "current_user": auth.current_user,
             "blog_mode": publication.is_blog(),
             "newsletter_enabled": publication.has_newsletter(),

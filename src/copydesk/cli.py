@@ -496,6 +496,10 @@ def check(ctx: Context, smtp, send_test, now):
         active_mail = effective_mail_config()
         report(active_mail.backend in {"smtp", "gmail", "outlook"}, f"Email backend is {active_mail.backend}",
                "Set [mail] backend = \"smtp\" to send real email.")
+        from copydesk import settings
+
+        for kind, status in settings.get("hosting.email_checks", {}).items():
+            report(status == "Found", f"{kind} DNS: {status}")
         if smtp:
             problem = check_connection()
             report(problem is None, "Connected to the mail server" if problem is None else problem)
@@ -751,7 +755,11 @@ def import_data(ctx: Context, source, yes):
         migrate.upgrade(db.engine)
         if db.session.scalar(select(func.count()).select_from(User)):
             raise click.ClickException("The database already has accounts. Import only into an empty database.")
-        if any(db.session.scalar(select(func.count()).select_from(table)) for table in Base.metadata.sorted_tables):
+        # Migration 0007 initializes an installation identity in an otherwise
+        # empty database. This metadata alone must not block a real restore.
+        if any(db.session.scalar(select(func.count()).select_from(table).where(
+            table.c.key != "system.instance_id") if table.name == "settings" else
+            select(func.count()).select_from(table)) for table in Base.metadata.sorted_tables):
             raise click.ClickException("The database already contains data. Import only into an empty database.")
         if not yes:
             click.confirm(f"Import data exported from QuillSail {data.get('copydesk')}?", abort=True)
@@ -770,12 +778,16 @@ def import_data(ctx: Context, source, yes):
                     if row.get(name):
                         row[name] = date.fromisoformat(row[name])
             db.session.execute(insert(table), rows)
+        from copydesk.domains import instance_id
+
+        instance_id()
         db.session.commit()
         if db.engine.dialect.name == "postgresql":
             from sqlalchemy import text
 
             for table in Base.metadata.sorted_tables:
-                if "id" in table.columns and table.columns["id"].autoincrement:
+                identity = table.autoincrement_column
+                if identity is not None and identity.name == "id":
                     db.session.execute(text(
                         f"SELECT setval(pg_get_serial_sequence('{table.name}', 'id'), "
                         f"COALESCE((SELECT MAX(id) FROM {table.name}), 1))"
@@ -824,6 +836,49 @@ class ExtensionCommands(click.Group):
 @main.group(cls=ExtensionCommands)
 def ext():
     """Commands added by extensions, named extension:command."""
+
+
+@main.group()
+def tunnel():
+    """Run a connected Cloudflare tunnel on a server."""
+
+
+@tunnel.command('run')
+@pass_context
+def tunnel_run(ctx):
+    """Run the tunnel with encrypted credentials and automatic restart."""
+    import signal
+
+    from copydesk import cloudflare
+    from copydesk.db import db
+    from copydesk.tunnel import Tunnel, binary
+
+    app = ctx.app()
+    with app.app_context():
+        row, data = cloudflare.connection()
+        if row.status in {'disconnecting', 'authorization_required'} or not data.get('tunnel_token'):
+            raise click.ClickException('Finish connecting a domain in the dashboard first.')
+        from copydesk.desktop import InstanceLock
+        from copydesk.models import HostingConnection
+
+        lock = InstanceLock(app.extensions['copydesk'].config.data_dir / 'tunnel.lock')
+        lock.acquire()
+        process = None
+        try:
+            process = Tunnel(binary(app.extensions['copydesk'].config.data_dir), data['tunnel_token'])
+            signal.signal(signal.SIGTERM, lambda *_: process.stop_event.set())
+            signal.signal(signal.SIGINT, lambda *_: process.stop_event.set())
+            process.start()
+            while process.thread.is_alive() and not process.stop_event.wait(2):
+                db.session.rollback()
+                db_row = db.session.get(HostingConnection, 1, populate_existing=True)
+                if db_row is None or db_row.status in {'disconnecting', 'authorization_required'}:
+                    break
+        finally:
+            if process:
+                process.stop()
+            lock.release()
+
 
 
 if __name__ == "__main__":  # pragma: no cover
