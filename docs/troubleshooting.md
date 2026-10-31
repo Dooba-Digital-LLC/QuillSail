@@ -117,4 +117,4 @@ Only one desktop update check runs at a time. Wait for it to finish, then try ag
 
 ## Still stuck?
 
-Search the [issues on GitHub](https://github.com/Dooba-Digital-LLC/QuillSail/issues), or open a new one with your QuillSail version (`quillsail --version`), your operating system and how you installed it, what you expected, and what happened, with logs. Remove addresses, tokens and personal data first.
+Search the [issues on GitHub](https://github.com/DoobaDigital/QuillSail/issues), or open a new one with your QuillSail version (`quillsail --version`), your operating system and how you installed it, what you expected, and what happened, with logs. Remove addresses, tokens and personal data first.

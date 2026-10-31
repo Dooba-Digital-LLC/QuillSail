@@ -126,7 +126,7 @@ The release details are available as JSON at `https://quillsail.blog/api/v1/rele
 
 **`quillsail: command not found`.** Open a new terminal window so it reads the updated `PATH`. If you used `--no-modify-path`, add `~/.local/bin` to your `PATH` yourself.
 
-**"The download's SHA-256 checksum doesn't match."** The file was corrupted or changed on the way. Nothing was installed. Try again later. If it keeps happening, [report it](https://github.com/Dooba-Digital-LLC/QuillSail/issues).
+**"The download's SHA-256 checksum doesn't match."** The file was corrupted or changed on the way. Nothing was installed. Try again later. If it keeps happening, [report it](https://github.com/DoobaDigital/QuillSail/issues).
 
 **Linux: "No desktop session was found."** The app needs a graphical desktop. For a server, use [Docker Compose or the Python package](installation.md) instead.
 

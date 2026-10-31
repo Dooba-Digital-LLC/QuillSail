@@ -6,7 +6,9 @@ QuillSail is beta software. These are development checks, not an independent sec
 
 The desktop launcher now sizes itself from its content's height at the window's actual width and the real title bar height, and grows when content is added. On macOS with a 1440×900 display (812 px usable), the real launcher opened at 708 px with no scrolling, down from a 772 px window holding 777 px of content. With a public address it grew to 734 px and stayed on screen. A new offscreen regression test fails on the previous code and passes now. No schema change is needed.
 
-Local validation: application suite 530 passed, 3 skipped; website suite 133 passed, 1 skipped. Ruff, generated references, public-file boundary checks, wheel/sdist builds with `twine check --strict`, and a clean wheel installation (migrations, setup, subpath routing and assets) passed. The native builds, notarization, PostgreSQL/MariaDB and Docker checks run in GitHub Actions.
+Download, release, issue, edit and desktop update links now use `DoobaDigital/QuillSail`. GitHub's API reports it as the repository's current name, and the old `Dooba-Digital-LLC` address redirects to it.
+
+Local validation: application suite 548 passed, 3 skipped; website suite 154 passed, 1 skipped. Ruff, generated references, public-file boundary checks, wheel/sdist builds with `twine check --strict`, and a clean wheel installation (migrations, setup, subpath routing and assets) passed. The native builds, notarization, PostgreSQL/MariaDB and Docker checks run in GitHub Actions.
 
 ## 1.13.0 Beta — shared Gmail registration
 

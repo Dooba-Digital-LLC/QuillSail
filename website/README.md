@@ -68,7 +68,7 @@ Everything is set with environment variables. Defaults suit local development.
 | `QUILLSAIL_PROXY_HOPS` | `0` | How many trusted reverse proxies are in front of the site |
 | `QUILLSAIL_CHANNEL` | `beta` | The release channel the site offers by default |
 | `QUILLSAIL_RELEASE_TTL` | `600` | Seconds between release checks |
-| `QUILLSAIL_REPOSITORY` | `Dooba-Digital-LLC/QuillSail` | The GitHub repository for releases, edit links and source links |
+| `QUILLSAIL_REPOSITORY` | `DoobaDigital/QuillSail` | The GitHub repository for releases, edit links and source links |
 | `QUILLSAIL_BRANCH` | `main` | The branch that edit and source links point to |
 | `QUILLSAIL_METADATA_URL` | The `desktop-updates` release | Where the signed feed's metadata lives |
 | `QUILLSAIL_TRUST_ROOT` | The bundled `root.json` | The trust root used to verify the feed |

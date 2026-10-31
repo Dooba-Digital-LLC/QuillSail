@@ -88,7 +88,7 @@ class HTTPSFetcher(FetcherInterface):
             cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),
             timeout=urllib3.Timeout(connect=timeout, read=timeout),
             retries=urllib3.Retry(total=3, redirect=5, backoff_factor=0.5, status_forcelist=(502, 503, 504)),
-            headers={"User-Agent": "QuillSail-website (+https://github.com/Dooba-Digital-LLC/QuillSail)"},
+            headers={"User-Agent": "QuillSail-website (+https://github.com/DoobaDigital/QuillSail)"},
         )
 
     def _fetch(self, url: str) -> Iterator[bytes]:

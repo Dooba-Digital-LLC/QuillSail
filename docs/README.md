@@ -27,4 +27,4 @@ These guides cover everything from trying QuillSail on your own computer to runn
 
 ## Getting help
 
-QuillSail is beta software maintained on [GitHub](https://github.com/Dooba-Digital-LLC/QuillSail). Ask questions and report problems in its [issues](https://github.com/Dooba-Digital-LLC/QuillSail/issues). Report security problems privately, as described in the [security policy](../SECURITY.md). Never post passwords, subscriber lists or configuration files in a public issue.
+QuillSail is beta software maintained on [GitHub](https://github.com/DoobaDigital/QuillSail). Ask questions and report problems in its [issues](https://github.com/DoobaDigital/QuillSail/issues). Report security problems privately, as described in the [security policy](../SECURITY.md). Never post passwords, subscriber lists or configuration files in a public issue.

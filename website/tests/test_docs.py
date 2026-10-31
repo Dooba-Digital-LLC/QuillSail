@@ -48,7 +48,7 @@ def test_pages_have_titles_descriptions_and_edit_links(docs_client):
     assert "<title>Terminal installer · QuillSail Docs</title>" in html
     assert '<link rel="canonical" href="https://docs.quillsail.test/install-script">' in html
     assert re.search(r'<meta name="description" content="Install the QuillSail desktop app', html)
-    assert "https://github.com/Dooba-Digital-LLC/QuillSail/edit/main/docs/install-script.md" in html
+    assert "https://github.com/DoobaDigital/QuillSail/edit/main/docs/install-script.md" in html
     assert 'rel="prev"' in html and 'rel="next"' in html
 
 
