@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.13.1 — Beta
+
+- Show everything in the desktop launcher without scrolling. The window now sizes itself to its content using the real title bar height, and grows when a public address, update progress or a longer message adds lines, as far as the screen allows.
+- Put **Delete instance…** beside the instance selector, and **Open public site** beside **Open dashboard**. Hide the public address line until a publication has one.
+
 ## 1.13.0 — Beta
 
 - Add shared Gmail sign-in for desktop and server publications. The website backend keeps the confidential Google client secret; publications discover public metadata and use a confirmed HTTPS callback with PKCE instead of asking each user to register an app.

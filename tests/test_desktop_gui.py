@@ -150,6 +150,73 @@ def test_update_controls_keep_publication_running_until_an_approved_install(tmp_
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_launcher_shows_all_content_without_scrolling(tmp_path):
+    pytest.importorskip("PySide6")
+    script = textwrap.dedent("""
+        import sys
+        from pathlib import Path
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMainWindow, QScrollArea
+        from copydesk import desktop_ui
+
+        class Runtime:
+            def __init__(self, root):
+                self.server = None
+                self.public_url = ''
+            def start(self):
+                self.server = True
+                return 'http://127.0.0.1:5080'
+            def stop(self):
+                self.server = None
+
+        desktop_ui.DesktopRuntime = Runtime
+        app = QApplication([])
+        state, heights, errors = [0], [], []
+
+        def check_fit(window):
+            # Everything shows, unless the window already fills the screen.
+            screen = window.screen().availableGeometry()
+            frame = window.frameGeometry()
+            scroll = window.findChild(QScrollArea, 'launcher-scroll')
+            assert screen.contains(frame), (screen, frame)
+            assert scroll.verticalScrollBar().maximum() == 0 or frame.height() >= screen.height() - 1, \\
+                (window.height(), scroll.widget().heightForWidth(window.width()))
+            heights.append(window.height())
+
+        def inspect():
+            try:
+                window = next((w for w in app.topLevelWidgets() if isinstance(w, QMainWindow) and w.isVisible()), None)
+                if window is None or window.busy or not window.runtime.server:
+                    return
+                if state[0] == 0:
+                    check_fit(window)
+                    # A public address adds a line, so the window grows instead of scrolling.
+                    window.runtime.public_url = 'https://news.example.org'
+                    window.refresh_public_status()
+                elif state[0] == 10:
+                    assert window.public_status.isVisible() and window.public_button.isVisible()
+                    check_fit(window)
+                    full = window.frameGeometry().height() >= window.screen().availableGeometry().height() - 1
+                    assert heights[1] > heights[0] or full, heights
+                    window.request_quit()
+                state[0] += 1
+            except BaseException as exc:
+                errors.append(repr(exc))
+                app.exit(1)
+
+        timer = QTimer()
+        timer.timeout.connect(inspect)
+        timer.start(10)
+        QTimer.singleShot(10_000, lambda: (errors.append('GUI test timed out'), app.exit(1)))
+        assert desktop_ui.run(data_dir=Path(sys.argv[1]), open_browser=False) == 0, errors
+        assert not errors, errors
+    """)
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path)],
+                            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"}, capture_output=True,
+                            text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 @pytest.mark.parametrize('action', ['close', 'update'])
 def test_instance_switching_keeps_other_publications_running_and_shutdown_stops_all(tmp_path, action):
     pytest.importorskip('PySide6')
