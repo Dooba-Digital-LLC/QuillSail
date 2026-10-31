@@ -5,6 +5,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
 from datetime import timedelta
@@ -38,10 +39,13 @@ def config():
 
 
 def configure(client_id, relay_url):
-    import re
-
     client_id = str(client_id or '').strip()
     relay_url = str(relay_url or '').strip()
+    if not client_id and not relay_url:
+        if db.session.get(HostingConnection, 1):
+            raise domains.DomainProblem('Disconnect the current hosting connection before changing the OAuth app.')
+        settings.set_value('hosting.oauth_client', {})
+        return
     parts = urlsplit(relay_url)
     if not re.fullmatch(r'[A-Za-z0-9_-]{16,128}', client_id):
         raise domains.DomainProblem('Enter the registered public Cloudflare client ID.')
@@ -57,13 +61,74 @@ def configure(client_id, relay_url):
 
 def available():
     client = config()
-    return bool(client.get('client_id') and client.get('scopes') and client.get('relay_url'))
+    return bool((client.get('client_id') and client.get('scopes') and client.get('relay_url'))
+                or client.get('metadata_url'))
+
+
+def _public_client(data):
+    """Accept public registration details, never provider credentials."""
+    if not isinstance(data, dict) or type(data.get('version')) is not int or data['version'] != 1:
+        raise ValueError
+    if set(data) - {'version', 'client_id', 'relay_url', 'scopes', 'edge_scopes'}:
+        raise ValueError
+    client = {key: data.get(key, '') for key in ('client_id', 'relay_url', 'scopes', 'edge_scopes')}
+    if any(not isinstance(value, str) for value in client.values()):
+        raise ValueError
+    if not re.fullmatch(r'[A-Za-z0-9_-]{16,128}', client['client_id']):
+        raise ValueError
+    relay = urlsplit(client['relay_url'])
+    if (relay.scheme != 'https' or not relay.hostname or relay.username or relay.password
+            or relay.query or relay.fragment or len(client['relay_url']) > 2048
+            or not relay.path.endswith('/oauth/cloudflare/callback')
+            or any(c in client['relay_url'] for c in '\r\n\\')):
+        raise ValueError
+    if relay.port is not None and not 1 <= relay.port <= 65535:
+        raise ValueError
+    for key in ('scopes', 'edge_scopes'):
+        if len(client[key]) > 2048 or any(not re.fullmatch(r'[A-Za-z0-9:._/-]+', scope) for scope in client[key].split()):
+            raise ValueError
+    if not set(DEFAULT_SCOPES.split()).issubset(client['scopes'].split()):
+        raise ValueError
+    return client
+
+
+def resolve(client):
+    """Discover the developer's shared registration only when sign-in is requested.
+
+    The page and application startup remain usable without network access.
+    Explicit per-publication registrations continue to take precedence.
+    """
+    if client.get('client_id') or client.get('relay_url'):
+        if not client.get('client_id') or not client.get('relay_url'):
+            raise domains.DomainProblem('Complete the custom Cloudflare client setup or clear it to use QuillSail sign-in.')
+        return client
+    try:
+        address = client.get('metadata_url', '')
+        parts = urlsplit(address)
+        if (parts.scheme != 'https' or not parts.hostname or parts.username or parts.password
+                or parts.query or parts.fragment or len(address) > 2048):
+            raise ValueError
+        with requests.Session() as http:
+            http.trust_env = False
+            with http.get(address, timeout=(3, 5), allow_redirects=False, stream=True,
+                          headers={'Accept': 'application/json'}) as response:
+                if response.status_code != 200 or response.headers.get('Content-Type', '').split(';')[0] != 'application/json':
+                    raise ValueError
+                content = bytearray()
+                for chunk in response.iter_content(4096):
+                    content.extend(chunk)
+                    if len(content) > 16384:
+                        raise ValueError
+        return _public_client(json.loads(content))
+    except (requests.RequestException, ValueError, TypeError):
+        raise domains.DomainProblem('Cloudflare sign-in is temporarily unavailable. Try again shortly or use the API-token backup.') from None
 
 
 def start(user, *, for_edge=False, reconnect=False):
-    client = config()
+    configuration = config()
     if not available():
-        raise domains.DomainProblem('Configure the registered Cloudflare client ID, scopes and relay URL first.')
+        raise domains.DomainProblem('Cloudflare sign-in is disabled. Use the API-token backup or configure a custom client.')
+    client = resolve(configuration)
     relay = urlsplit(client['relay_url'])
     if relay.scheme != 'https' or not relay.hostname or relay.username or relay.query or relay.fragment:
         raise domains.DomainProblem('The OAuth relay must use an HTTPS callback URL.')
@@ -79,7 +144,7 @@ def start(user, *, for_edge=False, reconnect=False):
     nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
     relay_state = base64.urlsafe_b64encode(json.dumps({'destination': destination, 'nonce': nonce}, separators=(',', ':')).encode()).decode().rstrip('=')
     flow = HostingOAuthFlow(state_hash=hashlib.sha256(relay_state.encode()).hexdigest(), user_id=user.id,
-        auth_version=user.auth_version, payload=cloudflare.encrypt({'verifier': verifier, 'client': client, 'for_edge': for_edge, 'reconnect': reconnect, 'connection_version': existing.version if existing else None}))
+        auth_version=user.auth_version, payload=cloudflare.encrypt({'verifier': verifier, 'client': client, 'configuration': configuration, 'for_edge': for_edge, 'reconnect': reconnect, 'connection_version': existing.version if existing else None}))
     db.session.execute(delete(HostingOAuthFlow).where(HostingOAuthFlow.created_at < utcnow() - TTL))
     db.session.add(flow)
     session['_hosting_oauth_state'] = relay_state
@@ -114,7 +179,7 @@ def finish(user, sent_state, code):
         payload = json.loads(cloudflare._cipher().decrypt(flow.payload.encode()))
     except (InvalidToken, ValueError):
         raise domains.DomainProblem('Saved authorization could not be opened. Start sign-in again.') from None
-    if payload['client'] != config() or not code or len(code) > 8192:
+    if payload.get('configuration', payload['client']) != config() or not code or len(code) > 8192:
         raise domains.DomainProblem('The client setup changed or authorization was cancelled. Start again.')
     result = db.session.execute(delete(HostingOAuthFlow).where(HostingOAuthFlow.state_hash == digest))
     db.session.commit()

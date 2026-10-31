@@ -500,4 +500,4 @@ quillsail worker [OPTIONS]
 
 ---
 
-*Generated from the QuillSail 1.12.0 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.12.1 source code by `scripts/build_reference_docs.py`.*

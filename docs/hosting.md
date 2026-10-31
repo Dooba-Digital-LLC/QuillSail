@@ -26,15 +26,23 @@ On a server, the tunnel origin defaults to `http://127.0.0.1:8000`. Set the publ
 
 Cloudflare sign-in is the primary connection method. API tokens remain an optional backup under **Use an API token instead (backup)**. OAuth uses a public client with PKCE; no client secret is distributed.
 
-Open **Cloudflare sign-in setup** on the Domain page and save the registered public client ID and HTTPS relay callback URL. This works on desktop without inheriting server environment variables or restarting the publication. The default base scopes are `dns.write zone.read argotunnel.write offline_access`, verified against Cloudflare's OAuth client picker. In that picker, Argo Tunnel (Legacy) Edit is displayed as Cloudflare Tunnel Write (`argotunnel.write`) on review. Enable both Authorization Code and Refresh Token grants with token authentication `none`.
+Choose **Sign in with Cloudflare** on the Domain page, authorize your account, and choose a domain. Fresh desktop and server publications automatically discover the shared app's public client ID, approved scopes and HTTPS relay from `https://quillsail.blog/.well-known/quillsail/cloudflare.json`. Users do not register an OAuth app or enter app credentials. Discovery happens when sign-in starts, not when the app starts or the page opens. Temporary discovery failures offer a retry and leave the API-token backup available.
 
-Saved dashboard metadata applies to this publication only. Server configuration and environment variables remain supported; `CLOUDFLARE_CLIENT_ID` is an alias of `COPYDESK_CLOUDFLARE_CLIENT_ID`, with the prefixed variable taking precedence. A repository `.env` is not automatically imported into desktop publications. `CLOUDFLARE_DNS_TXT_RECORD` is private setup information for publishing a DNS verification record, not an application credential.
+Each instance generates its own PKCE verifier and stores its own encrypted access and refresh tokens. The website publishes only public app metadata; it never receives those tokens or the verifier. Authorization callbacks use the original client details saved when sign-in began, even if the hosted registration changes. Existing connections refresh directly with Cloudflare without depending on discovery.
 
 After connecting, **Reconnect with Cloudflare** renews authorization without deleting the tunnel or managed records. Reauthorization checks access to the existing account and zone before replacing saved credentials.
 
-For a shared client, register an HTTPS relay callback such as `https://quillsail.blog/oauth/cloudflare/callback`. Configure Authorization Code and Refresh Token grants with PKCE S256 and token authentication `none`. Cloudflare requires domain ownership verification before a client can become public. Fetch the available OAuth scopes from Cloudflare's `/oauth/scopes` API and use the exact approved values. Start with Zone Read, DNS Edit and Cloudflare Tunnel Edit. Keep Workers Scripts, Workers Routes and KV permissions optional until someone enables the offline fallback.
+#### Maintainer setup, once for all users
 
-Configure public client metadata on each installation:
+Register the shared app with the HTTPS callback `https://quillsail.blog/oauth/cloudflare/callback`. Configure Authorization Code and Refresh Token grants with PKCE S256 and token authentication `none`. Verify the client URL domain, provide the required name and logo, and promote the client to **Public** in Cloudflare. Private clients permit authorization only by members of their parent account. Public promotion is permanent.
+
+The approved base scopes are `dns.write zone.read argotunnel.write offline_access`. In Cloudflare's picker, Argo Tunnel (Legacy) Edit is displayed as Cloudflare Tunnel Write (`argotunnel.write`) on review. Keep Workers Scripts, Workers Routes and KV permissions optional until offline fallback is enabled.
+
+Set `QUILLSAIL_CLOUDFLARE_CLIENT_ID` once in the website backend's private environment file and retain its existing `QUILLSAIL_OAUTH_RELAY_SECRET`. The website derives the registered callback from its canonical HTTPS site address. `QUILLSAIL_CLOUDFLARE_SCOPES` and `QUILLSAIL_CLOUDFLARE_EDGE_SCOPES` override the approved base and optional scopes. No client secret, API token, user access token or refresh token belongs in this public registration. See [website configuration](../website/README.md#configuration).
+
+#### Custom clients and forks
+
+The collapsed **Advanced: use your own Cloudflare OAuth app** section overrides discovery for this publication. Save the registered public client ID and HTTPS callback, or leave both fields blank to return to shared sign-in. Existing custom registrations remain supported. Operators can also set:
 
 ```toml
 [oauth]
@@ -42,9 +50,11 @@ cloudflare_client_id = "YOUR_REGISTERED_PUBLIC_CLIENT_ID"
 cloudflare_scopes = "YOUR_APPROVED_BASE_SCOPES"
 cloudflare_edge_scopes = "YOUR_APPROVED_OPTIONAL_OFFLINE_SCOPES"
 cloudflare_relay_url = "https://YOUR_RELAY_HOST/oauth/cloudflare/callback"
+# Alternatively, discover your own shared app instead of configuring each publication:
+# cloudflare_metadata_url = "https://YOUR_WEBSITE/.well-known/quillsail/cloudflare.json"
 ```
 
-Environment equivalents are `COPYDESK_CLOUDFLARE_CLIENT_ID`, `COPYDESK_CLOUDFLARE_SCOPES`, `COPYDESK_CLOUDFLARE_EDGE_SCOPES` and `COPYDESK_CLOUDFLARE_RELAY_URL`. Desktop instances ignore server environment overrides; put these public values in their configuration. Neither a Cloudflare client secret nor a provider token belongs in these public fields.
+Environment equivalents are `COPYDESK_CLOUDFLARE_CLIENT_ID`, `COPYDESK_CLOUDFLARE_SCOPES`, `COPYDESK_CLOUDFLARE_EDGE_SCOPES`, `COPYDESK_CLOUDFLARE_RELAY_URL` and `COPYDESK_CLOUDFLARE_METADATA_URL`. Set the metadata URL to an empty string to disable discovery. `CLOUDFLARE_CLIENT_ID` remains an alias of the prefixed client-ID variable, with the prefixed value taking precedence. Desktop publications use the shared default automatically and ignore server environment overrides; custom public values belong in their own configuration or advanced form. A repository `.env` is not automatically imported into publications. `CLOUDFLARE_DNS_TXT_RECORD` is publisher-verification information, not an application credential.
 
 The relay is part of the separate [website app](../website/README.md). Configure `QUILLSAIL_OAUTH_RELAY_SECRET` with a random persistent secret of at least 32 characters, deploy with HTTPS, and register its exact callback URL. It is disabled without that configuration. Its confirmation form shows the publication callback address and requires a click. It never exchanges codes, receives PKCE verifiers, or stores access tokens. Both servers and desktop use this fixed relay callback, avoiding an assumption that Cloudflare permits arbitrary loopback redirect ports. The publication validates browser state, account identity, expiry and single use before exchanging the code itself.
 

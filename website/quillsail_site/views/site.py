@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC
 from pathlib import Path
 
@@ -48,6 +49,20 @@ def create_site_app(config: Config, catalog: Catalog, docs: Docs) -> Flask:
 
 def catalog() -> Catalog:
     return current_app.extensions["catalog"]
+
+
+@bp.get('/.well-known/quillsail/cloudflare.json')
+def cloudflare_client():
+    """Publish only the maintainer's public PKCE registration, never tokens."""
+    config = current_app.config['QUILLSAIL']
+    if (not config.oauth_relay_secret or config.site.scheme != 'https'
+            or not re.fullmatch(r'[A-Za-z0-9_-]{16,128}', config.cloudflare_client_id)):
+        abort(503, description='Cloudflare sign-in is temporarily unavailable.')
+    response = jsonify(version=1, client_id=config.cloudflare_client_id,
+        scopes=config.cloudflare_scopes, edge_scopes=config.cloudflare_edge_scopes,
+        relay_url=config.site.join('/oauth/cloudflare/callback'))
+    response.headers.update({'Cache-Control': 'public, max-age=300', 'X-Robots-Tag': 'noindex'})
+    return response
 
 
 def requested_channel() -> str:

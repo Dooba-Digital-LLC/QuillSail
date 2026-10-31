@@ -2,6 +2,12 @@
 
 QuillSail is beta software. These are development checks, not an independent security audit. Private deployment addresses, access details and operations records are excluded from the public repository.
 
+## 1.12.1 Beta — shared Cloudflare registration
+
+Fresh publications use a shared HTTPS discovery document instead of requiring OAuth app setup. Regression coverage exercises desktop/server PKCE, browser state, client snapshots across hosted changes, encrypted per-instance credentials, explicit overrides and resetting to shared defaults, rejected metadata/secrets, bounded downloads, redirect rejection and temporary outages. Website coverage verifies the public allowlist, missing setup, HTTPS and environment configuration. No schema change is needed. Production activation also requires Cloudflare's verified domain and public client visibility; tests use synthetic registrations and mocked endpoints.
+
+Local validation: application suite 529 passed, 3 skipped; website suite 133 passed, 1 skipped. Ruff, generated references, wheel/sdist metadata and release-boundary checks passed; a clean wheel installation exercised migrations, setup, subpath routing and assets. The native builds, PostgreSQL/MariaDB and Docker checks run in GitHub Actions. Docker and server databases are unavailable locally.
+
 ## 1.12.0 Beta — hosting and domains, 2026-10-30
 
 Issue #5 adds optional domain connection, launching-soon mode, Cloudflare OAuth with an HTTPS confirmation relay, and an API-token backup. Release preparation follows the contributor-branch, pull-request, rebase, CI and rebase-and-merge workflow. Published desktop artifacts are built from the merged commit, independently of local development builds.

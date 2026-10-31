@@ -74,8 +74,14 @@ Everything is set with environment variables. Defaults suit local development.
 | `QUILLSAIL_TRUST_ROOT` | The bundled `root.json` | The trust root used to verify the feed |
 | `QUILLSAIL_REPO_ROOT` | This repository | Where `docs/` and `website/docs.toml` are |
 | `QUILLSAIL_RELEASES_FIXTURE` | Unset | A JSON file of releases, for development and tests only |
+| `QUILLSAIL_OAUTH_RELAY_SECRET` | Unset | Persistent private signing/session secret of at least 32 characters for the OAuth confirmation relay |
+| `QUILLSAIL_CLOUDFLARE_CLIENT_ID` | Unset | Registered public PKCE client ID, configured once for all QuillSail installations |
+| `QUILLSAIL_CLOUDFLARE_SCOPES` | `dns.write zone.read argotunnel.write offline_access` | Exact approved base scopes for the shared client |
+| `QUILLSAIL_CLOUDFLARE_EDGE_SCOPES` | Empty | Approved optional offline-fallback scopes, requested only when needed |
 
 A request for any other host, such as `www.quillsail.blog`, is redirected to the site's address.
+
+With HTTPS, a relay secret and a client ID configured, `/.well-known/quillsail/cloudflare.json` publishes only the public client ID, scopes and canonical relay callback. Configure the registration once here; fresh desktop/server publications discover it when users click **Sign in with Cloudflare**. No client secret is needed for PKCE. Access tokens, refresh tokens and verifiers stay on the individual publication. Complete Cloudflare domain verification and promote the client to Public before inviting users outside its parent account. Custom app registrations and the API-token backup remain supported; see [hosting](../docs/hosting.md).
 
 ## Deploy
 
