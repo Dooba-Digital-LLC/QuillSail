@@ -94,7 +94,9 @@ jobs:
       - name: Exercise managed Compose updates and recovery
         run: sudo env PYTHONPATH="$PWD/src" "$(command -v python)" scripts/compose_update_smoke.py dist/*.whl
   databases:
-    runs-on: ubuntu-latest
+    # Ubuntu 26.04 (ubuntu-latest) no longer packages the PostgreSQL 16 client
+    # that must match the postgres:16 service for backup and restore checks.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
