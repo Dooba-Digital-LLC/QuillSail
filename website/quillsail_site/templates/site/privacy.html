@@ -3,18 +3,21 @@
 {% block main %}
 <main id="main" class="container page">
 <h1>Privacy policy for QuillSail hosted sign-in</h1>
-<p>This policy covers the QuillSail website and its shared Gmail and Cloudflare sign-in services. Publications run by other people have their own operators and privacy practices.</p>
+<p>This policy covers the QuillSail website and its shared Gmail, Outlook and Cloudflare sign-in services. Publications run by other people have their own operators and privacy practices.</p>
 <h2>Google account data</h2>
 <p>Gmail sign-in requests your account identity and permission to send email. It does not request permission to read your inbox. Your publication uses your verified email address to identify its sender.</p>
 <p>The website exchanges authorization codes and renews Google tokens using a confidential application secret. Authorization codes, PKCE verifiers, access tokens and refresh tokens pass through the service for those operations; the service does not store them in a central user-token database. Each publication stores its own connection encrypted with its instance key.</p>
 <p>Email content and recipient lists are sent directly from your publication to Google. They do not pass through the QuillSail website.</p>
+<h2>Microsoft account data</h2>
+<p>Outlook sign-in requests basic account identification, permission to send mail as the signed-in user, and offline access to renew authorization. It does not request permission to read your inbox. Your publication uses your Microsoft mailbox address to identify its sender.</p>
+<p>The website exchanges codes and renews Microsoft tokens using a confidential application secret. Codes, PKCE verifiers and tokens pass through these operations without a central user-token database. Each publication keeps its connection encrypted locally and sends email content and recipient lists directly to Microsoft Graph.</p>
 <h2>Use and sharing</h2>
-<p>Google account information is used only to connect the sender and provide sending and authorization renewal. It is not sold, used for advertising, used to determine creditworthiness, or used to train general-purpose AI models. QuillSail's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements.</p>
+<p>Google and Microsoft account information is used only to connect the sender and provide sending and authorization renewal. It is not sold, used for advertising, used to determine creditworthiness, or used to train general-purpose AI models. QuillSail's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements.</p>
 <h2>Cloudflare and service operation</h2>
 <p>Cloudflare sign-in uses public app metadata and an authorization-code confirmation relay. Cloudflare tokens and PKCE verifiers stay on the publication. The website uses a session cookie to bind confirmation forms to your browser.</p>
 <p>The service keeps temporary rate-limit counters in memory. Operational logs may include request paths, status, time and source network addresses. Authorization-code query strings and credential request bodies must not be recorded in those logs. Logs are retained for operating and securing the service and are removed through the server's log rotation.</p>
 <h2>Your choices</h2>
-<p>You can disconnect a sender in your publication. To revoke Google's or Cloudflare's authorization grant itself, use that provider's account permissions page. A self-hosted publication can use its own OAuth registration or SMTP instead of shared Gmail sign-in.</p>
+<p>You can disconnect a sender in your publication. To revoke Google's, Microsoft's or Cloudflare's authorization grant itself, use that provider's account permissions page. A self-hosted publication can use its own OAuth registration or SMTP instead of shared email sign-in.</p>
 <p>For questions or deletion requests concerning the hosted service, contact <a href="mailto:{{ contact }}">{{ contact }}</a>. For publication content, subscribers or locally stored tokens, contact the operator of that publication.</p>
 </main>
 {% endblock %}

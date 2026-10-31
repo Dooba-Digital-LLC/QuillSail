@@ -40,15 +40,33 @@ See [Google's authorization guide](https://developers.google.com/identity/protoc
 
 ## Outlook and Microsoft 365
 
-1. Open [Microsoft Entra app registrations](https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade) and register an application. Select the supported account type that matches the intended users. Personal Outlook.com and work/school accounts require the corresponding multi-tenant/personal-account option.
-2. Add a **Web** redirect URI matching the exact Outlook callback shown in QuillSail. An example callback is `https://newsletter.example.org/dashboard/settings/email/callback/outlook`.
-3. Add delegated Microsoft Graph permissions **Mail.Send** and **User.Read**. QuillSail also requests OpenID account identification and `offline_access`. Your organization may require administrator consent.
-4. Create a client secret and enter its **value**, rather than its secret identifier, along with the application/client ID in QuillSail.
-5. Use `common` to permit the app's supported personal and organizational accounts, or enter your tenant ID/domain to limit connections. Save the setup, click **Connect Outlook**, and send a test.
+Click **Connect Outlook**, choose a personal Outlook.com or Microsoft 365 work/school account, and approve the delegated sending permissions. Fresh desktop and server publications discover QuillSail's shared Microsoft application without asking users for an app ID or secret. An organization can still require administrator approval or block third-party apps through its own policies.
 
-Microsoft app credentials can also be imported as JSON containing `client_id`, `client_secret`, and optionally `tenant`. QuillSail uses Graph's MIME `sendMail` API to preserve HTML/plain-text alternatives and newsletter headers. User.Read identifies the chosen mailbox; no Mail.Read permission is requested.
+The confidential Microsoft Web client secret stays on the website backend. Sign-in uses PKCE, the fixed HTTPS callback `https://quillsail.blog/oauth/outlook/callback`, and a browser-bound confirmation before returning to the publication. Each publication stores its own encrypted access/refresh tokens and renewal proof. Codes and tokens pass through the broker for exchange/renewal without central user-token storage. Email content goes directly from the publication to Microsoft Graph.
 
-See [Microsoft's authorization flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow) and [Graph sendMail](https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0).
+The broker only requests delegated **Mail.Send**, **User.Read**, OpenID/email identification and **offline_access**. It rejects inbox-reading permissions, arbitrary upstream URLs/tenants, cross-provider proofs and browser-originated token requests. Refresh requests explicitly request the same minimal scopes and rotate the proof when Microsoft rotates the refresh token. Switching/disconnecting senders retains the existing race protection.
+
+### Maintainer setup, once for all publications
+
+Set the private website environment's `QUILLSAIL_MICROSOFT_CLIENT_ID`, `QUILLSAIL_MICROSOFT_CLIENT_SECRET`, `QUILLSAIL_MICROSOFT_TENANT` (default `common`) and a persistent random `QUILLSAIL_OUTLOOK_BROKER_SECRET` of at least 32 characters. Preserve the existing OAuth relay secret. The client ID is the **Application (client) ID**; the secret must be its **value**, not its secret identifier. Plan renewal before the Microsoft secret expires; replacing it on the backend requires no desktop secret distribution.
+
+On the Entra registration, add the exact hosted callback as a **Web** redirect URI, preserving any callbacks in use. To support personal accounts and organizations, select **Accounts in any organizational directory and personal Microsoft accounts**. Use only delegated Graph **Mail.Send** and **User.Read**; do not add application-wide sending or inbox permissions. Keep the default public-client flow and implicit-token options disabled. Configure truthful app branding, privacy information and publisher verification as applicable. Tenant administrator consent rules still apply even when the registration is multitenant.
+
+Activate the service with `QUILLSAIL_OUTLOOK_ENABLED=1` after the callback, permissions and intended account audience are configured. It is disabled by default. Public discovery at `/.well-known/quillsail/outlook.json` includes only the app ID, authority tenant, minimal scopes and HTTPS endpoints. Supported broker tenants are `common`, `organizations`, `consumers`, or a tenant UUID on Microsoft's fixed public-cloud login host. Government/national clouds are not covered by this shared service. Keep the Outlook proof key stable across deployments/backups; it is separate from Gmail's key.
+
+### Use a custom Outlook application
+
+Organizations and forks can use **Use your own Outlook app (optional)**. Custom credentials take precedence over shared discovery:
+
+1. Open [Microsoft Entra app registrations](https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade) and register an application for the intended account types.
+2. Add a **Web** redirect URI matching the exact Outlook callback shown in QuillSail, such as `https://newsletter.example.org/dashboard/settings/email/callback/outlook`.
+3. Add delegated Microsoft Graph **Mail.Send** and **User.Read**. QuillSail also requests OpenID/email identification and `offline_access`; your organization may require administrator consent.
+4. Create a client secret and enter its **value**, plus the application/client ID. Use `common` for the registration's supported personal and organizational accounts, or your tenant ID/domain to limit access.
+5. Save the setup and click **Connect Outlook**. Clear both custom app fields to restore the installation defaults.
+
+Credentials can also be imported as JSON containing `client_id`, `client_secret`, and optionally `tenant`. QuillSail uses Graph's MIME `sendMail` API to preserve HTML/plain-text alternatives and newsletter headers. No Mail.Read permission is requested.
+
+See [Microsoft's authorization flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow), [supported account types](https://learn.microsoft.com/en-us/entra/identity-platform/supported-accounts-validation), and [Graph sendMail](https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0).
 
 ## Configuration files and SMTP
 
@@ -73,7 +91,7 @@ microsoft_tenant = "common"
 
 Environment overrides are `COPYDESK_GOOGLE_CLIENT_ID`, `COPYDESK_GOOGLE_CLIENT_SECRET`, `COPYDESK_MICROSOFT_CLIENT_ID`, `COPYDESK_MICROSOFT_CLIENT_SECRET`, and `COPYDESK_MICROSOFT_TENANT`. The unprefixed `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, and `MICROSOFT_TENANT` aliases are also supported. Pass these into the web and worker processes; the server does not automatically source a neighboring .env file.
 
-For a different shared broker, set `oauth.google_metadata_url` or `COPYDESK_GOOGLE_METADATA_URL` to its HTTPS discovery document. Its token and callback endpoints must use the same origin. Set this URL to an empty string to disable discovery. Explicit custom Google credentials remain local and connect directly to Google; they are never sent to the shared service. Desktop ignores server environment overrides and uses the shared default unless its own publication has a custom registration.
+For a different shared broker, set `oauth.google_metadata_url` or `COPYDESK_GOOGLE_METADATA_URL` to its HTTPS discovery document. Its token and callback endpoints must use the same origin. Set this URL to an empty string to disable discovery. For Outlook, the corresponding settings are `oauth.microsoft_metadata_url` and `COPYDESK_MICROSOFT_METADATA_URL`. An empty URL disables shared discovery. Explicit custom Google or Microsoft credentials remain local and connect directly to Google; they are never sent to the shared service. Desktop ignores server environment overrides and uses the shared default unless its own publication has a custom registration.
 
 ## Storage, switching, and recovery
 

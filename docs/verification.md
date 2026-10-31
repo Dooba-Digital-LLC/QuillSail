@@ -2,6 +2,12 @@
 
 QuillSail is beta software. These are development checks, not an independent security audit. Private deployment addresses, access details and operations records are excluded from the public repository.
 
+## 1.14.0 Beta — shared Outlook sign-in
+
+Shared Outlook discovery and the confidential website broker use synthetic Microsoft registrations and mocked grants. Regression coverage exercises fresh server/desktop PKCE, fixed HTTPS callbacks, browser binding, encrypted client snapshots and tokens, proof-bound refresh/rotation, sender replacement races, malformed metadata, authority injection, cross-provider/tenant proof rejection, minimal scope aliases and rejected inbox permissions. Custom registrations and SMTP remain supported. Gmail and Cloudflare confirmation salts and browser state remain compatible; Outlook uses independent state and proof keys. No schema change is needed.
+
+Website suite: 183 passed, 1 skipped; Ruff and reference generation passed. Wheel/sdist boundaries, metadata and a clean package installation passed. Application suite: 569 passed, 3 skipped (11 external premailer deprecation warnings). Database, container and all native desktop checks run in pull-request CI; Docker and server databases are unavailable locally. Private Microsoft credentials are deployed separately, never committed. Live Microsoft authorization and delivery are not established by mocked tests; the registration's callback, account types, publisher status and each tenant's consent policy determine availability. No live email is sent during validation.
+
 ## 1.13.1 Beta — launcher fits without scrolling
 
 The desktop launcher now sizes itself from its content's height at the window's actual width and the real title bar height, and grows when content is added. On macOS with a 1440×900 display (812 px usable), the real launcher opened at 708 px with no scrolling, down from a 772 px window holding 777 px of content. With a public address it grew to 734 px and stayed on screen. A new offscreen regression test fails on the previous code and passes now. No schema change is needed.

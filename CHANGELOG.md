@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.0 — Beta
+
+- Add shared Outlook/Microsoft 365 sign-in for desktop and server publications. Keep the confidential Microsoft Web client secret on the website backend and discover only public app metadata, so users connect by signing in without registering an app.
+- Use PKCE, a confirmed HTTPS callback, separate proof-bound token renewal and encrypted per-publication credentials. Send messages directly to Microsoft Graph with delegated Mail.Send and User.Read; reject inbox permissions and arbitrary authorities.
+- Preserve custom Outlook apps, SMTP backup, existing Gmail/Cloudflare sign-ins and sender-switching protections. Activation depends on the maintained Microsoft callback, supported account types and organization consent rules.
+
 ## 1.13.1 — Beta
 
 - Show everything in the desktop launcher without scrolling. The window now sizes itself to its content using the real title bar height, and grows when a public address, update progress or a longer message adds lines, as far as the screen allows.

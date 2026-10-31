@@ -233,5 +233,37 @@
     "docker_image_execution_verified": false,
     "github_workflows_dispatched": false,
     "github_publication_performed": false
+  },
+  "shared_outlook": {
+    "version": "1.14.0",
+    "date": "2026-10-31",
+    "application": {
+      "passed": 569,
+      "skipped": 3
+    },
+    "website": {
+      "passed": 183,
+      "skipped": 1
+    },
+    "synthetic_only": true,
+    "live_email_sent": false,
+    "schema_change": false,
+    "checks": [
+      "fresh server and desktop discovery/PKCE",
+      "encrypted per-instance tokens and client snapshots",
+      "fixed Microsoft authority and callback",
+      "separate tenant/client/token-bound renewal proofs",
+      "refresh rotation and sender replacement races",
+      "scope allowlist and inbox rejection",
+      "Gmail and Cloudflare compatibility",
+      "custom Outlook registrations and SMTP backup",
+      "package metadata, boundaries and clean installation"
+    ],
+    "live_provider_status": "Callback and account audience are configured separately; live consent and delivery not asserted",
+    "not_run_locally": [
+      "server databases",
+      "Docker",
+      "native desktop builds"
+    ]
   }
 }

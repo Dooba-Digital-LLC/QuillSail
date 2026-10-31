@@ -43,7 +43,7 @@ def destination(value, suffix='/dashboard/domain/oauth/callback'):
 
 
 def serializer(provider='cloudflare'):
-    salt = 'quillsail.hosting.relay.v1' if provider == 'cloudflare' else 'quillsail.gmail.relay.v1'
+    salt = 'quillsail.hosting.relay.v1' if provider == 'cloudflare' else f'quillsail.{provider}.relay.v1'
     return URLSafeTimedSerializer(current_app.secret_key, salt=salt)
 
 
@@ -55,7 +55,7 @@ def callback():
 def confirmation(provider, suffix, label):
     if not current_app.secret_key:
         abort(503, description='The OAuth relay has not been configured.')
-    csrf_key = '_relay_csrf' if provider == 'cloudflare' else '_relay_csrf_gmail'
+    csrf_key = '_relay_csrf' if provider == 'cloudflare' else '_relay_csrf_' + provider
     if request.method == 'GET':
         state, code = request.args.get('state', ''), request.args.get('code', '')
         if not code or len(code) > 8192 or not state or len(state) > 4096:
