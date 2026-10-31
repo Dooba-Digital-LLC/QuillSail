@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.1 — Beta
+
+- Configure the shared Cloudflare OAuth application once on the website backend. Fresh desktop and server publications discover the public client ID, scopes and HTTPS relay automatically and show Sign in with Cloudflare without asking users to register an app.
+- Keep PKCE verifiers, access tokens and refresh tokens on each instance. Bound and validate discovery responses, preserve in-flight client details, and retain custom-client overrides and the API-token backup.
+
 ## 1.12.0 — Beta
 
 - Add optional public domains, separate desktop public listeners, launching-soon pages and administrator launch controls. Preserve existing live sites and keep desktop setup, sign-in, account, dashboard and API endpoints private.

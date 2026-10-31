@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 
 from quillsail_site import create_app
+from quillsail_site.config import Address, Config
 
 
 def state(destination='https://publication.example.test/dashboard/domain/oauth/callback'):
@@ -60,3 +61,38 @@ def test_relay_error_responses_also_hide_query_referrers(relay):
     assert response.status_code == 400
     assert response.headers['Referrer-Policy'] == 'no-referrer'
     assert 'no-store' in response.headers['Cache-Control']
+
+
+def test_shared_client_document_contains_only_public_registration(config, docs):
+    config = replace(config, cloudflare_client_id='synthetic-shared-client',
+                     oauth_relay_secret='synthetic-private-relay-secret-at-least-32-characters')
+    client = create_app(config, docs=docs).apps['site'].test_client()
+    response = client.get('/.well-known/quillsail/cloudflare.json')
+    assert response.status_code == 200
+    assert response.json == {'version': 1, 'client_id': 'synthetic-shared-client',
+        'scopes': 'dns.write zone.read argotunnel.write offline_access', 'edge_scopes': '',
+        'relay_url': 'https://quillsail.test/oauth/cloudflare/callback'}
+    assert config.oauth_relay_secret not in response.text
+    assert 'Set-Cookie' not in response.headers
+    assert response.headers['Cache-Control'] == 'public, max-age=300'
+    assert 'noindex' in response.headers['X-Robots-Tag']
+
+
+@pytest.mark.parametrize('missing', ['client', 'secret', 'https'])
+def test_shared_client_document_requires_complete_website_setup(config, docs, missing):
+    config = replace(config, cloudflare_client_id='synthetic-shared-client',
+                     oauth_relay_secret='synthetic-private-relay-secret-at-least-32-characters')
+    config = replace(config, **{
+        'client': {'cloudflare_client_id': ''}, 'secret': {'oauth_relay_secret': ''},
+        'https': {'site': Address.parse('site', 'http://quillsail.test')},
+    }[missing])
+    client = create_app(config, docs=docs).apps['site'].test_client()
+    assert client.get('/.well-known/quillsail/cloudflare.json').status_code == 503
+
+
+def test_maintainer_configures_shared_client_once_in_website_environment():
+    config = Config.from_env({'QUILLSAIL_CLOUDFLARE_CLIENT_ID': 'synthetic-shared-client',
+        'QUILLSAIL_CLOUDFLARE_SCOPES': 'dns.write zone.read argotunnel.write offline_access',
+        'QUILLSAIL_CLOUDFLARE_EDGE_SCOPES': 'synthetic.optional'})
+    assert config.cloudflare_client_id == 'synthetic-shared-client'
+    assert config.cloudflare_edge_scopes == 'synthetic.optional'

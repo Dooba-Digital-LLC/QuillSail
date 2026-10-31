@@ -66,6 +66,9 @@ class Config:
     releases_fixture: Path | None = None
     warm_releases: bool = True
     oauth_relay_secret: str = field(default="", repr=False)
+    cloudflare_client_id: str = ""
+    cloudflare_scopes: str = "dns.write zone.read argotunnel.write offline_access"
+    cloudflare_edge_scopes: str = ""
 
     @property
     def github_url(self) -> str:
@@ -96,6 +99,9 @@ class Config:
         fixture = env.get("QUILLSAIL_RELEASES_FIXTURE")
         values = {
             "oauth_relay_secret": env.get("QUILLSAIL_OAUTH_RELAY_SECRET", ""),
+            "cloudflare_client_id": env.get("QUILLSAIL_CLOUDFLARE_CLIENT_ID", ""),
+            "cloudflare_scopes": env.get("QUILLSAIL_CLOUDFLARE_SCOPES", "dns.write zone.read argotunnel.write offline_access"),
+            "cloudflare_edge_scopes": env.get("QUILLSAIL_CLOUDFLARE_EDGE_SCOPES", ""),
             "site": address("QUILLSAIL_SITE_URL", "http://localhost:8000"),
             "docs": address("QUILLSAIL_DOCS_URL", "http://docs.localhost:8000"),
             "updates": Address.parse("QUILLSAIL_UPDATES_URL", updates_value) if updates_value else None,

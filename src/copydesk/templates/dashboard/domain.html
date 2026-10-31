@@ -19,8 +19,8 @@
 <h2>Connect Cloudflare</h2>
 <p>Sign in to Cloudflare to connect your domain. No API token is needed.</p>
 {% if oauth_available and not hosting %}<form method="post">{{ forms.csrf() }}<button class="button button-primary" name="action" value="oauth">Sign in with Cloudflare</button></form>{% endif %}
-{% if not hosting %}<details{% if not oauth_available %} open{% endif %}><summary>Cloudflare sign-in setup</summary>
-<p>Use your registered public OAuth client and deployed confirmation relay. These settings contain no client secret.</p>
+{% if not hosting %}<details><summary>Advanced: use your own Cloudflare OAuth app</summary>
+<p>QuillSail sign-in works without these settings. Forks and operators with a separate registered app can override the public client ID and relay.</p>
 <form method="post" class="form">{{ forms.csrf() }}<input type="hidden" name="action" value="oauth.setup">
 {{ forms.input('client_id', 'Public client ID', oauth_client.get('client_id', '')) }}
 {{ forms.input('relay_url', 'Registered HTTPS relay callback', oauth_client.get('relay_url', '')) }}
