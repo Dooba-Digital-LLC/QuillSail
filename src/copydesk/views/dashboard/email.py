@@ -2,7 +2,7 @@
 
 from functools import wraps
 
-from flask import abort, flash, g, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, g, redirect, render_template, request, url_for
 
 from copydesk import audit, notify, permissions, settings
 from copydesk import email_connections as connections
@@ -36,7 +36,8 @@ def _page(errors=None, values=None, status=200):
             config = {}
         clients[key] = {
             **info,
-            "ready": bool(config.get("client_id") and config.get("client_secret")),
+            "ready": connections.client_ready(key, config),
+            "shared": key == 'gmail' and not config.get('client_id') and bool(config.get('metadata_url')),
             "client_id": config.get("client_id", ""),
             "tenant": config.get("tenant", "common"),
             "callback": connections.callback_url(key),
@@ -202,7 +203,10 @@ def email_callback(provider):
             f"{connections.PROVIDERS[provider]['name']} connected: {email}. Send a test email to check delivery.",
             "success",
         )
-        return redirect(url_for("dash.email_settings"))
+        response = redirect(url_for("dash.email_settings"))
     except connections.ConnectionProblem as exc:
         db.session.rollback()
-        return _page({"connection": str(exc)}, status=400)
+        response, status = _page({"connection": str(exc)}, status=400)
+        response = current_app.make_response((response, status))
+    response.headers.update({'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer'})
+    return response

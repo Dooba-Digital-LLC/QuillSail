@@ -2,19 +2,37 @@
 
 Administrators manage publication email under **Settings → Email**. Gmail and Outlook are the main options. SMTP settings and configuration-file import remain available under **Other email providers**. The current server email configuration keeps working until a new sender has connected successfully.
 
-## What the one-time app setup means
+## Gmail sign-in
 
-Google and Microsoft need to recognize this installation of QuillSail before allowing it to send from someone's account. Registering an app gives QuillSail a client ID and client secret. These identify the application; they are separate from anyone's mailbox password. Set this up once per installation. Afterwards administrators click Connect Gmail or Connect Outlook, choose their account, and approve sending.
+Click **Connect Gmail**, choose your Google or Google Workspace account, and approve sending. Fresh publications automatically discover QuillSail's shared application. Users do not enter a client ID or client secret or register an OAuth app. Discovery runs when sign-in starts, not at application startup or page rendering. Temporary service failures leave SMTP and custom app setup available.
 
-An installation owner may register their own app, or an organization may supply an approved registration. Self-hosted installations need their exact callback URL registered. Google consent-screen publishing rules and Microsoft tenant policies determine which accounts may authorize the app. QuillSail cannot override those rules.
+Unlike Cloudflare's public PKCE client, Google's Web application has a confidential client secret. It stays on the website backend and is never published in discovery, source or desktop downloads. The website exchanges authorization codes and renews tokens with Google; user tokens pass through that service without central storage. Each publication keeps its own access token, refresh token and token-bound renewal proof encrypted with its instance secret key. Email content goes directly from the publication to Google's API, not through the website.
 
-## Gmail
+Sign-in uses PKCE and the fixed HTTPS callback `https://quillsail.blog/oauth/gmail/callback`. The confirmation page names the destination publication and requires a click before forwarding the code. Desktop returns to its private loopback dashboard even when the publication has a public domain. Authorization state is bound to the initiating administrator/browser and expires after ten minutes. A saved client snapshot prevents hosted metadata changes from redirecting an in-flight token exchange.
+
+The broker permits only the fixed Google token endpoint and registered callback. It rejects broader/inbox-reading scopes, unexpected credentials, browser forms, oversized requests and unsigned or mismatched refresh proofs. Tokens and provider errors are not echoed into logs or public responses. Valid refreshes are checked against the active sender before updating the encrypted connection.
+
+### Availability and Google verification
+
+The maintainer must configure and activate the shared service. Google applications in **Testing** allow only listed test users, are subject to a user cap, and testing authorizations expire after seven days. Public use of the sensitive `gmail.send` scope requires Google's publishing and verification process. Shared credentials cannot remove those restrictions. A disabled or unavailable service reports a connection error and keeps the current sender unchanged. See [Google's audience rules](https://support.google.com/cloud/answer/15549945) and [scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification).
+
+### Maintainer setup, once for all publications
+
+Configure the private website environment with `QUILLSAIL_GOOGLE_CLIENT_ID`, `QUILLSAIL_GOOGLE_CLIENT_SECRET` and a random persistent `QUILLSAIL_GMAIL_BROKER_SECRET` of at least 32 characters. Retain the website's existing `QUILLSAIL_OAUTH_RELAY_SECRET`. Register the exact HTTPS website callback on the Google Web application; preserve callbacks used by existing installations. Enable the Gmail API and declare only `openid email https://www.googleapis.com/auth/gmail.send`.
+
+Provide the required app branding, verified domains and privacy policy, publish the Google app appropriately, and complete sensitive-scope verification for public distribution. Set `QUILLSAIL_GMAIL_ENABLED=1` only when the intended Google audience is configured; enabling it while the Google app is in Testing still permits only listed test users. The default is disabled. Application code does not claim that verification has happened merely because credentials exist.
+
+Back up the private environment, especially the broker proof key. Changing that key invalidates existing shared renewal proofs and requires reconnecting affected publications. Rotating the Google client secret on the backend does not distribute a new secret to publications. Website metadata at `/.well-known/quillsail/gmail.json` contains only the public client ID, send-only scope and HTTPS endpoints. See [website configuration](../website/README.md#configuration).
+
+### Use a custom Gmail application
+
+Organizations and forks can still use **Use your own Gmail app (optional)**. Custom registrations take precedence over shared discovery:
 
 1. Open [Google Cloud credentials](https://console.cloud.google.com/apis/credentials), create/select a project, and enable the Gmail API.
 2. Configure the OAuth consent screen for your organization or external users. During testing, add the sender to the app's test users. Google's testing and verification rules apply to broader deployment.
 3. Create an OAuth client of type **Web application**. Add the exact Gmail callback URL shown in QuillSail. For an example installation it is `https://newsletter.example.org/dashboard/settings/email/callback/gmail`.
 4. Enter the client ID and client secret in QuillSail's Gmail app setup, or upload Google's downloaded web-client credentials JSON. Save the setup.
-5. Click **Connect Gmail**, select the account, and grant the requested permissions. Send yourself a test email from the connection page.
+5. Click **Connect Gmail**, select the account, and grant the requested permissions. Clear both custom app fields to restore the installation's default registration.
 
 QuillSail requests `gmail.send` and basic account identification (`openid email`). It sends MIME messages through the Gmail API and does not request inbox-reading scopes. Offline access lets the worker refresh authorization while the administrator is signed out. If Google does not return a refresh token, QuillSail asks the administrator to reconnect instead of accepting a connection that cannot send in the background.
 
@@ -54,6 +72,8 @@ microsoft_tenant = "common"
 ```
 
 Environment overrides are `COPYDESK_GOOGLE_CLIENT_ID`, `COPYDESK_GOOGLE_CLIENT_SECRET`, `COPYDESK_MICROSOFT_CLIENT_ID`, `COPYDESK_MICROSOFT_CLIENT_SECRET`, and `COPYDESK_MICROSOFT_TENANT`. The unprefixed `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, and `MICROSOFT_TENANT` aliases are also supported. Pass these into the web and worker processes; the server does not automatically source a neighboring .env file.
+
+For a different shared broker, set `oauth.google_metadata_url` or `COPYDESK_GOOGLE_METADATA_URL` to its HTTPS discovery document. Its token and callback endpoints must use the same origin. Set this URL to an empty string to disable discovery. Explicit custom Google credentials remain local and connect directly to Google; they are never sent to the shared service. Desktop ignores server environment overrides and uses the shared default unless its own publication has a custom registration.
 
 ## Storage, switching, and recovery
 

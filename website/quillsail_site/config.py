@@ -69,6 +69,11 @@ class Config:
     cloudflare_client_id: str = ""
     cloudflare_scopes: str = "dns.write zone.read argotunnel.write offline_access"
     cloudflare_edge_scopes: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = field(default="", repr=False)
+    gmail_broker_secret: str = field(default="", repr=False)
+    gmail_enabled: bool = False
+    privacy_contact: str = ""
 
     @property
     def github_url(self) -> str:
@@ -102,6 +107,11 @@ class Config:
             "cloudflare_client_id": env.get("QUILLSAIL_CLOUDFLARE_CLIENT_ID", ""),
             "cloudflare_scopes": env.get("QUILLSAIL_CLOUDFLARE_SCOPES", "dns.write zone.read argotunnel.write offline_access"),
             "cloudflare_edge_scopes": env.get("QUILLSAIL_CLOUDFLARE_EDGE_SCOPES", ""),
+            "google_client_id": env.get("QUILLSAIL_GOOGLE_CLIENT_ID", ""),
+            "google_client_secret": env.get("QUILLSAIL_GOOGLE_CLIENT_SECRET", ""),
+            "gmail_broker_secret": env.get("QUILLSAIL_GMAIL_BROKER_SECRET", ""),
+            "gmail_enabled": env.get("QUILLSAIL_GMAIL_ENABLED", "0").lower() in {"1", "true"},
+            "privacy_contact": env.get("QUILLSAIL_PRIVACY_CONTACT", ""),
             "site": address("QUILLSAIL_SITE_URL", "http://localhost:8000"),
             "docs": address("QUILLSAIL_DOCS_URL", "http://docs.localhost:8000"),
             "updates": Address.parse("QUILLSAIL_UPDATES_URL", updates_value) if updates_value else None,
@@ -119,6 +129,8 @@ class Config:
         config = cls(**values)
         if config.oauth_relay_secret and len(config.oauth_relay_secret) < 32:
             raise ConfigError("QUILLSAIL_OAUTH_RELAY_SECRET must have at least 32 characters.")
+        if config.privacy_contact and not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+', config.privacy_contact):
+            raise ConfigError('QUILLSAIL_PRIVACY_CONTACT must be a valid contact email.')
         hosts = [(config.site.host, config.site.prefix), (config.docs.host, config.docs.prefix)]
         if config.updates:
             hosts.append((config.updates.host, config.updates.prefix))

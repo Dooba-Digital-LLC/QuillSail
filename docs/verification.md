@@ -2,6 +2,14 @@
 
 QuillSail is beta software. These are development checks, not an independent security audit. Private deployment addresses, access details and operations records are excluded from the public repository.
 
+## 1.13.0 Beta — shared Gmail registration
+
+The website holds the confidential Google Web client secret; fresh publications discover public app metadata and prepare browser-bound PKCE authorization through an HTTPS confirmation relay. Code exchange and refresh use a restricted backend endpoint with token-bound renewal proofs. Tokens remain encrypted on each publication and email content is sent directly to Google. Custom Gmail/Outlook registrations and SMTP remain supported; no schema migration is required.
+
+Regression coverage uses synthetic accounts and mocked Google APIs. It checks public metadata allowlists, secret omission, fixed token/callback endpoints, scope restrictions, proof binding and rotation, rate/body limits, browser-form rejection, CSRF and provider isolation, browser state and single-use flows, callback snapshots, local desktop callbacks, encrypted storage and renewal failures. No real email is sent. Provider activation is gated: at setup the existing Google application was in Testing, and public availability remains dependent on callback/domain configuration and Google's publishing and sensitive-scope review. Credentials alone do not establish public approval.
+
+Local validation: application suite 547 passed, 3 skipped; website suite 154 passed, 1 skipped. Ruff and generated-reference checks passed. Wheel/sdist metadata and release boundaries passed, and a clean wheel installation exercised migrations, setup, subpath routing and assets. Website tests verify the disabled-by-default broker and operator-reviewed privacy page. PostgreSQL/MariaDB, Docker and all native desktop platforms are checked by CI; Docker and server databases are unavailable locally.
+
 ## 1.12.1 Beta — shared Cloudflare registration
 
 Fresh publications use a shared HTTPS discovery document instead of requiring OAuth app setup. Regression coverage exercises desktop/server PKCE, browser state, client snapshots across hosted changes, encrypted per-instance credentials, explicit overrides and resetting to shared defaults, rejected metadata/secrets, bounded downloads, redirect rejection and temporary outages. Website coverage verifies the public allowlist, missing setup, HTTPS and environment configuration. No schema change is needed. Production activation also requires Cloudflare's verified domain and public client visibility; tests use synthetic registrations and mocked endpoints.

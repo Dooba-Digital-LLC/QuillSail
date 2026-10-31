@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.0 — Beta
+
+- Add shared Gmail sign-in for desktop and server publications. The website backend keeps the confidential Google client secret; publications discover public metadata and use a confirmed HTTPS callback with PKCE instead of asking each user to register an app.
+- Exchange and renew Gmail authorization through the backend with token-bound refresh proofs. Store each publication's tokens encrypted locally, send messages directly to Google, reject inbox-reading scopes and keep SMTP and custom app registrations available.
+- Gate activation on maintainer configuration and Google publishing/verification requirements. Testing-mode Google applications remain limited to their approved test users; shared credentials do not bypass that restriction.
+
 ## 1.12.1 — Beta
 
 - Configure the shared Cloudflare OAuth application once on the website backend. Fresh desktop and server publications discover the public client ID, scopes and HTTPS relay automatically and show Sign in with Cloudflare without asking users to register an app.

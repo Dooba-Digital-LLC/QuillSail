@@ -23,6 +23,8 @@ Use a stable random secret of at least 32 characters. Changing it invalidates se
 
 Gmail and Outlook app registrations can be supplied under `[oauth]` or through the `COPYDESK_GOOGLE_CLIENT_ID`, `COPYDESK_GOOGLE_CLIENT_SECRET`, `COPYDESK_MICROSOFT_CLIENT_ID`, `COPYDESK_MICROSOFT_CLIENT_SECRET`, and `COPYDESK_MICROSOFT_TENANT` environment overrides. See [email connectors](email-connectors.md).
 
+Fresh Gmail connections use the shared website broker by default. `COPYDESK_GOOGLE_METADATA_URL` or `oauth.google_metadata_url` overrides its HTTPS discovery URL; an empty value disables discovery. The confidential Google Web client secret stays on the broker and each publication encrypts its own tokens locally. Shared activation and the permitted account audience depend on Google's publishing and sensitive-scope verification status.
+
 An administrator's saved email connection takes precedence over `[mail]` and is read by both web and worker processes without a restart. Disconnecting it resumes the server's `[mail]` configuration. Provider app credentials saved in the dashboard take precedence over their server defaults. Dashboard secrets are encrypted with a key derived from `site.secret_key`; preserve that key when restoring the database.
 
 Named local publications are selected with `quillsail --instance NAME COMMAND`. The desktop app and `quillsail instance` commands share their private registry and keep each publication's files separate. Named instance commands ignore server environment overrides. See [multiple local publications](desktop.md#multiple-publications). Inside application code, database engines and sessions resolve through the active Flask application context; creating another application never rebinds an existing publication's database.

@@ -50,6 +50,7 @@
     <p class="small muted">One-time app setup is needed before the first account can connect.</p>
     {% endif %}
     <p class="small muted">Email stays with your provider. QuillSail can send messages; it does not request access to read your inbox.</p>
+    {% if provider.shared %}<p class="small muted">QuillSail’s website handles sign-in and token renewal. This publication keeps its connection encrypted and sends messages directly to Google.</p>{% endif %}
   </div>
 </section>
 {% endfor %}
@@ -87,11 +88,11 @@
 </details>
 
 <section class="section stack" aria-labelledby="provider-setup-heading">
-  <h2 id="provider-setup-heading">One-time app setup</h2>
-  <p class="muted">Google and Microsoft need to recognize this installation of QuillSail before an account can connect. Set this up once; afterwards, admins just sign in to choose a sending account.</p>
+  <h2 id="provider-setup-heading">Advanced app registrations</h2>
+  <p class="muted">Gmail uses QuillSail’s shared application by default. These settings are for a separate Gmail registration or a Microsoft app supplied by your organization.</p>
   {% for key, provider in clients.items() %}
   <details class="panel email-details" id="{{ key }}-setup"{% if not provider.ready %} open{% endif %}>
-    <summary class="panel-header"><h3>{{ provider.name }} app setup</h3><span class="small muted">{{ 'Configured' if provider.ready else 'Setup needed' }}</span></summary>
+    <summary class="panel-header"><h3>{{ 'Use your own Gmail app (optional)' if key == 'gmail' else 'Outlook app setup' }}</h3><span class="small muted">{{ 'Shared app' if provider.shared else 'Configured' if provider.ready else 'Setup needed' }}</span></summary>
     <div class="panel-body stack">
       {% if key == 'gmail' %}
       <p>Create a <strong>Web application</strong> OAuth client in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud</a>, enable the Gmail API, and add the callback URL below. During testing, add the sending account as a test user.</p>
