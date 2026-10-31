@@ -4,7 +4,7 @@
 
 Self-hosted blogs and newsletters where readers write.
 
-Built by [Dooba Digital](https://github.com/Dooba-Digital-LLC).
+Built by [Dooba Digital](https://github.com/DoobaDigital).
 
 QuillSail brings blog publishing, reader submissions, editorial review, customizable community groups, and newsletter delivery into one application. Organizations host their own installation and own their data. Choose Newsletter, Blog, or Blog + newsletter. The publication name, branding, groups, permissions, pages, and email content are configurable.
 
@@ -36,12 +36,12 @@ The desktop launcher starts a local publication and opens the dashboard in your 
 
 | Your computer | Download |
 | --- | --- |
-| Mac — Apple Silicon (M-series) | [macOS arm64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-macos-arm64.zip) |
-| Mac — Intel | [macOS x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-macos-x86_64.zip) |
-| Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-windows-x86_64.zip) |
-| Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-linux-x86_64.tar.gz) |
+| Mac — Apple Silicon (M-series) | [macOS arm64](https://github.com/DoobaDigital/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-macos-arm64.zip) |
+| Mac — Intel | [macOS x86-64](https://github.com/DoobaDigital/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-macos-x86_64.zip) |
+| Windows — 64-bit Intel/AMD | [Windows x64](https://github.com/DoobaDigital/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-windows-x86_64.zip) |
+| Linux — 64-bit Intel/AMD | [Linux x86-64](https://github.com/DoobaDigital/QuillSail/releases/download/v1.10.0/QuillSail-1.10.0-linux-x86_64.tar.gz) |
 
-Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds. Mac downloads from 1.11.2 onward are notarized by Apple; Windows code signing isn't configured yet. [Release notes and checksums](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.10.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
+Extract the download and open **QuillSail**. Keep the Windows/Linux bundle folder together. These are beta builds. Mac downloads from 1.11.2 onward are notarized by Apple; Windows code signing isn't configured yet. [Release notes and checksums](https://github.com/DoobaDigital/QuillSail/releases/tag/v1.10.0) · [Desktop guide](docs/desktop.md). The CLI remains available for servers and automation.
 
 ## Deploy with Docker Compose
 

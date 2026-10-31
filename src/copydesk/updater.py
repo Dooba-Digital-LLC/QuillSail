@@ -32,7 +32,7 @@ from copydesk import __version__
 from copydesk.desktop import AlreadyRunning, InstanceLock, default_data_dir, write_private
 from copydesk.update_install import PROTOCOL, InstallError, clean_environment, read_install
 
-REPOSITORY = "Dooba-Digital-LLC/QuillSail"
+REPOSITORY = "DoobaDigital/QuillSail"
 METADATA_URL = f"https://github.com/{REPOSITORY}/releases/download/desktop-updates/"
 RELEASES_URL = f"https://github.com/{REPOSITORY}/releases"
 BOOTSTRAP = Path(__file__).parent / "updates/root.json"

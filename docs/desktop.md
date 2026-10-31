@@ -6,7 +6,7 @@ On the first launch, enter your publication name, choose Newsletter / Blog / Blo
 
 ## Using the app
 
-Install it with one command using the [terminal installer](install-script.md), or download the beta from [quillsail.blog/download](https://quillsail.blog/download) or the [GitHub release](https://github.com/Dooba-Digital-LLC/QuillSail/releases/tag/v1.10.0). Four separate downloads cover Apple Silicon Macs (`macos-arm64`), Intel Macs (`macos-x86_64`), 64-bit Windows (`windows-x86_64`), and 64-bit Linux (`linux-x86_64`). `SHA256SUMS.txt` contains the archive hashes; `desktop-builds.json` records the source commit and native verification results.
+Install it with one command using the [terminal installer](install-script.md), or download the beta from [quillsail.blog/download](https://quillsail.blog/download) or the [GitHub release](https://github.com/DoobaDigital/QuillSail/releases/tag/v1.10.0). Four separate downloads cover Apple Silicon Macs (`macos-arm64`), Intel Macs (`macos-x86_64`), 64-bit Windows (`windows-x86_64`), and 64-bit Linux (`linux-x86_64`). `SHA256SUMS.txt` contains the archive hashes; `desktop-builds.json` records the source commit and native verification results.
 
 New releases offer graphical installers, matching your CPU architecture:
 

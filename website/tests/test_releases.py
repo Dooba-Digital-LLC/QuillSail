@@ -30,7 +30,7 @@ def test_signed_feed_lists_verified_downloads(feed):
     assert mac.archive == "QuillSail-2.0.0-macos-arm64.zip"
     assert mac.sha256 == hashlib.sha256(b"macos-arm64 2.0.0").hexdigest()
     assert mac.size == len(b"macos-arm64 2.0.0")
-    assert mac.url == ("https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v2.0.0/"
+    assert mac.url == ("https://github.com/DoobaDigital/QuillSail/releases/download/v2.0.0/"
                        "QuillSail-2.0.0-macos-arm64.zip")
     assert release.builds["linux-x86_64"].archive.endswith(".tar.gz")
     assert release.server.archive == "copydesk-2.0.0-py3-none-any.whl"

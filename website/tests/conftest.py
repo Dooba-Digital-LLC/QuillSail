@@ -42,7 +42,7 @@ def release_fixture(version="2.3.4", url_base="https://downloads.example.test", 
 @pytest.fixture(scope="session")
 def docs() -> Docs:
     # Rendering every page takes a moment, so tests share one copy.
-    return Docs(REPO_ROOT, repository="Dooba-Digital-LLC/QuillSail")
+    return Docs(REPO_ROOT, repository="DoobaDigital/QuillSail")
 
 
 @pytest.fixture

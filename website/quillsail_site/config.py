@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 PACKAGE = Path(__file__).resolve().parent
 # The website lives in the QuillSail repository; the docs and changelog are one level up.
 DEFAULT_REPO_ROOT = PACKAGE.parents[1]
-REPOSITORY = "Dooba-Digital-LLC/QuillSail"
+REPOSITORY = "DoobaDigital/QuillSail"
 CHANNELS = ("stable", "beta")
 
 

@@ -94,8 +94,8 @@ def test_without_release_details_the_site_points_to_github(config, docs, fixture
     client = create_app(config, docs=docs).apps["site"].test_client()
     html = page(client, "/")
     assert "Download from GitHub" in html
-    assert "https://github.com/Dooba-Digital-LLC/QuillSail/releases" in html
-    assert client.get("/download/macos-arm64").location == "https://github.com/Dooba-Digital-LLC/QuillSail/releases"
+    assert "https://github.com/DoobaDigital/QuillSail/releases" in html
+    assert client.get("/download/macos-arm64").location == "https://github.com/DoobaDigital/QuillSail/releases"
     response = client.get("/api/v1/releases/latest")
     assert response.status_code == 503 and response.headers["Retry-After"] == "60"
     text = client.get("/api/v1/releases/latest/macos-arm64.txt")
@@ -205,10 +205,10 @@ def test_proxy_hops_trust_forwarded_https(config, docs):
 def test_update_metadata_redirects_to_the_signed_feed(updates):
     response = updates.get("/timestamp.json")
     assert response.status_code == 302
-    assert response.location == "https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/desktop-updates/timestamp.json"
+    assert response.location == "https://github.com/DoobaDigital/QuillSail/releases/download/desktop-updates/timestamp.json"
     assert updates.get("/12.targets.json").location.endswith("/desktop-updates/12.targets.json")
     archive = updates.get("/v1.10.0/QuillSail-1.10.0-linux-x86_64.tar.gz")
-    assert archive.location == ("https://github.com/Dooba-Digital-LLC/QuillSail/releases/download/v1.10.0/"
+    assert archive.location == ("https://github.com/DoobaDigital/QuillSail/releases/download/v1.10.0/"
                                 "QuillSail-1.10.0-linux-x86_64.tar.gz")
 
 
@@ -268,7 +268,7 @@ def test_robots_sitemap_and_icons(site, docs_client):
 def test_short_links(site):
     assert site.get("/docs").location == "https://docs.quillsail.test/"
     assert site.get("/changelog").location == "https://docs.quillsail.test/changelog"
-    assert site.get("/github").location == "https://github.com/Dooba-Digital-LLC/QuillSail"
+    assert site.get("/github").location == "https://github.com/DoobaDigital/QuillSail"
 
 
 def test_missing_pages_get_a_helpful_404(site, docs_client):
