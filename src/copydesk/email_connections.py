@@ -20,7 +20,7 @@ from authlib.integrations.requests_client import OAuth2Session
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from flask import session
+from flask import current_app, session, url_for
 from sqlalchemy import delete, update
 
 from copydesk import settings
@@ -91,10 +91,19 @@ def client_config(provider):
     return decrypt(saved) if saved else dict(state().config.oauth_clients.get(provider, {}))
 
 
+def client_ready(provider, client=None):
+    client = client if client is not None else client_config(provider)
+    return bool(client.get('client_id') and client.get('client_secret') or
+        provider == 'gmail' and not client.get('client_id') and not client.get('client_secret') and client.get('metadata_url'))
+
+
 def save_client(provider, client_id, client_secret, tenant="common"):
     previous = client_config(provider)
     client_id = str(client_id or "").strip()
     provided_secret = str(client_secret or "").strip()
+    if provider == 'gmail' and not client_id and not provided_secret:
+        settings.set_value(CLIENT_KEY + provider, None)
+        return
     if previous.get("client_id") != client_id and not provided_secret:
         raise ConnectionProblem("Enter the secret for the new app.")
     client_secret = provided_secret or previous.get("client_secret", "")
@@ -327,15 +336,15 @@ def _endpoint(provider, name, client):
 def _oauth_client(provider, client, **kwargs):
     return OAuth2Session(
         client["client_id"],
-        client["client_secret"],
-        token_endpoint_auth_method="client_secret_post",
+        client.get("client_secret", ""),
+        token_endpoint_auth_method="none" if client.get('shared') else "client_secret_post",
         **kwargs,
     )
 
 
 def start_oauth(provider, user):
-    client = client_config(provider)
-    if not client.get("client_id") or not client.get("client_secret"):
+    configuration = client_config(provider)
+    if not client_ready(provider, configuration):
         raise ConnectionProblem(
             f"Complete the one-time {PROVIDERS[provider]['name']} app setup below, then connect your account."
         )
@@ -346,7 +355,16 @@ def start_oauth(provider, user):
         "::1",
     }:
         raise ConnectionProblem("Use HTTPS for the publication before connecting email accounts.")
+    client = configuration
+    if provider == 'gmail' and not configuration.get('client_id') and not configuration.get('client_secret'):
+        from copydesk import shared_gmail
+
+        client = shared_gmail.discover(configuration)
     nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
+    if client.get('shared'):
+        runtime = current_app.extensions.get('copydesk_desktop')
+        destination = (runtime.url if runtime else state().config.origin) + url_for('dash.email_callback', provider=provider)
+        nonce = base64.urlsafe_b64encode(json.dumps({'destination': destination, 'nonce': nonce}, separators=(',', ':')).encode()).decode().rstrip('=')
     db.session.execute(
         delete(EmailOAuthFlow).where(EmailOAuthFlow.created_at < utcnow() - FLOW_TTL)
     )
@@ -355,7 +373,8 @@ def start_oauth(provider, user):
         user_id=user.id,
         auth_version=user.auth_version,
         provider=provider,
-        payload=encrypt({"verifier": verifier, "client_fingerprint": _fingerprint(client)}),
+        payload=encrypt({"verifier": verifier, "client_fingerprint": _fingerprint(configuration),
+                         "client": client if client.get('shared') else None}),
     )
     db.session.add(flow)
     session["email_oauth_state"] = nonce
@@ -363,7 +382,7 @@ def start_oauth(provider, user):
         provider,
         client,
         scope=PROVIDERS[provider]["scope"],
-        redirect_uri=callback_url(provider),
+        redirect_uri=client['relay_url'] if client.get('shared') else callback_url(provider),
         code_challenge_method="S256",
     ) as oauth:
         args = {"state": nonce, "code_verifier": verifier, "prompt": "consent select_account"}
@@ -384,7 +403,7 @@ def _fingerprint(client):
 
 def finish_oauth(provider, user, sent_state, code):
     expected = session.get("email_oauth_state", "")
-    if not sent_state or not expected or not hmac.compare_digest(sent_state, expected):
+    if not sent_state or not expected or len(sent_state) > 4096 or not hmac.compare_digest(sent_state, expected):
         raise ConnectionProblem(
             "This sign-in did not start in your browser. Start the connection again."
         )
@@ -407,25 +426,31 @@ def finish_oauth(provider, user, sent_state, code):
     client = client_config(provider)
     if _fingerprint(client) != payload["client_fingerprint"]:
         raise ConnectionProblem("The app setup changed during sign-in. Start the connection again.")
+    client = payload.get('client') or client
     if not code or len(code) > 8192:
         raise ConnectionProblem("Sign-in was cancelled or did not return an authorization code.")
     try:
-        with _oauth_client(
-            provider,
-            client,
-            scope=PROVIDERS[provider]["scope"],
-            redirect_uri=callback_url(provider),
-        ) as oauth:
-            token = dict(
-                oauth.fetch_token(
-                    _endpoint(provider, "token", client),
-                    code=code,
-                    code_verifier=payload["verifier"],
-                    timeout=15,
+        if client.get('shared'):
+            from copydesk import shared_gmail
+
+            token = shared_gmail.token(client, code=code, verifier=payload['verifier'])
+        else:
+            with _oauth_client(
+                provider,
+                client,
+                scope=PROVIDERS[provider]["scope"],
+                redirect_uri=callback_url(provider),
+            ) as oauth:
+                token = dict(
+                    oauth.fetch_token(
+                        _endpoint(provider, "token", client),
+                        code=code,
+                        code_verifier=payload["verifier"],
+                        timeout=15,
+                    )
                 )
-            )
-            _check_token(provider, token, require_refresh=True)
-            email = _profile(provider, token["access_token"])
+        _check_token(provider, token, require_refresh=True)
+        email = _profile(provider, token["access_token"])
     except ConnectionProblem:
         raise
     except Exception:
@@ -508,14 +533,21 @@ def _access_token(config, *, force_refresh=False):
         return token["access_token"]
     client = data["client"]
     try:
-        with _oauth_client(config.backend, client) as oauth:
-            fresh = dict(
-                oauth.refresh_token(
-                    _endpoint(config.backend, "token", client),
-                    refresh_token=token["refresh_token"],
-                    timeout=15,
+        if client.get('shared'):
+            from copydesk import shared_gmail
+
+            fresh = shared_gmail.token(client, previous=token)
+        else:
+            with _oauth_client(config.backend, client) as oauth:
+                fresh = dict(
+                    oauth.refresh_token(
+                        _endpoint(config.backend, "token", client),
+                        refresh_token=token["refresh_token"],
+                        timeout=15,
+                    )
                 )
-            )
+    except ConnectionProblem:
+        raise
     except Exception as exc:
         # Never put token endpoint bodies, credentials, or OAuth codes into job logs.
         permanent = getattr(exc, "error", "") in {

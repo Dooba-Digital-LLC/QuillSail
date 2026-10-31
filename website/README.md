@@ -78,10 +78,21 @@ Everything is set with environment variables. Defaults suit local development.
 | `QUILLSAIL_CLOUDFLARE_CLIENT_ID` | Unset | Registered public PKCE client ID, configured once for all QuillSail installations |
 | `QUILLSAIL_CLOUDFLARE_SCOPES` | `dns.write zone.read argotunnel.write offline_access` | Exact approved base scopes for the shared client |
 | `QUILLSAIL_CLOUDFLARE_EDGE_SCOPES` | Empty | Approved optional offline-fallback scopes, requested only when needed |
+| `QUILLSAIL_GOOGLE_CLIENT_ID` | Unset | Shared Google Web application client ID for Gmail |
+| `QUILLSAIL_GOOGLE_CLIENT_SECRET` | Unset | Confidential Google secret; keep only in the private backend environment |
+| `QUILLSAIL_GMAIL_BROKER_SECRET` | Unset | Persistent private key of at least 32 characters for token-bound refresh proofs |
+| `QUILLSAIL_GMAIL_ENABLED` | `0` | Set to `1` after callback and audience configuration; Google verification is required for public use |
+| `QUILLSAIL_PRIVACY_CONTACT` | Unset | Operator-approved public privacy contact; enables the reviewed hosted-sign-in policy at `/privacy` |
 
 A request for any other host, such as `www.quillsail.blog`, is redirected to the site's address.
 
 With HTTPS, a relay secret and a client ID configured, `/.well-known/quillsail/cloudflare.json` publishes only the public client ID, scopes and canonical relay callback. Configure the registration once here; fresh desktop/server publications discover it when users click **Sign in with Cloudflare**. No client secret is needed for PKCE. Access tokens, refresh tokens and verifiers stay on the individual publication. Complete Cloudflare domain verification and promote the client to Public before inviting users outside its parent account. Custom app registrations and the API-token backup remain supported; see [hosting](../docs/hosting.md).
+
+Shared Gmail uses a confidential Web client. Its secret never appears in `/.well-known/quillsail/gmail.json`; only the public ID, scope and HTTPS endpoints are published. Register the canonical `/oauth/gmail/callback`, configure the private Google credentials and persistent Gmail broker key, and activate the service only for the audience permitted by Google. A Testing app remains limited to listed test users; unrestricted public use requires Google verification for the sensitive send-only scope.
+
+The callback uses browser-bound confirmation. `/oauth/gmail/token` accepts bounded server JSON requests for authorization-code exchange and proof-bound refresh, forwards only to Google's fixed token endpoint, and rejects broader mail scopes. User tokens transit the broker without being stored centrally; publications encrypt them locally and send email content directly to Google. Preserve the broker key across deployments and backups. Path-only logs, TLS and private environment permissions are required. See [email connectors](../docs/email-connectors.md).
+
+The privacy-policy template remains unpublished until the operator reviews its statements and supplies `QUILLSAIL_PRIVACY_CONTACT`. It must match actual service operation before being linked from Google's consent screen. Keep the shared Gmail service disabled while required provider configuration or verification is incomplete, unless explicitly enabling access for Google's listed test users.
 
 ## Deploy
 

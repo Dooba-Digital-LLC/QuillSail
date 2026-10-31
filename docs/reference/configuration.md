@@ -40,6 +40,7 @@ Each variable overrides one value in the file. Lists, such as `COPYDESK_EXTENSIO
 | `MICROSOFT_TENANT` | `[oauth] microsoft_tenant` |
 | `COPYDESK_GOOGLE_CLIENT_ID` | `[oauth] google_client_id` |
 | `COPYDESK_GOOGLE_CLIENT_SECRET` | `[oauth] google_client_secret` |
+| `COPYDESK_GOOGLE_METADATA_URL` | `[oauth] google_metadata_url` |
 | `COPYDESK_MICROSOFT_CLIENT_ID` | `[oauth] microsoft_client_id` |
 | `COPYDESK_MICROSOFT_CLIENT_SECRET` | `[oauth] microsoft_client_secret` |
 | `COPYDESK_MICROSOFT_TENANT` | `[oauth] microsoft_tenant` |
@@ -176,4 +177,4 @@ microsoft_tenant = "common"
 
 ---
 
-*Generated from the QuillSail 1.12.1 source code by `scripts/build_reference_docs.py`.*
+*Generated from the QuillSail 1.13.0 source code by `scripts/build_reference_docs.py`.*

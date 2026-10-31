@@ -3,7 +3,7 @@
 {% block main %}
 <main id="main" class="container page">
 <h1>Return to your publication</h1>
-<p>Cloudflare has approved this connection. The authorization code will go to:</p>
+<p>{{ provider_name|default('Cloudflare') }} has approved this connection. The authorization code will go to:</p>
 <p><strong>{{ target }}</strong></p>
 <p>Continue only if this is the QuillSail publication where you started. If you do not recognize this address, close this page.</p>
 <form method="post">

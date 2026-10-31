@@ -57,6 +57,7 @@
           <li><a href="{{ docs_url('/contributing') }}">Contributing</a></li>
           <li><a href="{{ docs_url('/security') }}">Security</a></li>
           <li><a href="{{ github_url }}/issues">Report a problem</a></li>
+          {% if config.privacy_contact %}<li><a href="{{ url_for('site.privacy') }}">Privacy policy</a></li>{% endif %}
         </ul>
       </nav>
     </div>
